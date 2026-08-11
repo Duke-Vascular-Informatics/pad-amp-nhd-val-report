@@ -121,3 +121,87 @@ library(omopReportToolkit)
 
   ft
 }
+
+
+# =============================================================================
+# .save_roc_plot_from_points()
+#
+# Draws one or more ROC curves from PRE-COMPUTED (fpr, tpr) points instead of
+# from patient-level outcome/prediction vectors.
+#
+# WHY THIS EXISTS (2026-08-11). omopReportToolkit's .save_roc_plot() and
+# .save_dual_roc_plot() both take y/p vectors -- i.e. one row per patient --
+# which is exactly the dependency this repo was converting away from. The
+# curve points themselves are aggregate: pad-amp-nhd-prog's aggregate step
+# derives them from per-score-value event counts and emits agg_roc_points.csv,
+# verified to reproduce the person-level curve exactly (identical point set,
+# AUC matching metrics.csv to 10 decimal places).
+#
+# CANDIDATE FOR PROMOTION to omopReportToolkit: nothing here is study-specific.
+# It lives in this repo for now only to avoid a toolkit version bump in the
+# middle of the conversion; move it when the toolkit is next revised, and
+# delete this copy rather than leaving both.
+#
+# @param pts     data frame with fpr, tpr, curve_label, and optionally auc.
+# @param output_folder  directory for the PNG.
+# @param file_name      output file name.
+# @param title          plot title.
+# @return the written file path, or NULL.
+# =============================================================================
+.save_roc_plot_from_points <- function(pts, output_folder,
+                                       file_name = "roc_curve.png",
+                                       title = "Receiver Operating Characteristic") {
+  if (is.null(pts) || nrow(pts) == 0 ||
+      !all(c("fpr", "tpr", "curve_label") %in% names(pts))) {
+    message("[report] ROC plot skipped: agg_roc_points.csv missing or malformed.")
+    return(NULL)
+  }
+
+  pts$fpr <- as.numeric(pts$fpr)
+  pts$tpr <- as.numeric(pts$tpr)
+  pts <- pts[!is.na(pts$fpr) & !is.na(pts$tpr), , drop = FALSE]
+  if (nrow(pts) == 0) return(NULL)
+
+  # Legend label carries each curve's AUC, taken from the artifact rather than
+  # recomputed here -- the aggregate step already reconciled it against
+  # metrics.csv, so recomputing would only create a way for the two to drift.
+  labs_map <- vapply(split(pts, pts$curve_label), function(d) {
+    a <- if ("auc" %in% names(d)) suppressWarnings(as.numeric(d$auc[1])) else NA_real_
+    if (is.na(a)) d$curve_label[1] else sprintf("%s (AUC %.3f)", d$curve_label[1], a)
+  }, character(1))
+  pts$Curve <- factor(unname(labs_map[pts$curve_label]),
+                      levels = unname(labs_map[sort(names(labs_map))]))
+
+  # Sort within curve so geom_line/geom_step connects points in curve order
+  # rather than row order.
+  pts <- pts[order(pts$Curve, pts$fpr, pts$tpr), , drop = FALSE]
+
+  gs <- .gs_scales(levels(pts$Curve))
+
+  p <- ggplot2::ggplot(pts, ggplot2::aes(x = fpr, y = tpr,
+                                         colour = Curve, linetype = Curve)) +
+    ggplot2::geom_abline(slope = 1, intercept = 0,
+                         colour = "grey70", linetype = "dotted", linewidth = 0.6) +
+    ggplot2::geom_line(linewidth = 0.9) +
+    gs$colour + gs$linetype +
+    ggplot2::coord_equal(xlim = c(0, 1), ylim = c(0, 1)) +
+    ggplot2::scale_x_continuous(labels = function(x) sprintf("%.1f", x)) +
+    ggplot2::scale_y_continuous(labels = function(x) sprintf("%.1f", x)) +
+    ggplot2::labs(
+      title = title,
+      x = "1 - Specificity (false positive rate)",
+      y = "Sensitivity (true positive rate)",
+      colour = NULL, linetype = NULL
+    ) +
+    theme_manuscript() +
+    ggplot2::theme(legend.position = "bottom",
+                   panel.grid.minor = ggplot2::element_blank())
+
+  tryCatch(
+    save_figure(p, output_folder, file_name, width = 5.5, height = 5.5),
+    error = function(e) {
+      message("[report] Could not save ROC plot: ", conditionMessage(e))
+      NULL
+    }
+  )
+}

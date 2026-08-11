@@ -573,52 +573,38 @@
 # (populated by read_discharge_types() before this is called).
 # Returns the output file path, or NULL if the plot cannot be generated.
 # -----------------------------------------------------------------------------
-.save_nhd_rate_by_year_plot <- function(person_level_df, output_folder) {
-  if (!all(c("index_date", "outcome", "discharge_type") %in% names(person_level_df))) {
-    message("[report] NHD-by-year plot skipped: required columns missing (index_date, outcome, discharge_type).")
+.save_nhd_rate_by_year_plot <- function(yr_type_tbl, output_folder) {
+  # AGGREGATE-ONLY INPUT (2026-08-11). This used to take the person_level frame
+  # and do the year x disposition tabulation itself, which is why the report
+  # needed index_date and a per-subject discharge_type. That tabulation moved
+  # to pad-amp-nhd-prog's R/aggregate_report_inputs.R, which applies the same
+  # >= 11-patients-per-year minimum plus small-cell suppression and emits
+  # agg_nhd_by_year.csv. This function now only plots.
+  #
+  # Suppressed rows arrive with events/nhd_rate as NA (n is retained; the rate
+  # is blanked alongside the count so it cannot be back-multiplied). They are
+  # dropped from the plotted series rather than rendered as zero -- a
+  # suppressed cell is "not shown", never "none occurred".
+  if (is.null(yr_type_tbl) || nrow(yr_type_tbl) == 0) {
+    message("[report] NHD-by-year plot skipped: agg_nhd_by_year.csv missing or empty.")
     return(NULL)
   }
-
-  year_val <- tryCatch(
-    as.integer(format(as.Date(person_level_df$index_date), "%Y")),
-    error = function(e) NA_integer_
-  )
+  if (!all(c("year", "n", "discharge_type", "events", "nhd_rate") %in% names(yr_type_tbl))) {
+    message("[report] NHD-by-year plot skipped: agg_nhd_by_year.csv missing required columns.")
+    return(NULL)
+  }
 
   nhd_levels <- c("SNF", "IRF", "Hospice", "LTAC", "Other NHD")
 
-  df_yr <- data.frame(
-    year           = year_val,
-    outcome        = as.integer(person_level_df$outcome),
-    discharge_type = as.character(person_level_df$discharge_type),
-    stringsAsFactors = FALSE
-  )
-  df_yr <- df_yr[!is.na(df_yr$year), ]
-
-  all_years <- sort(unique(df_yr$year))
-  if (length(all_years) < 2) {
-    message("[report] NHD-by-year plot skipped: fewer than 2 years of data.")
-    return(NULL)
+  n_suppressed <- sum(is.na(yr_type_tbl$nhd_rate))
+  yr_type_tbl  <- yr_type_tbl[!is.na(yr_type_tbl$nhd_rate), , drop = FALSE]
+  if (n_suppressed > 0) {
+    message("[report] NHD-by-year: ", n_suppressed,
+            " small-cell-suppressed point(s) omitted from the plot.")
   }
 
-  yr_type_tbl <- do.call(rbind, lapply(all_years, function(y) {
-    sub_yr <- df_yr[df_yr$year == y, ]
-    n_yr   <- nrow(sub_yr)
-    if (n_yr < 11L) return(NULL)
-    do.call(rbind, lapply(nhd_levels, function(tp) {
-      events <- sum(sub_yr$discharge_type == tp, na.rm = TRUE)
-      data.frame(
-        year           = y,
-        n              = n_yr,
-        discharge_type = tp,
-        events         = events,
-        nhd_rate       = 100 * events / n_yr,
-        stringsAsFactors = FALSE
-      )
-    }))
-  }))
-
-  if (is.null(yr_type_tbl) || nrow(yr_type_tbl) == 0) {
-    message("[report] NHD-by-year plot skipped: no year with >= 11 procedures.")
+  if (nrow(yr_type_tbl) == 0 || length(unique(yr_type_tbl$year)) < 2) {
+    message("[report] NHD-by-year plot skipped: fewer than 2 years of unsuppressed data.")
     return(NULL)
   }
 
@@ -679,31 +665,25 @@
 # Bar chart of 90-day outcome rate (%) by calendar month (Jan-Dec), pooled across
 # all years.  Used for integer score_type studies.
 # -----------------------------------------------------------------------------
-.save_nhd_rate_by_month_plot <- function(person_level_df, output_folder) {
-  if (!all(c("index_date", "outcome") %in% names(person_level_df))) {
-    message("[report] outcome-by-month plot skipped: index_date or outcome column missing.")
+.save_nhd_rate_by_month_plot <- function(mo_counts, output_folder) {
+  # AGGREGATE-ONLY INPUT (2026-08-11) -- see the sibling by-year function above
+  # for the rationale. The month x outcome tabulation and its >= 5-patient
+  # minimum moved to pad-amp-nhd-prog's aggregate step (agg_nhd_by_month.csv);
+  # the Wilson CI is still computed here, since it is a display concern derived
+  # from the two counts rather than something the analysis repo needs to emit.
+  if (is.null(mo_counts) || nrow(mo_counts) == 0 ||
+      !all(c("month", "n", "events") %in% names(mo_counts))) {
+    message("[report] outcome-by-month plot skipped: agg_nhd_by_month.csv missing or malformed.")
     return(NULL)
   }
 
-  month_val <- tryCatch(
-    as.integer(format(as.Date(person_level_df$index_date), "%m")),
-    error = function(e) NA_integer_
-  )
-
-  df_mo <- data.frame(
-    month   = month_val,
-    outcome = as.integer(person_level_df$outcome),
-    stringsAsFactors = FALSE
-  )
-  df_mo <- df_mo[!is.na(df_mo$month), ]
-
-  # Aggregate across all months 1–12 (keep all so x-axis is always Jan–Dec).
-  # 95% CI via Wilson score interval (stable when events = 0 or n = events).
+  # Keep all 12 months so the x-axis is always Jan-Dec; suppressed months
+  # arrive with n/events already NA and simply plot as a gap.
   mo_tbl <- do.call(rbind, lapply(1:12, function(m) {
-    sub    <- df_mo[df_mo$month == m, ]
-    n      <- nrow(sub)
-    events <- sum(sub$outcome, na.rm = TRUE)
-    if (n >= 5) {
+    row <- mo_counts[mo_counts$month == m, , drop = FALSE]
+    n      <- if (nrow(row) == 1) suppressWarnings(as.numeric(row$n[1]))      else NA_real_
+    events <- if (nrow(row) == 1) suppressWarnings(as.numeric(row$events[1])) else NA_real_
+    if (!is.na(n) && !is.na(events) && n > 0) {
       rate   <- 100 * events / n
       ci_obj <- tryCatch(
         prop.test(events, n, conf.level = 0.95, correct = FALSE)$conf.int,
@@ -718,8 +698,8 @@
     }
     data.frame(
       month    = m,
-      n        = n,
-      events   = events,
+      n        = if (is.na(n)) NA_integer_ else as.integer(n),
+      events   = if (is.na(events)) NA_integer_ else as.integer(events),
       ssi_rate = rate,
       ci_lo    = ci_lo,
       ci_hi    = ci_hi,
@@ -1267,6 +1247,27 @@
 .report_word_simple <- function(output_dir = "output/risk_score_eval",
                                  score_output_dir = "output/risk_score_eval") {
 
+  # DISABLED 2026-08-11 -- this is the one code path left in this repo that
+  # reads person_level_scores.csv (subject_id, index_date, per-patient outcome
+  # and predicted risk). The manuscript report was converted to render purely
+  # from aggregate artifacts; this legacy "simple report" was not, and leaving
+  # it callable would mean the repo still contains a working patient-level
+  # reader -- exactly the property the conversion was meant to remove.
+  #
+  # It is not reachable from GenerateReport.R (which calls
+  # generate_manuscript_report()), and its own helper .compute_ece() was found
+  # earlier to carry a latent bug precisely because nothing exercised it. So
+  # this fails loudly rather than being quietly converted: if the simple report
+  # is genuinely wanted again, convert it against agg_*.csv the same way
+  # .report_prognostic() was, and delete this guard as part of that work.
+  stop(
+    "generate_word_report() / .report_word_simple() is disabled.\n",
+    "It renders from person_level_scores.csv (patient-level), which this repo ",
+    "no longer reads -- see R/aggregate_report_inputs.R in pad-amp-nhd-prog.\n",
+    "Use generate_manuscript_report() instead (that is what GenerateReport.R ",
+    "calls), or convert this function to the agg_*.csv artifacts first."
+  )
+
   if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
   # Load pipeline outputs if available
@@ -1447,7 +1448,7 @@
       "at runtime. The outcome was attributed to the index visit when discharge occurred within ",
       config$prediction_window_days %||% 90,
       " days of the index date (prediction_window_days). The dataset contained ",
-      if (!is.null(person_level)) length(unique(person_level$subject_id)) else "N",
+      if (!is.na(n_target)) n_target else "N",
       " patients with at least one qualifying amputation within the study window."
     ),
     style = "Normal"
@@ -1960,7 +1961,11 @@
     officer::body_add_fpar(doc, value = caption_par, style = "Normal")
   }
 
-  person_level_path <- file.path(score_output_dir, "person_level_scores.csv")
+  # NOTE (2026-08-11): person_level_scores.csv is no longer read here. Every
+  # figure and table that used it now renders from the agg_*.csv artifacts
+  # written by pad-amp-nhd-prog's R/aggregate_report_inputs.R, so this repo
+  # needs no patient-level data at all. covariate_summary.csv and metrics.csv
+  # are already aggregate (per-covariate counts; model-level metrics).
   covariate_summary_path <- file.path(score_output_dir, "covariate_summary.csv")
   metrics_path <- file.path(score_output_dir, "metrics.csv")
   lookup_calibration_plot <- file.path(score_output_dir, "calibration_lookup.png")
@@ -1970,11 +1975,64 @@
   lookup_calibration_plot_temp <- file.path(temp_figure_dir, "calibration_lookup.png")
   recalibrated_calibration_plot_temp <- file.path(temp_figure_dir, "calibration_recalibrated.png")
 
-  if (!file.exists(person_level_path) || !file.exists(covariate_summary_path) || !file.exists(metrics_path)) {
+  if (!file.exists(covariate_summary_path) || !file.exists(metrics_path)) {
     stop("Missing one or more required pipeline outputs in ", score_output_dir)
   }
 
-  person_level <- read.csv(person_level_path, stringsAsFactors = FALSE)
+  # ---------------------------------------------------------------------------
+  # REPORT INPUT READERS  (Phase 0 — the render half of the extract/render split)
+  #
+  # These replace three fetch_*_from_omop() closures that used to live here and
+  # queried the CDM directly. The SQL moved verbatim to R/extract_report_inputs.R;
+  # nothing below opens a connection, and .report_prognostic() no longer takes a
+  # connection_details argument, so it cannot.
+  #
+  # NULL SEMANTICS ARE THE CONTRACT. The old fetchers returned NULL when a query
+  # failed, and every call site downstream guards with is.null(). The extract
+  # step preserves that by writing no file for a failed query, so:
+  #
+  #     file absent      -> NULL          (query failed / never ran)
+  #     header-only file -> 0-row df      (query succeeded, found nothing)
+  #
+  # Those two are different facts and must stay distinguishable. Do not "helpfully"
+  # collapse an empty file to NULL.
+  #
+  # check.names = FALSE is required: the extract half preserves whatever column
+  # casing DatabaseConnector produced, and the lookups below are case-insensitive
+  # against those exact names.
+  # ---------------------------------------------------------------------------
+  .report_inputs_dir <- report_inputs_dir
+
+  # col_classes: named vector, e.g. c(nubc_code = "character"), for columns
+  # that must not go through read.csv()'s automatic type inference. Base R's
+  # write.csv()/read.csv() round-trip does NOT preserve "this was a string" —
+  # a column of source codes that all happen to look numeric ("01", "03")
+  # comes back as integer with the leading zero silently dropped, quoting in
+  # the CSV notwithstanding. Found via a byte-for-byte docx diff against a
+  # pre-split render (Supplemental Table S4 nubc_code "01"/"03" -> "1"/"3");
+  # not caught by nhd-val's own Phase 0 verification only because that
+  # dataset's supp_discharge_destinations extract happened to be 0 rows.
+  read_report_input <- function(name, col_classes = NULL) {
+    if (is.null(.report_inputs_dir)) return(NULL)
+    path <- file.path(.report_inputs_dir, paste0(name, ".csv"))
+    if (!file.exists(path)) return(NULL)
+    # read.csv(colClasses = NULL) errors (rep_len(NULL, cols)) — NOT the same
+    # as omitting the argument, so the two-branch call is load-bearing, not
+    # a style choice.
+    tryCatch(
+      if (is.null(col_classes)) {
+        utils::read.csv(path, check.names = FALSE, stringsAsFactors = FALSE)
+      } else {
+        utils::read.csv(path, check.names = FALSE, stringsAsFactors = FALSE,
+                        colClasses = col_classes)
+      },
+      error = function(e) {
+        message("[report] could not read ", basename(path), ": ", conditionMessage(e))
+        NULL
+      }
+    )
+  }
+
   covariate_summary <- read.csv(covariate_summary_path, stringsAsFactors = FALSE)
   metrics <- read.csv(metrics_path, stringsAsFactors = FALSE)
   names(metrics) <- tolower(names(metrics))
@@ -1985,10 +2043,8 @@
   metrics_mfi5           <- NULL
 
   if (!is.null(mfi5_output_dir) && dir.exists(mfi5_output_dir)) {
-    mfi5_pl_path  <- file.path(mfi5_output_dir, "person_level_scores.csv")
     mfi5_cs_path  <- file.path(mfi5_output_dir, "covariate_summary.csv")
     mfi5_met_path <- file.path(mfi5_output_dir, "metrics.csv")
-    if (file.exists(mfi5_pl_path))  person_level_mfi5      <- read.csv(mfi5_pl_path,  stringsAsFactors = FALSE)
     if (file.exists(mfi5_cs_path))  covariate_summary_mfi5 <- read.csv(mfi5_cs_path,  stringsAsFactors = FALSE)
     if (file.exists(mfi5_met_path)) {
       metrics_mfi5 <- read.csv(mfi5_met_path, stringsAsFactors = FALSE)
@@ -2004,10 +2060,8 @@
   metrics_vqifs           <- NULL
 
   if (!is.null(vqifs_output_dir) && dir.exists(vqifs_output_dir)) {
-    vqifs_pl_path  <- file.path(vqifs_output_dir, "person_level_scores.csv")
     vqifs_cs_path  <- file.path(vqifs_output_dir, "covariate_summary.csv")
     vqifs_met_path <- file.path(vqifs_output_dir, "metrics.csv")
-    if (file.exists(vqifs_pl_path))  person_level_vqifs      <- read.csv(vqifs_pl_path,  stringsAsFactors = FALSE)
     if (file.exists(vqifs_cs_path))  covariate_summary_vqifs <- read.csv(vqifs_cs_path,  stringsAsFactors = FALSE)
     if (file.exists(vqifs_met_path)) {
       metrics_vqifs <- read.csv(vqifs_met_path, stringsAsFactors = FALSE)
@@ -2017,12 +2071,19 @@
     message("[report] sVQI-FS pipeline outputs loaded from: ", vqifs_output_dir)
   }
 
+  # Presence flags. These used to be `!is.null(person_level_mfi5)` -- i.e. "did
+  # that score's person-level file load?". Since 2026-08-11 the report reads no
+  # person-level file at all, so presence is keyed off each score's metrics.csv
+  # instead, which is aggregate and is written by the same scoring run.
+  has_mfi5  <- !is.null(metrics_mfi5)
+  has_vqifs <- !is.null(metrics_vqifs)
+
   # Now that we know which score pipelines produced output, fix the supplemental
   # S-number plan. Everything downstream refers to labels via supp()/supp_table()
   # /supp_figure() so Methods cross-references and render sites cannot diverge.
   .init_supp_labels(
-    has_mfi5  = !is.null(person_level_mfi5),
-    has_vqifs = !is.null(person_level_vqifs)
+    has_mfi5  = has_mfi5,
+    has_vqifs = has_vqifs
   )
 
   # --- Temporal split metadata (written by evaluate_integer_risk_score()) ----
@@ -2104,35 +2165,36 @@
       model = character(), stringsAsFactors = FALSE
     )
 
-    if ("predicted_risk_lookup" %in% names(person_level)) {
-      keep_lookup <- !is.na(person_level$predicted_risk_lookup)
-      if (any(keep_lookup)) {
-        ece_rows <- rbind(
-          ece_rows,
-          data.frame(
-            metric   = "ECE",
-            value    = compute_ece(person_level$outcome[keep_lookup], person_level$predicted_risk_lookup[keep_lookup]),
-            ci_lower = NA_real_,
-            ci_upper = NA_real_,
-            model    = "lookup",
-            stringsAsFactors = FALSE
-          )
-        )
-      }
+    # AGGREGATE-ONLY (2026-08-11). ECE was computed here from patient-level
+    # outcome/prediction vectors. It is now derived from the calibration TABLES
+    # the scoring step already writes (calibration_table_lookup.csv /
+    # _recalibrated.csv), which carry per-bin predicted and observed rates --
+    # exactly the quantities ECE averages over. Bin sizes are used as weights
+    # when the table carries them; otherwise bins are weighted equally, which
+    # is what an unweighted table can support.
+    .ece_from_table <- function(path) {
+      if (!file.exists(path)) return(NA_real_)
+      tb <- tryCatch(utils::read.csv(path, stringsAsFactors = FALSE),
+                     error = function(e) NULL)
+      if (is.null(tb) || nrow(tb) == 0) return(NA_real_)
+      if (!all(c("predicted", "observed") %in% names(tb))) return(NA_real_)
+      w <- if ("n" %in% names(tb)) suppressWarnings(as.numeric(tb$n)) else rep(1, nrow(tb))
+      if (all(is.na(w)) || sum(w, na.rm = TRUE) == 0) w <- rep(1, nrow(tb))
+      pr <- suppressWarnings(as.numeric(tb$predicted))
+      ob <- suppressWarnings(as.numeric(tb$observed))
+      ok <- !is.na(pr) & !is.na(ob) & !is.na(w)
+      if (!any(ok)) return(NA_real_)
+      sum(w[ok] * abs(pr[ok] - ob[ok])) / sum(w[ok])
     }
-
-    if ("predicted_risk_recalibrated" %in% names(person_level)) {
-      ece_rows <- rbind(
-        ece_rows,
-        data.frame(
-          metric   = "ECE",
-          value    = compute_ece(person_level$outcome, person_level$predicted_risk_recalibrated),
-          ci_lower = NA_real_,
-          ci_upper = NA_real_,
-          model    = "recalibrated",
-          stringsAsFactors = FALSE
-        )
-      )
+    for (.spec in list(list(p = calibration_table_lookup_path,       m = "lookup"),
+                       list(p = calibration_table_recalibrated_path, m = "recalibrated"))) {
+      .v <- .ece_from_table(.spec$p)
+      if (!is.na(.v)) {
+        ece_rows <- rbind(ece_rows, data.frame(
+          metric = "ECE", value = .v, ci_lower = NA_real_, ci_upper = NA_real_,
+          model = .spec$m, stringsAsFactors = FALSE
+        ))
+      }
     }
 
     if (nrow(ece_rows) > 0) {
@@ -2216,8 +2278,15 @@
     paste0("(", fmt(lo), "\u2013", fmt(hi), ")")
   }
 
-  n_target <- nrow(person_level)
-  n_outcome <- sum(person_level$outcome, na.rm = TRUE)
+  # Cohort totals from agg_cohort_summary.csv (was nrow()/sum() over the
+  # person-level frame).
+  .cohort_sum <- read_report_input("agg_cohort_summary")
+  .cs_row <- if (!is.null(.cohort_sum) && "score_id" %in% names(.cohort_sum)) {
+    r <- .cohort_sum[.cohort_sum$score_id == "iannuzzi", , drop = FALSE]
+    if (nrow(r) == 0) .cohort_sum[1, , drop = FALSE] else r
+  } else NULL
+  n_target  <- if (!is.null(.cs_row)) as.integer(.cs_row$n_total[1])  else NA_integer_
+  n_outcome <- if (!is.null(.cs_row)) as.integer(.cs_row$n_events[1]) else NA_integer_
   outcome_prev <- if (n_target > 0) 100 * n_outcome / n_target else NA_real_
 
   results_tbl <- data.frame(
@@ -2327,59 +2396,6 @@
            " (", format(round(100 * n / denom, digits), nsmall = digits, trim = TRUE), "%)")
   }
 
-  # ---------------------------------------------------------------------------
-  # REPORT INPUT READERS  (Phase 0 — the render half of the extract/render split)
-  #
-  # These replace three fetch_*_from_omop() closures that used to live here and
-  # queried the CDM directly. The SQL moved verbatim to R/extract_report_inputs.R;
-  # nothing below opens a connection, and .report_prognostic() no longer takes a
-  # connection_details argument, so it cannot.
-  #
-  # NULL SEMANTICS ARE THE CONTRACT. The old fetchers returned NULL when a query
-  # failed, and every call site downstream guards with is.null(). The extract
-  # step preserves that by writing no file for a failed query, so:
-  #
-  #     file absent      -> NULL          (query failed / never ran)
-  #     header-only file -> 0-row df      (query succeeded, found nothing)
-  #
-  # Those two are different facts and must stay distinguishable. Do not "helpfully"
-  # collapse an empty file to NULL.
-  #
-  # check.names = FALSE is required: the extract half preserves whatever column
-  # casing DatabaseConnector produced, and the lookups below are case-insensitive
-  # against those exact names.
-  # ---------------------------------------------------------------------------
-  .report_inputs_dir <- report_inputs_dir
-
-  # col_classes: named vector, e.g. c(nubc_code = "character"), for columns
-  # that must not go through read.csv()'s automatic type inference. Base R's
-  # write.csv()/read.csv() round-trip does NOT preserve "this was a string" —
-  # a column of source codes that all happen to look numeric ("01", "03")
-  # comes back as integer with the leading zero silently dropped, quoting in
-  # the CSV notwithstanding. Found via a byte-for-byte docx diff against a
-  # pre-split render (Supplemental Table S4 nubc_code "01"/"03" -> "1"/"3");
-  # not caught by nhd-val's own Phase 0 verification only because that
-  # dataset's supp_discharge_destinations extract happened to be 0 rows.
-  read_report_input <- function(name, col_classes = NULL) {
-    if (is.null(.report_inputs_dir)) return(NULL)
-    path <- file.path(.report_inputs_dir, paste0(name, ".csv"))
-    if (!file.exists(path)) return(NULL)
-    # read.csv(colClasses = NULL) errors (rep_len(NULL, cols)) — NOT the same
-    # as omitting the argument, so the two-branch call is load-bearing, not
-    # a style choice.
-    tryCatch(
-      if (is.null(col_classes)) {
-        utils::read.csv(path, check.names = FALSE, stringsAsFactors = FALSE)
-      } else {
-        utils::read.csv(path, check.names = FALSE, stringsAsFactors = FALSE,
-                        colClasses = col_classes)
-      },
-      error = function(e) {
-        message("[report] could not read ", basename(path), ": ", conditionMessage(e))
-        NULL
-      }
-    )
-  }
 
   # Rebuilds the named list fetch_demographics_from_omop() used to return.
   # Returns NULL only when NONE of the six parts is present, matching the old
@@ -2471,9 +2487,7 @@
   # Phase 0: `connection_details` dropped from the signature. Demographics now
   # come from the extract artifacts via read_demographics(), which returns the
   # same named list this function already expected.
-  build_table1_cohort <- function(person_level, config) {
-    n_target  <- nrow(person_level)
-    n_outcome <- sum(as.numeric(person_level$outcome), na.rm = TRUE)
+  build_table1_cohort <- function(n_target, n_outcome, config) {
 
     # Helper: build one row; is_header=TRUE makes the row a section label
     row1 <- function(char, val = "", header = FALSE) {
@@ -2514,25 +2528,23 @@
     demog <- read_demographics()
 
     # ---- Age ------------------------------------------------------------------
+    # AGGREGATE-ONLY (2026-08-11). This previously read demographics_age.csv --
+    # one row per patient, every exact age -- purely to compute a median and
+    # IQR. Those three numbers are now computed in pad-amp-nhd-prog's aggregate
+    # step and arrive as a one-row agg_age_summary.csv, so the report never sees
+    # an individual age.
     age_row <- row1("Age, median (IQR), years", "N/A")
-    if (!is.null(demog$age) && nrow(demog$age) > 0) {
-      # DatabaseConnector >= 6.0 stopped auto-uppercasing column names, so use
-      # a case-insensitive lookup instead of the hard-coded AGE_AT_INDEX name.
-      .age_col <- names(demog$age)[toupper(names(demog$age)) == "AGE_AT_INDEX"][1]
-      ages <- if (!is.na(.age_col)) as.numeric(demog$age[[.age_col]]) else numeric(0)
-      ages <- ages[!is.na(ages)]
-      if (length(ages) > 0) {
-        q <- stats::quantile(ages, probs = c(0.25, 0.75), na.rm = TRUE)
+    age_summary <- read_report_input("agg_age_summary")
+    if (!is.null(age_summary) && nrow(age_summary) > 0 &&
+        all(c("median", "p25", "p75") %in% names(age_summary))) {
+      med <- suppressWarnings(as.numeric(age_summary$median[1]))
+      p25 <- suppressWarnings(as.numeric(age_summary$p25[1]))
+      p75 <- suppressWarnings(as.numeric(age_summary$p75[1]))
+      if (!any(is.na(c(med, p25, p75)))) {
         age_row <- row1(
           "Age, median (IQR), years",
-          paste0(
-            as.character(as.integer(floor(stats::median(ages)))),
-            " (",
-            as.character(as.integer(floor(q[[1]]))),
-            "\u2013",
-            as.character(as.integer(floor(q[[2]]))),
-            ")"
-          )
+          paste0(as.integer(floor(med)), " (",
+                 as.integer(floor(p25)), "\u2013", as.integer(floor(p75)), ")")
         )
       }
     }
@@ -2640,7 +2652,7 @@
   # artifact is missing, the affected table or figure degrades to its documented
   # "N/A" state — it does not reach for a database.
 
-  cohort_tbl <- build_table1_cohort(person_level, config)
+  cohort_tbl <- build_table1_cohort(n_target, n_outcome, config)
 
   simple_ft <- function(df) {
     flextable(df) |>
@@ -2839,12 +2851,22 @@
   # Stacked count histogram of integer risk scores by outcome (NHD vs not).
   # model_label is shown in the plot title to identify which score is plotted.
   # ---------------------------------------------------------------------------
-  save_score_distribution_plot <- function(person_level_df, output_folder,
+  save_score_distribution_plot <- function(dist_df, output_folder,
                                            model_label = "Integer risk score") {
-    if (!all(c("total_score", "outcome") %in% names(person_level_df))) return(NULL)
-    df <- person_level_df[, c("total_score", "outcome")]
-    df$Outcome <- ifelse(df$outcome == 1, "NHD", "No NHD")
-    df$Outcome <- factor(df$Outcome, levels = c("No NHD", "NHD"))
+    # AGGREGATE-ONLY INPUT (2026-08-11). Was a person_level frame binned by
+    # geom_histogram(); now takes pre-counted (total_score, outcome, count) rows
+    # from agg_score_distribution.csv and draws them with geom_col(), which is
+    # the same picture from counts instead of rows. Suppressed cells arrive with
+    # count = NA and are dropped rather than drawn as zero.
+    if (is.null(dist_df) || nrow(dist_df) == 0 ||
+        !all(c("total_score", "outcome", "count") %in% names(dist_df))) return(NULL)
+    df <- dist_df[!is.na(dist_df$count), , drop = FALSE]
+    if (nrow(df) == 0) return(NULL)
+    n_shown <- sum(as.numeric(df$count), na.rm = TRUE)
+
+    df$Outcome <- factor(as.character(df$outcome), levels = c("No NHD", "NHD"))
+    df$total_score <- as.numeric(df$total_score)
+    df$count <- as.numeric(df$count)
 
     score_range <- range(df$total_score, na.rm = TRUE)
     # Greyscale fill: the previous #4472C4 / #C00000 pair has near-identical
@@ -2852,10 +2874,8 @@
     # the two-level table used everywhere else in this repo's fills (see
     # .gs_series_palette in R/report_helpers.R) — far enough apart on the
     # grey ramp to stay legible after a bad photocopy.
-    p <- ggplot2::ggplot(df, ggplot2::aes(x = total_score, fill = Outcome)) +
-      ggplot2::geom_histogram(
-        binwidth = 1, position = "stack", colour = "white"
-      ) +
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = total_score, y = count, fill = Outcome)) +
+      ggplot2::geom_col(position = "stack", colour = "white", width = 1) +
       ggplot2::scale_fill_manual(values = c("No NHD" = "grey80", "NHD" = "grey25")) +
       ggplot2::scale_x_continuous(
         breaks = seq(floor(score_range[1]), ceiling(score_range[2]), by = 1)
@@ -2866,7 +2886,7 @@
         y       = "Count",
         fill    = NULL,
         caption = paste0(
-          "N = ", nrow(df), " patients. ",
+          "N = ", n_shown, " patients. ",
           # Stated as a shade->group mapping rather than a stacking order:
           # ggplot2 draws factor level 1 ("No NHD") at the TOP of a stack, so
           # the previous wording ("No NHD below, NHD above") was inverted.
@@ -2904,50 +2924,40 @@
   #                       "mFI-5 Recal" = v3)
   #   output_folder — directory for the PNG file
   # ---------------------------------------------------------------------------
-  save_dca_plot <- function(y, p, output_folder, threshold_max_pct = NULL) {
-    if (length(y) == 0 || length(p) == 0) return(NULL)
-
-    # Normalise single-vector input to a 1-element named list.
-    if (!is.list(p)) {
-      p <- list("Lookup model" = p)
+  save_dca_plot <- function(dca_df, dca_meta, output_folder, threshold_max_pct = NULL) {
+    # AGGREGATE-ONLY INPUT (2026-08-11). This used to take patient-level y and
+    # a named list of per-patient prediction vectors, and compute net benefit
+    # here. That computation moved to pad-amp-nhd-prog's aggregate step (it is
+    # exactly reproducible from per-score-value counts -- verified equal to
+    # machine epsilon), which emits agg_dca_net_benefit.csv with the reference
+    # strategies included, plus agg_dca_meta.csv carrying the two cohort
+    # statistics the axis logic below needs (prevalence, and the largest
+    # predicted risk across models) that can no longer be derived here.
+    if (is.null(dca_df) || nrow(dca_df) == 0 ||
+        !all(c("threshold", "net_benefit", "strategy") %in% names(dca_df))) {
+      message("[report] DCA plot skipped: agg_dca_net_benefit.csv missing or malformed.")
+      return(NULL)
     }
 
-    # Net benefit is still COMPUTED across the full 1-99% range; only the
-    # displayed x-range is narrowed below. Keeping the computation complete
-    # means the cut point is chosen from real values rather than assumed.
-    thresholds <- seq(0.01, 0.99, by = 0.005)
-    n    <- length(y)
-    prev <- mean(y, na.rm = TRUE)
-
-    # Build a net-benefit row for each model at each threshold.
-    model_rows <- do.call(rbind, lapply(names(p), function(nm) {
-      pv <- p[[nm]]
-      nb <- vapply(thresholds, function(pt) {
-        pp <- pv >= pt
-        tp <- sum(pp & y == 1, na.rm = TRUE)
-        fp <- sum(pp & y == 0, na.rm = TRUE)
-        tp / n - fp / n * (pt / (1 - pt))
-      }, numeric(1L))
-      data.frame(threshold = thresholds, net_benefit = nb,
-                 Strategy = nm, stringsAsFactors = FALSE)
-    }))
-
-    # Reference strategies: treat-all and treat-none.
-    ref_rows <- data.frame(
-      threshold   = rep(thresholds, 2),
-      net_benefit = c(pmax(prev - (1 - prev) * (thresholds / (1 - thresholds)), 0),
-                      rep(0, length(thresholds))),
-      Strategy    = rep(c("Treat all", "Treat none"), each = length(thresholds)),
+    dca_src <- dca_df
+    dca_df <- data.frame(
+      threshold   = as.numeric(dca_df$threshold),
+      net_benefit = as.numeric(dca_df$net_benefit),
+      Strategy    = as.character(dca_df$strategy),
       stringsAsFactors = FALSE
     )
+    thresholds <- sort(unique(dca_df$threshold))
 
-    dca_df <- rbind(model_rows, ref_rows)
+    prev <- if (!is.null(dca_meta) && "prevalence" %in% names(dca_meta))
+              suppressWarnings(as.numeric(dca_meta$prevalence[1])) else NA_real_
+    max_pred <- if (!is.null(dca_meta) && "max_predicted_risk_any" %in% names(dca_meta))
+              suppressWarnings(as.numeric(dca_meta$max_predicted_risk_any[1])) else NA_real_
 
-    # Strategy names, in the order they take greyscale palette slots. Defined
-    # here rather than beside the scales below because both the threshold-range
-    # logic and the net benefit table need them first.
-    model_names    <- names(p)
-    all_strategies <- c(model_names, "Treat all", "Treat none")
+    # Model curves keep the artifact's own order; the two reference strategies
+    # are pinned last so they always take the subordinate palette slots below.
+    ref_names      <- c("Treat all", "Treat none")
+    model_names    <- setdiff(unique(dca_df$Strategy), ref_names)
+    all_strategies <- c(model_names, intersect(ref_names, unique(dca_df$Strategy)))
 
     # ---- Displayed threshold range -------------------------------------------
     # Plotting the full 1-99% range is the unconventional choice, not the
@@ -2977,11 +2987,11 @@
     # never predict that high — the impact strip is there precisely to show
     # "no patients here" honestly rather than hiding the region.
     nonzero <- dca_df$threshold[abs(dca_df$net_benefit) > 1e-9]
-    auto_max <- max(
-      vapply(p, function(v) max(v, na.rm = TRUE), numeric(1L)),  # (a)
+    auto_max <- max(c(
+      max_pred,                                                   # (a)
       prev,                                                       # (b)
       if (length(nonzero)) max(nonzero) else 0                    # (c)
-    )
+    ), na.rm = TRUE)
     x_max <- if (!is.null(threshold_max_pct) && is.finite(threshold_max_pct)) {
       as.numeric(threshold_max_pct)
     } else {
@@ -3115,17 +3125,33 @@
     # positive and every model's net benefit is identically zero. Without this
     # strip, the flat right-hand half of the DCA looks like a model result; it
     # is really just an empty cohort.
-    impact_df <- do.call(rbind, lapply(model_names, function(nm) {
-      pv <- p[[nm]]
-      data.frame(
-        threshold = thresholds,
-        pct_high  = vapply(thresholds,
-                           function(pt) 100 * mean(pv >= pt, na.rm = TRUE),
-                           numeric(1L)),
-        Strategy  = nm,
+    # pct_high arrives on the aggregate artifact (it is a weighted proportion of
+    # the same per-score-value counts net benefit is computed from), rather than
+    # being recomputed here as mean(pv >= t) over per-patient predictions.
+    impact_df <- if ("pct_high" %in% names(dca_src)) {
+      d <- dca_src[dca_src$strategy %in% model_names &
+                     !is.na(dca_src$pct_high), , drop = FALSE]
+      if (nrow(d) == 0) NULL else data.frame(
+        threshold = as.numeric(d$threshold),
+        pct_high  = as.numeric(d$pct_high),
+        Strategy  = as.character(d$strategy),
         stringsAsFactors = FALSE
       )
-    }))
+    } else NULL
+    # The clinical-impact strip is optional: if the artifact predates pct_high
+    # (or every value is NA), the DCA panel is still rendered on its own rather
+    # than the whole figure failing.
+    if (is.null(impact_df) || nrow(impact_df) == 0) {
+      message("[report] DCA clinical-impact strip omitted: no pct_high in ",
+              "agg_dca_net_benefit.csv.")
+      out_file <- tryCatch(
+        save_figure(p_dca, output_folder, "decision_curve_analysis.png",
+                    width = 6.5, height = 5.0),
+        error = function(e) {
+          message("[report] Could not save DCA plot: ", conditionMessage(e)); NULL })
+      return(out_file)
+    }
+
     impact_df$Strategy <- factor(impact_df$Strategy, levels = all_strategies)
 
     impact_visible <- impact_df[impact_df$threshold * 100 <= x_max, , drop = FALSE]
@@ -3248,54 +3274,56 @@
     invisible(NULL)
   }
 
-  roc_y <- person_level$outcome
-  if ("predicted_risk_lookup" %in% names(person_level)) {
-    keep_lookup <- !is.na(person_level$predicted_risk_lookup)
-    roc_y <- person_level$outcome[keep_lookup]
-    roc_p <- person_level$predicted_risk_lookup[keep_lookup]
-  } else if ("predicted_risk_recalibrated" %in% names(person_level)) {
-    roc_p <- person_level$predicted_risk_recalibrated
-  } else {
-    roc_p <- person_level$total_score / max(person_level$total_score, na.rm = TRUE)
-  }
-
-  roc_plot_file <- .save_roc_plot(
-    y = roc_y,
-    p = roc_p,
-    output_folder = temp_figure_dir,
-    auc_override = metric_value("AUROC", "lookup")
-  )
+  # Figure 2 — ROC. Rendered from pre-computed curve points (aggregate) rather
+  # than from patient-level outcome/prediction vectors; see
+  # .save_roc_plot_from_points() in R/report_helpers.R and the aggregate step
+  # in pad-amp-nhd-prog for why the two are equivalent. The published Iannuzzi
+  # lookup curve is the primary one for this figure, matching what this report
+  # plotted before the conversion.
+  .roc_pts <- read_report_input("agg_roc_points")
+  roc_plot_file <- if (!is.null(.roc_pts) && "curve_label" %in% names(.roc_pts)) {
+    lk <- .roc_pts[.roc_pts$curve_label == "Iannuzzi (Lookup)", , drop = FALSE]
+    if (nrow(lk) == 0) lk <- .roc_pts[.roc_pts$curve_label ==
+                                        "Iannuzzi 2020 (Score)", , drop = FALSE]
+    .save_roc_plot_from_points(lk, temp_figure_dir, "roc_curve.png")
+  } else NULL
 
   # Branch 3 — Annual and monthly outcome rate plots.
   # LASSO (MACCE-style): single-line trend via .save_macce_rate_by_year_plot().
   # NHD integer: stacked area chart by disposition type via .save_nhd_rate_by_year_plot().
   if (identical(config$score_type, "lasso")) {
-    nhd_year_plot_file  <- .save_macce_rate_by_year_plot(person_level, temp_figure_dir)
-    nhd_month_plot_file <- .save_macce_rate_by_month_plot(person_level, temp_figure_dir)
+    # The LASSO/MACCE branch is inherited scaffolding that this study never
+    # runs (score_type is "integer"). It still expects a person_level frame and
+    # has NOT been converted to aggregate inputs -- if a LASSO study is ever
+    # rendered from this repo, these two calls need the same treatment the NHD
+    # branch below received. Failing loudly beats silently drawing nothing.
+    stop("score_type = 'lasso' is not supported by this report repo since the ",
+         "2026-08-11 aggregate-inputs conversion: .save_macce_rate_by_*_plot() ",
+         "still require patient-level data. Convert them the same way ",
+         ".save_nhd_rate_by_*_plot() were before enabling this branch.")
   } else {
-    # Fetch discharge disposition type — required by .save_nhd_rate_by_year_plot().
-    discharge_types_df <- read_discharge_types()
-    if (!is.null(discharge_types_df) && nrow(discharge_types_df) > 0) {
-      person_level <- merge(person_level, discharge_types_df,
-                            by = "subject_id", all.x = TRUE)
-      message("[report] discharge_type joined: ",
-              sum(!is.na(person_level$discharge_type)), " of ",
-              nrow(person_level), " patients have a mapped disposition.")
-    }
-    nhd_year_plot_file  <- .save_nhd_rate_by_year_plot(person_level, temp_figure_dir)
-    nhd_month_plot_file <- .save_nhd_rate_by_month_plot(person_level, temp_figure_dir)
+    nhd_year_plot_file  <- .save_nhd_rate_by_year_plot(
+      read_report_input("agg_nhd_by_year"), temp_figure_dir)
+    nhd_month_plot_file <- .save_nhd_rate_by_month_plot(
+      read_report_input("agg_nhd_by_month"), temp_figure_dir)
   }
 
-  # Score distribution plots — one supplemental figure per model
+  # Score distribution plots — one supplemental figure per model. All three
+  # come from one aggregate artifact, split by score_id.
+  .score_dist <- function(score_id) {
+    d <- read_report_input("agg_score_distribution")
+    if (is.null(d) || !"score_id" %in% names(d)) return(NULL)
+    d[d$score_id == score_id, , drop = FALSE]
+  }
   score_dist_plot_file_iannuzzi <- save_score_distribution_plot(
-    person_level, temp_figure_dir, model_label = "Iannuzzi 2020")
-  score_dist_plot_file_mfi5 <- if (!is.null(person_level_mfi5)) {
+    .score_dist("iannuzzi"), temp_figure_dir, model_label = "Iannuzzi 2020")
+  score_dist_plot_file_mfi5 <- if (has_mfi5) {
     save_score_distribution_plot(
-      person_level_mfi5, temp_figure_dir, model_label = "mFI-5")
+      .score_dist("mfi5"), temp_figure_dir, model_label = "mFI-5")
   } else NULL
-  score_dist_plot_file_vqifs <- if (!is.null(person_level_vqifs)) {
+  score_dist_plot_file_vqifs <- if (has_vqifs) {
     save_score_distribution_plot(
-      person_level_vqifs, temp_figure_dir, model_label = "sVQI-FS")
+      .score_dist("vqifs"), temp_figure_dir, model_label = "sVQI-FS")
   } else NULL
   score_dist_plot_file <- score_dist_plot_file_iannuzzi  # keep backward compat name
 
@@ -3323,44 +3351,21 @@
   # the other curves on this specific figure, even though Table 4/Table 5 report
   # it over the full cohort elsewhere (it requires no fitting, so evaluating it
   # on a subset introduces no leakage — only fewer events).
-  dca_plot_file <- tryCatch({
-    if ("predicted_risk_lookup" %in% names(person_level)) {
-      test_pl  <- .test_rows(person_level)
-      pl_test  <- person_level[test_pl, , drop = FALSE]
-      keep_dca <- !is.na(pl_test$predicted_risk_lookup)
-      y_dca    <- pl_test$outcome[keep_dca]
-      p_list   <- list(
-        "Iannuzzi (Lookup)" = pl_test$predicted_risk_lookup[keep_dca]
-      )
-      if ("predicted_risk_recalibrated" %in% names(pl_test)) {
-        keep_recal <- !is.na(pl_test$predicted_risk_recalibrated[keep_dca])
-        if (sum(keep_recal) > 10L) {
-          p_list[["Iannuzzi (Recal.)"]] <- pl_test$predicted_risk_recalibrated[keep_dca]
-        }
-      }
-      subj_dca <- pl_test$subject_id[keep_dca]
-
-      # Helper: align another score's recalibrated predictions (which may come
-      # from a different person_level frame with its own row order/split) onto
-      # the subject_id order established above, restricted to ITS OWN test rows.
-      .align_recal <- function(pl_other, label) {
-        if (is.null(pl_other) || !"predicted_risk_recalibrated" %in% names(pl_other)) return(NULL)
-        other_test <- pl_other[.test_rows(pl_other), , drop = FALSE]
-        aligned <- other_test$predicted_risk_recalibrated[match(subj_dca, other_test$subject_id)]
-        if (all(is.na(aligned))) return(NULL)
-        aligned
-      }
-      mfi5_aligned  <- .align_recal(person_level_mfi5,  "mFI-5")
-      vqifs_aligned <- .align_recal(person_level_vqifs, "sVQI-FS")
-      if (!is.null(mfi5_aligned))  p_list[["mFI-5 (Recal.)"]]   <- mfi5_aligned
-      if (!is.null(vqifs_aligned)) p_list[["sVQI-FS (Recal.)"]] <- vqifs_aligned
-
-      save_dca_plot(y_dca, p_list, temp_figure_dir)
-    } else NULL
-  }, error = function(e) {
-    message("[report] DCA plot failed: ", conditionMessage(e))
-    NULL
-  })
+  # Every curve, including the two reference strategies and the cross-model
+  # alignment onto a common evaluation set, is now resolved in the aggregate
+  # step -- the per-subject_id join that alignment used to require is exactly
+  # the kind of operation this repo should no longer be doing.
+  dca_plot_file <- tryCatch(
+    save_dca_plot(
+      read_report_input("agg_dca_net_benefit"),
+      read_report_input("agg_dca_meta"),
+      temp_figure_dir,
+      threshold_max_pct = config$dca_threshold_max_pct
+    ),
+    error = function(e) {
+      message("[report] DCA plot failed: ", conditionMessage(e))
+      NULL
+    })
 
   if (file.exists(lookup_calibration_plot)) {
     file.copy(lookup_calibration_plot, lookup_calibration_plot_temp, overwrite = TRUE)
@@ -3390,33 +3395,26 @@
     }
   }
 
-  if (!file.exists(lookup_calibration_plot_temp) &&
-      all(c("outcome", "predicted_risk_lookup") %in% names(person_level))) {
-    lookup_generated <- .save_calibration_plot_from_vectors(
-      y = person_level$outcome,
-      p = person_level$predicted_risk_lookup,
-      output_folder = temp_figure_dir,
-      file_name = "calibration_lookup.png",
-      plot_title = "Calibration Plot: Lookup Model"
-    )
-    if (!is.null(lookup_generated) && file.exists(lookup_generated)) {
-      lookup_calibration_plot_temp <- lookup_generated
+  # Calibration-plot fallbacks. These previously re-derived a plot from
+  # patient-level vectors when the scoring step's PNG was missing; they now
+  # rebuild it from that step's calibration TABLE instead, which is aggregate
+  # and is written alongside the PNG by the same run.
+  for (.cal in list(
+        list(temp = "lookup_calibration_plot_temp", tbl = calibration_table_lookup_path,
+             file = "calibration_lookup.png",       title = "Calibration Plot: Lookup Model"),
+        list(temp = "recalibrated_calibration_plot_temp", tbl = calibration_table_recalibrated_path,
+             file = "calibration_recalibrated.png", title = "Calibration Plot: Recalibrated Model"))) {
+    if (!file.exists(get(.cal$temp)) && file.exists(.cal$tbl)) {
+      .gen <- tryCatch(
+        .save_calibration_plot_from_table(
+          table_path = .cal$tbl, output_folder = temp_figure_dir,
+          file_name = .cal$file, plot_title = .cal$title),
+        error = function(e) { message("[report] calibration fallback failed: ",
+                                      conditionMessage(e)); NULL })
+      if (!is.null(.gen) && file.exists(.gen)) assign(.cal$temp, .gen)
     }
   }
 
-  if (!file.exists(recalibrated_calibration_plot_temp) &&
-      all(c("outcome", "predicted_risk_recalibrated") %in% names(person_level))) {
-    recal_generated <- .save_calibration_plot_from_vectors(
-      y = person_level$outcome,
-      p = person_level$predicted_risk_recalibrated,
-      output_folder = temp_figure_dir,
-      file_name = "calibration_recalibrated.png",
-      plot_title = "Calibration Plot: Recalibrated Model"
-    )
-    if (!is.null(recal_generated) && file.exists(recal_generated)) {
-      recalibrated_calibration_plot_temp <- recal_generated
-    }
-  }
 
   project_name <- basename(normalizePath(getwd(), winslash = "/", mustWork = FALSE))
   project_name <- gsub("[^A-Za-z0-9_-]", "_", project_name)
@@ -3522,7 +3520,7 @@
     "concept_id to these visits, the source code is treated as authoritative. Patients with source ",
     "code 'AM' (against medical advice) are likewise classified as home discharges (not-NHD). ",
     "The outcome was attributed to the index hospitalization. The dataset contained ",
-    if (!is.null(person_level)) length(unique(person_level$subject_id)) else "N",
+    if (!is.na(n_target)) n_target else "N",
     " patients with at least one qualifying amputation within the study window."
   ), style = "Normal")
 
@@ -3607,7 +3605,7 @@
     "scores against the outcomes and populations for which they were designed."
   ), style = "Normal")
 
-  n_scores <- 1L + (!is.null(person_level_mfi5)) + (!is.null(person_level_vqifs))
+  n_scores <- 1L + (has_mfi5) + (has_vqifs)
   score_word <- c("One", "Two", "Three")[min(n_scores, 3)]
 
   doc <- body_add_par(doc, paste0(
@@ -3619,12 +3617,12 @@
     "integer weights are exactly additive, we implement them as two independent binary ",
     "components (female +1, non-White +2), which reproduces the published point totals exactly ",
     "rather than ignoring the interaction. ",
-    if (!is.null(person_level_mfi5)) paste0(
+    if (has_mfi5) paste0(
       "The Subramaniam 2018 modified Frailty Index — 5-item (mFI-5, range 0–5 points) assigns ",
       "one point each for diabetes mellitus, COPD, congestive heart failure, hypertension ",
       "requiring medication, and dependent functional status. "
     ) else "",
-    if (!is.null(person_level_vqifs)) paste0(
+    if (has_vqifs) paste0(
       # NOTE: this list must match covariates/covariates_vqifs.csv exactly — ten items,
       # NOT the paper's eleven. Non-home residence is deliberately omitted (near-circular
       # with the NHD outcome; no clean standard concept in this vocabulary build). An
@@ -3656,7 +3654,7 @@
     # The source publication suppresses the score when fewer than five of its frailty
     # domains have data; we score every patient instead, so this must be disclosed rather
     # than left implicit in the missing_is_negative columns.
-    if (!is.null(person_level_vqifs)) paste0(
+    if (has_vqifs) paste0(
       " The source publication does not compute the sVQI-FS when fewer than five frailty ",
       "domains have available data; because component ascertainment here is based on the ",
       "presence or absence of coded records rather than on registry fields with an explicit ",
@@ -3666,7 +3664,7 @@
   ), style = "Normal")
 
   # Model specifications: two per score (raw/lookup + recalibrated).
-  spec_n    <- if (!is.null(person_level_vqifs)) 6L else if (!is.null(person_level_mfi5)) 4L else 2L
+  spec_n    <- if (has_vqifs) 6L else if (has_mfi5) 4L else 2L
   spec_word <- c("2" = "Two", "4" = "Four", "6" = "Six")[[as.character(spec_n)]]
 
   doc <- body_add_par(doc, paste0(
@@ -3681,12 +3679,12 @@
     "cohort (training set) and evaluated on the later half (test set). This quantifies the ",
     "improvement in calibration obtainable by re-anchoring the score's probability scale to the ",
     "local event rate. ",
-    if (!is.null(person_level_mfi5)) paste0(
+    if (has_mfi5) paste0(
       "(3) mFI-5 — raw score and (4) mFI-5 — temporal recalibration: the same procedure applied ",
       "to the mFI-5 raw integer score. Because no published NHD probability mapping exists for ",
       "the mFI-5, recalibration is required to obtain predicted probabilities. "
     ) else "",
-    if (!is.null(person_level_vqifs)) paste0(
+    if (has_vqifs) paste0(
       "(5) sVQI-FS — raw score and (6) sVQI-FS — temporal recalibration: likewise applied to the ",
       "sVQI-FS raw integer score, for which no published NHD probability mapping exists either. "
     ) else "",
@@ -3744,11 +3742,11 @@
       paste0("Iannuzzi 2020 (Recalibrated) model in Supplemental Table ",
              supp("subgroup_tbl_iannuzzi"), " and Supplemental Figure ",
              supp("subgroup_fig_iannuzzi")),
-      if (!is.null(person_level_mfi5))
+      if (has_mfi5)
         paste0("the mFI-5 (Recalibrated) model in Supplemental Table ",
                supp("subgroup_tbl_mfi5"), " and Supplemental Figure ",
                supp("subgroup_fig_mfi5")),
-      if (!is.null(person_level_vqifs))
+      if (has_vqifs)
         paste0("the sVQI-FS (Recalibrated) model in Supplemental Table ",
                supp("subgroup_tbl_vqifs"), " and Supplemental Figure ",
                supp("subgroup_fig_vqifs"))
@@ -3802,8 +3800,8 @@
   # agree going forward — this warning exists so a future edit to either
   # query that reintroduces a divergence is caught immediately rather than
   # discovered by a peer reviewer reading the generated report.
-  if (!is.null(nhd_outcomes) && !is.na(nhd_outcomes$n_nhd) && !is.null(person_level)) {
-    n_nhd_table1 <- sum(person_level$outcome, na.rm = TRUE)
+  if (!is.null(nhd_outcomes) && !is.na(nhd_outcomes$n_nhd) && !is.na(n_outcome)) {
+    n_nhd_table1 <- n_outcome
     if (nhd_outcomes$n_nhd != n_nhd_table1) {
       warning(sprintf(
         paste0("[report] Table 1 and Table 2 NHD counts disagree (Table 1 = %d, ",
@@ -4147,61 +4145,44 @@
   message("[report] Table 4 (", if (has_vqifs_metrics) "six" else "four", "-model performance) added.")
 
   # ---- Figure 2: Combined ROC curve (Iannuzzi + mFI-5 + sVQI-FS) ------------
+  # Multi-model ROC, drawn from the same aggregate curve-point artifact as
+  # Figure 2's single-model version. The pre-conversion code normalised each
+  # raw integer score to [0, 1] before plotting; that was only ever a way to
+  # put the scores on a common predictor scale for pROC, and it does not
+  # change a ROC curve at all (the curve is rank-based). The aggregate step
+  # ranks by the raw score directly, so these curves are identical to the
+  # ones this figure showed before -- and their AUCs now provably agree with
+  # metrics.csv, which the normalised version did not guarantee.
   dual_roc_file <- NULL
-  if (!is.null(person_level_mfi5) && "outcome" %in% names(person_level_mfi5)) {
-    # Use the raw mFI-5 integer score (normalised 0–1) for the ROC curve;
-    # no published probability mapping exists so recalibration is excluded.
-    mfi5_roc_p <- if ("total_score" %in% names(person_level_mfi5)) {
-      mx <- max(person_level_mfi5$total_score, na.rm = TRUE)
-      if (mx > 0) person_level_mfi5$total_score / mx else person_level_mfi5$total_score
-    } else NULL
-    mfi5_roc_y <- person_level_mfi5$outcome
-
-    # Same normalisation approach for sVQI-FS raw integer score, when available.
-    vqifs_roc_p <- NULL
-    vqifs_roc_y <- NULL
-    if (!is.null(person_level_vqifs) && "outcome" %in% names(person_level_vqifs) &&
-        "total_score" %in% names(person_level_vqifs)) {
-      mx_v <- max(person_level_vqifs$total_score, na.rm = TRUE)
-      vqifs_roc_p <- if (mx_v > 0) person_level_vqifs$total_score / mx_v else person_level_vqifs$total_score
-      vqifs_roc_y <- person_level_vqifs$outcome
-    }
-
-    if (!is.null(mfi5_roc_p)) {
+  .want_roc <- c("Iannuzzi (Lookup)",
+                 if (has_mfi5)  "mFI-5 (Score)",
+                 if (has_vqifs) "sVQI-FS (Score)")
+  if (has_mfi5 && !is.null(.roc_pts) && "curve_label" %in% names(.roc_pts)) {
+    multi <- .roc_pts[.roc_pts$curve_label %in% .want_roc, , drop = FALSE]
+    if (nrow(multi) > 0 && length(unique(multi$curve_label)) > 1) {
       dual_roc_file <- tryCatch(
-        .save_dual_roc_plot(
-          y1 = roc_y, p1 = roc_p,
-          y2 = mfi5_roc_y, p2 = mfi5_roc_p,
-          y3 = vqifs_roc_y, p3 = vqifs_roc_p,
-          label1 = "Iannuzzi 2020 (lookup)",
-          label2 = "mFI-5 (raw score)",
-          label3 = "sVQI-FS (raw score)",
-          auc1   = metric_value("AUROC", "lookup"),
-          auc2   = metric_value_mfi5("AUROC", "score_only"),
-          auc3   = metric_value_vqifs("AUROC", "score_only"),
-          output_folder = temp_figure_dir
-        ),
+        .save_roc_plot_from_points(multi, temp_figure_dir, "roc_curve_multi.png"),
         error = function(e) {
-          message("[report] Dual ROC plot skipped: ", conditionMessage(e))
+          message("[report] Multi-model ROC plot skipped: ", conditionMessage(e))
           NULL
         }
       )
     }
   }
 
-  has_vqifs_roc <- !is.null(person_level_vqifs) && "outcome" %in% names(person_level_vqifs)
+  has_vqifs_roc <- has_vqifs
 
   fig2_file    <- if (!is.null(dual_roc_file) && file.exists(dual_roc_file)) dual_roc_file else roc_plot_file
   fig2_caption <- if (!is.null(dual_roc_file) && file.exists(dual_roc_file) && has_vqifs_roc) {
-    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup, blue solid), ",
-           "the Subramaniam mFI-5 (raw integer score 0–5, red dashed), and the Kraiss 2022 ",
-           "sVQI-FS (raw integer score, orange dot-dash) predicting non-home discharge. For mFI-5 ",
-           "and sVQI-FS, the raw score is normalised to [0, 1] for curve plotting. ",
+    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup), ",
+           "the Subramaniam mFI-5 (raw integer score 0–5), and the Kraiss 2022 ",
+           "sVQI-FS (raw integer score) predicting non-home discharge. Curves are ",
+           "distinguished by grey level and line type; see the legend, which reports each AUC. ",
            "AUROC with 95% bootstrap percentile CI (B = 500 resamples).")
   } else if (!is.null(dual_roc_file) && file.exists(dual_roc_file)) {
-    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup, blue solid) ",
-           "and the Subramaniam mFI-5 (raw integer score 0\u20135, red dashed) predicting non-home ",
-           "discharge. For mFI-5, the raw score is normalised to [0, 1] for curve plotting. ",
+    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup) ",
+           "and the Subramaniam mFI-5 (raw integer score 0\u20135) predicting non-home ",
+           "discharge. Curves are distinguished by grey level and line type; see the legend. ",
            "AUROC with 95% bootstrap percentile CI (B\u2009=\u2009500 resamples).")
   } else {
     paste0("ROC curve for the Iannuzzi 2020 lookup model predicting non-home ",
@@ -4326,16 +4307,19 @@
   # so it is tiered over the full cohort, consistent with Table 4.
   # (.test_rows() itself is defined earlier in this function, near the DCA plot,
   # since that is its first point of use.)
-  build_tier_rows <- function(scores, outcome_vec, model_label) {
-    tier_levels <- c("Low (<30%)", "Intermediate (30\u201370%)", "High (>70%)")
-    keep        <- !is.na(scores)
-    if (sum(keep) == 0) return(NULL)
-    s  <- scores[keep]
-    y  <- as.integer(outcome_vec[keep])
-    tier_v <- ifelse(s < 0.30, "Low (<30%)",
-               ifelse(s <= 0.70, "Intermediate (30\u201370%)", "High (>70%)"))
-    tier_v <- factor(tier_v, levels = tier_levels)
-    # Header row for this model
+  # AGGREGATE-ONLY (2026-08-11). Tiering itself -- assigning each patient to a
+  # risk band and counting -- moved to pad-amp-nhd-prog's aggregate step, which
+  # emits agg_risk_tiers.csv with one row per (model, tier) plus the published
+  # Iannuzzi strata and their published rates. This function now only formats
+  # those counts into the table's two-level layout.
+  #
+  # Suppressed tiers arrive with n/events as NA and render as "—" rather than
+  # as 0, so a small cell is never mistaken for an empty one.
+  build_tier_rows_from_agg <- function(agg, model_label) {
+    if (is.null(agg) || nrow(agg) == 0) return(NULL)
+    d <- agg[agg$model_label == model_label, , drop = FALSE]
+    if (nrow(d) == 0) return(NULL)
+
     header_row <- data.frame(
       "Risk Tier"             = model_label,
       "N"                     = "",
@@ -4344,15 +4328,21 @@
       is_model_header         = TRUE,
       check.names = FALSE, stringsAsFactors = FALSE
     )
-    tier_rows <- do.call(rbind, lapply(tier_levels, function(tier) {
-      sub      <- y[tier_v == tier]
-      n_tier   <- length(sub)
-      n_ev     <- sum(sub, na.rm = TRUE)
-      obs_rate <- if (n_tier > 0) paste0(round(100 * n_ev / n_tier, 1), "%") else "N/A"
+    tier_rows <- do.call(rbind, lapply(seq_len(nrow(d)), function(i) {
+      n_tier <- suppressWarnings(as.numeric(d$n[i]))
+      n_ev   <- suppressWarnings(as.numeric(d$events[i]))
+      pub    <- if ("published_rate_pct" %in% names(d))
+                  suppressWarnings(as.numeric(d$published_rate_pct[i])) else NA_real_
+      obs_rate <- if (is.na(n_tier) || is.na(n_ev)) {
+        "\u2014"                      # suppressed
+      } else if (n_tier > 0) {
+        paste0(round(100 * n_ev / n_tier, 1), "%",
+               if (!is.na(pub)) paste0(" (published ", pub, "%)") else "")
+      } else "N/A"
       data.frame(
-        "Risk Tier"             = paste0("  ", tier),
-        "N"                     = as.character(n_tier),
-        "NHD Events"            = as.character(n_ev),
+        "Risk Tier"             = paste0("  ", d$tier[i]),
+        "N"                     = if (is.na(n_tier)) "\u2014" else as.character(as.integer(n_tier)),
+        "NHD Events"            = if (is.na(n_ev)) "\u2014" else as.character(as.integer(n_ev)),
         "Observed NHD Rate (%)" = obs_rate,
         is_model_header         = FALSE,
         check.names = FALSE, stringsAsFactors = FALSE
@@ -4361,80 +4351,25 @@
     rbind(header_row, tier_rows)
   }
 
-  # Build rows for each model, stacking into one table.
-  # Lookup = full cohort (nothing fitted); every recalibrated model = test set.
-  pl_test       <- .test_rows(person_level)
-  pl_mfi5_test  <- .test_rows(person_level_mfi5)
-  pl_vqifs_test <- .test_rows(person_level_vqifs)
+  agg_tiers <- read_report_input("agg_risk_tiers")
 
   tier_sections <- list()
-  if ("predicted_risk_lookup" %in% names(person_level))
-    tier_sections[["lookup"]] <- build_tier_rows(
-      person_level$predicted_risk_lookup,
-      person_level$outcome,
-      "Iannuzzi 2020 (Lookup, full cohort)"
-    )
-  if ("predicted_risk_recalibrated" %in% names(person_level))
-    tier_sections[["recal"]] <- build_tier_rows(
-      person_level$predicted_risk_recalibrated[pl_test],
-      person_level$outcome[pl_test],
-      "Iannuzzi 2020 (Recalibrated, test set)"
-    )
-  if (!is.null(person_level_mfi5) &&
-      "predicted_risk_recalibrated" %in% names(person_level_mfi5))
-    tier_sections[["mfi5"]] <- build_tier_rows(
-      person_level_mfi5$predicted_risk_recalibrated[pl_mfi5_test],
-      person_level_mfi5$outcome[pl_mfi5_test],
-      "mFI-5 (Recalibrated, test set)"
-    )
-  if (!is.null(person_level_vqifs) &&
-      "predicted_risk_recalibrated" %in% names(person_level_vqifs))
-    tier_sections[["vqifs"]] <- build_tier_rows(
-      person_level_vqifs$predicted_risk_recalibrated[pl_vqifs_test],
-      person_level_vqifs$outcome[pl_vqifs_test],
-      "sVQI-FS (Recalibrated, test set)"
-    )
-
-  # ---- Iannuzzi published score-based strata (Table II / Fig 2 of the paper) --
-  # The paper tiers on the RAW SCORE, not on predicted probability:
-  #   Low 0-4 (published NHD 10.1%), Moderate 5-9 (36.7%), High >=10 (66.1%).
-  # Reporting these alongside the probability tiers makes this table directly
-  # comparable to the source publication. Full cohort: no model is fitted.
-  iannuzzi_published_rates <- c("Low (score 0–4)"        = 10.1,
-                                "Moderate (score 5–9)"   = 36.7,
-                                "High (score ≥10)"       = 66.1)
-  if ("total_score" %in% names(person_level)) {
-    s_all <- person_level$total_score
-    y_all <- as.integer(person_level$outcome)
-    keep_s <- !is.na(s_all)
-    s_all <- s_all[keep_s]; y_all <- y_all[keep_s]
-    band <- ifelse(s_all <= 4, "Low (score 0–4)",
-             ifelse(s_all <= 9, "Moderate (score 5–9)", "High (score ≥10)"))
-    band <- factor(band, levels = names(iannuzzi_published_rates))
-    score_tier_rows <- do.call(rbind, lapply(names(iannuzzi_published_rates), function(b) {
-      sub <- y_all[band == b]
-      data.frame(
-        "Risk Tier"             = paste0("  ", b),
-        "N"                     = as.character(length(sub)),
-        "NHD Events"            = as.character(sum(sub, na.rm = TRUE)),
-        "Observed NHD Rate (%)" = if (length(sub) > 0)
-                                    paste0(round(100 * sum(sub, na.rm = TRUE) / length(sub), 1),
-                                           "% (published ", iannuzzi_published_rates[[b]], "%)")
-                                  else "N/A",
-        is_model_header         = FALSE,
-        check.names = FALSE, stringsAsFactors = FALSE
-      )
-    }))
-    tier_sections[["iannuzzi_score_bands"]] <- rbind(
-      data.frame(
-        "Risk Tier"             = "Iannuzzi 2020 published score strata (full cohort)",
-        "N" = "", "NHD Events" = "", "Observed NHD Rate (%)" = "",
-        is_model_header = TRUE,
-        check.names = FALSE, stringsAsFactors = FALSE
-      ),
-      score_tier_rows
-    )
+  for (.lbl in c("Iannuzzi 2020 (Lookup, full cohort)",
+                 "Iannuzzi 2020 (Recalibrated, test set)",
+                 "mFI-5 (Recalibrated, test set)",
+                 "sVQI-FS (Recalibrated, test set)",
+                 "Iannuzzi 2020 published score strata (full cohort)")) {
+    sec <- build_tier_rows_from_agg(agg_tiers, .lbl)
+    if (!is.null(sec)) tier_sections[[.lbl]] <- sec
   }
+
+  # The Iannuzzi published score strata (Table II / Fig 2 of the paper -- Low
+  # 0-4, Moderate 5-9, High >=10, with published NHD rates 10.1 / 36.7 / 66.1%)
+  # used to be tabulated here from person_level$total_score. They are now one
+  # of the model_label sections read from agg_risk_tiers.csv above, and the
+  # published rates travel with that artifact rather than being duplicated in
+  # this repo -- so there is exactly one place to correct if a rate is ever
+  # found to be mis-transcribed from the paper.
 
   tier_sections <- Filter(Negate(is.null), tier_sections)
 
@@ -4465,14 +4400,13 @@
       flextable::set_table_properties(layout = "fixed")
 
     n_tier_models <- length(tier_sections)
-    model_names_used <- c(
-      if ("lookup" %in% names(tier_sections)) "Iannuzzi 2020 (Lookup, full cohort)",
-      if ("recal"  %in% names(tier_sections)) "Iannuzzi 2020 (Recalibrated, test set)",
-      if ("mfi5"   %in% names(tier_sections)) "mFI-5 (Recalibrated, test set)",
-      if ("vqifs"  %in% names(tier_sections)) "sVQI-FS (Recalibrated, test set)",
-      if ("iannuzzi_score_bands" %in% names(tier_sections))
-        "Iannuzzi 2020 published score strata (full cohort)"
-    )
+    # tier_sections is now keyed by the model label itself (it is built by
+    # looping over labels read from agg_risk_tiers.csv), so the caption list is
+    # just its names. This previously mapped four short keys ("lookup",
+    # "recal", "mfi5", "vqifs", "iannuzzi_score_bands") to display strings; when
+    # the keys became labels that lookup silently matched nothing and the
+    # caption rendered as "five specifications are shown in separate sections: ."
+    model_names_used <- names(tier_sections)
     n_word <- c("one", "two", "three", "four", "five")[min(n_tier_models, 5)]
 
     doc <- body_add_par(doc, section_num("Risk tier analysis"), style = "heading 3")
@@ -4796,8 +4730,8 @@
         # the has_mfi5/has_vqifs gating used everywhere else in this function).
         score_sections <- Filter(Negate(is.null), list(
           .build_score_rows(model_meta$iannuzzi),
-          if (!is.null(person_level_mfi5))  .build_score_rows(model_meta$mfi5),
-          if (!is.null(person_level_vqifs)) .build_score_rows(model_meta$vqifs)
+          if (has_mfi5)  .build_score_rows(model_meta$mfi5),
+          if (has_vqifs) .build_score_rows(model_meta$vqifs)
         ))
 
         # Interleave a blank spacer row between (not after) sections, then drop
@@ -4841,12 +4775,12 @@
             "hospice and LTAC discharges as non-home — see the Limitations discussion. ",
             "The Iannuzzi 2020 NHD score uses a published lookup table to convert integer score ",
             "to predicted probability; a temporally recalibrated version is also evaluated. ",
-            if (!is.null(person_level_mfi5)) paste0(
+            if (has_mfi5) paste0(
               "The Subramaniam mFI-5 — derived to predict mortality and postoperative ",
               "complications, not NHD — is evaluated via temporal logistic recalibration only ",
               "(no published NHD lookup table exists). "
             ) else "",
-            if (!is.null(person_level_vqifs)) paste0(
+            if (has_vqifs) paste0(
               "The Kraiss 2022 sVQI-FS — derived to predict 9-month mortality, not NHD — is ",
               "likewise evaluated via temporal logistic recalibration only. "
             ) else ""
