@@ -1,0 +1,21 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# renv library / cache — restored from renv.lock, never committed
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+
+# Rendered reports + copied-in results — this repo renders, it does not store
+output/
+results/
+*.docx
+
+.DS_Store
