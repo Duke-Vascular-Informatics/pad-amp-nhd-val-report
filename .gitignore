@@ -13,7 +13,17 @@ renv/python/
 renv/sandbox/
 renv/staging/
 
-# Rendered reports + copied-in results — this repo renders, it does not store
+# Rendered reports + copied-in results — this repo renders, it does not store.
+# Which is which, because three similar names is otherwise confusing:
+#   reports/   WHERE RENDERS GO when the source is an extracted PRCC archive.
+#              This is the one you want.
+#   output/    legacy default from before reports/ existed (a render used to
+#              land next to its results, which for an archive meant inside
+#              prcc_data/.extracted/ — the directory the next render deletes).
+#              Nothing writes here now; safe to delete if you still have one.
+#   results/   vestigial; nothing in this repo has ever written here. Kept
+#              ignored only so a hand-copied results directory can't be
+#              committed by accident.
 output/
 results/
 reports/
