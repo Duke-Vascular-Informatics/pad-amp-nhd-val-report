@@ -14,9 +14,11 @@
 #   2. A .zip in prcc_data/ (gitignored). Drop a Duke PRCC export archive
 #      there and it is extracted to prcc_data/.extracted/ and rendered from.
 #      This is the normal way to render real Duke results: copy the approved
-#      archive in, run this script, done. The newest .zip wins if several are
-#      present, and it is re-extracted whenever the .zip is newer than the
-#      previous extraction.
+#      archive in, run this script, done. If several are present the one with
+#      the most recent RUN TIMESTAMP in its filename wins (YYYYMMDD-HHMMSS, as
+#      written by export_results_for_review.R) -- NOT the newest file on disk,
+#      since re-copying an older export would otherwise select it. Extraction
+#      is redone whenever the selected archive changes.
 #
 #   3. Already-extracted content in prcc_data/ (i.e. you unzipped by hand).
 #
@@ -82,13 +84,60 @@ SYNTHETIC_DIR <- file.path("..", "pad-amp-nhd-prog", "output")
   }
 
   # ---- 2. A .zip dropped into prcc_data/ ------------------------------------
+  # Non-recursive on purpose: a Strategus export contains its own nested zips
+  # (CohortDiagnosticsModule/Results_*.zip), and a recursive listing would offer
+  # one of those as a candidate archive once something has been extracted here.
   zips <- list.files(PRCC_DIR, pattern = "\\.zip$", full.names = TRUE)
   if (length(zips) > 0) {
-    zips  <- zips[order(file.mtime(zips), decreasing = TRUE)]
-    zipf  <- zips[[1]]
-    if (length(zips) > 1) {
-      message("[report] ", length(zips), " archives in ", PRCC_DIR,
-              "/ — using the newest: ", basename(zipf))
+    # Choose by the RUN TIMESTAMP IN THE FILENAME, not by file mtime.
+    # export_results_for_review.R names its archives
+    #   pad_amp_nhd_prog_strategusOutput_<cdm_id>_YYYYMMDD-HHMMSS.zip
+    # so the filename records when the analysis actually ran. mtime records when
+    # the file last landed on this machine, which is a different thing: re-copying
+    # or re-downloading an older export makes it the newest file on disk and would
+    # silently select the wrong run. Two archives were sitting here when this was
+    # written (a 2026-08-11 run and a 2026-08-12 one) -- mtime happened to agree
+    # then, which is exactly the kind of coincidence that hides this bug.
+    # Per-path rather than a vectorised regmatches(): that drops non-matches
+    # instead of returning NA, so the result would silently mis-align with the
+    # input when only some filenames carry a stamp.
+    .run_stamp <- function(paths) {
+      unname(vapply(basename(paths), function(b) {
+        r <- regmatches(b, regexpr("[0-9]{8}-[0-9]{6}", b))
+        if (length(r) == 1) r else NA_character_
+      }, character(1)))
+    }
+    stamps <- .run_stamp(zips)
+    stamped <- !is.na(stamps)
+
+    if (any(stamped)) {
+      # Stamped archives rank first, newest run timestamp wins. Lexical order on
+      # YYYYMMDD-HHMMSS is chronological, so no date parsing is needed.
+      ord  <- order(stamps[stamped], decreasing = TRUE)
+      zipf <- zips[stamped][ord][[1]]
+      if (any(!stamped)) {
+        message("[report] Ignoring ", sum(!stamped), " archive(s) in ", PRCC_DIR,
+                "/ with no YYYYMMDD-HHMMSS run timestamp in the filename: ",
+                paste(basename(zips[!stamped]), collapse = ", "))
+      }
+      if (sum(stamped) > 1) {
+        message("[report] ", sum(stamped), " timestamped archive(s) in ", PRCC_DIR,
+                "/ — selecting the most recent RUN:")
+        for (i in order(stamps[stamped], decreasing = TRUE)) {
+          z <- zips[stamped][i]
+          message("           ", if (identical(z, zipf)) "-> " else "   ",
+                  basename(z), "  (run ", stamps[stamped][i], ")")
+        }
+      } else {
+        message("[report] Using ", basename(zipf), " (run ", stamps[stamped][ord][1], ").")
+      }
+    } else {
+      # No archive carries a run timestamp -- fall back to mtime and say so, so
+      # the weaker basis for the choice is visible rather than assumed.
+      zipf <- zips[order(file.mtime(zips), decreasing = TRUE)][[1]]
+      message("[report] No archive filename carries a YYYYMMDD-HHMMSS run ",
+              "timestamp; falling back to file modification time and using ",
+              basename(zipf), ".")
     }
     stamp_file <- file.path(EXTRACT_DIR, ".source")
     prior      <- if (file.exists(stamp_file)) readLines(stamp_file, warn = FALSE)[1] else ""
