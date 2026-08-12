@@ -29,7 +29,27 @@ Shared baseline (applies first):
 
 | Step | File | What it does |
 |------|------|---------------|
-| — | `GenerateReport.R` | Entry point. `RESULTS_DIR=<path> Rscript GenerateReport.R`. |
+| — | `GenerateReport.R` | Entry point. `Rscript GenerateReport.R` — resolves its data source automatically (see below). |
+
+**Data source resolution** (first match wins), implemented in
+`GenerateReport.R`:
+
+1. `RESULTS_DIR` env var, if set — explicit always wins.
+2. A `.zip` in `prcc_data/` (gitignored) — a Duke PRCC export archive, extracted
+   to `prcc_data/.extracted/` and rendered from. **This is the normal way to
+   render real Duke results.** Newest archive wins; re-extracts only when the
+   archive changes.
+3. Already-unzipped content in `prcc_data/`.
+4. `../pad-amp-nhd-prog/output` — the synthetic dev-container run.
+
+The chosen source is announced in a banner on startup, and a synthetic render
+prints an explicit "do not circulate as a Duke result" warning at the end. That
+banner is the point of the ordering: silently rendering synthetic numbers and
+believing they are Duke's is the expensive mistake here. Never remove it.
+
+`prcc_data/` is gitignored except its README — it holds real Duke results, and
+the archive is only aggregate because `duke-prcc-deploy`'s export step made it
+so, which is not a property this repo can verify after the fact.
 
 There is no Step 1/2/9 numbering here — that convention belongs to
 `pad-amp-nhd-prog`'s Strategus pipeline. This repo has exactly one script.

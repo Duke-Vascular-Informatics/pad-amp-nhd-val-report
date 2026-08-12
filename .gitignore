@@ -18,4 +18,13 @@ output/
 results/
 *.docx
 
+# Duke PRCC export drop-zone. Copy an approved export .zip in here and
+# GenerateReport.R renders from it instead of the synthetic dev data (see that
+# script's header). NEVER commit anything from this directory: it holds real
+# Duke results, and the archive is only aggregate because the export step made
+# it so -- that is not a property this repo can enforce after the fact.
+# The README placeholder is the one tracked exception.
+prcc_data/*
+!prcc_data/README.md
+
 .DS_Store
