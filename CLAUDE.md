@@ -51,6 +51,13 @@ believing they are Duke's is the expensive mistake here. Never remove it.
 the archive is only aggregate because `duke-prcc-deploy`'s export step made it
 so, which is not a property this repo can verify after the fact.
 
+**Rendered output goes to `reports/`** (gitignored) when the source is an
+extracted archive, and next to the results otherwise. It must NOT default into
+`prcc_data/.extracted/`: that directory is a working copy this script deletes
+and re-creates whenever the archive changes, so a report written there is
+silently destroyed by the next render of a new export. `REPORT_OUTPUT_DIR`
+overrides.
+
 There is no Step 1/2/9 numbering here — that convention belongs to
 `pad-amp-nhd-prog`'s Strategus pipeline. This repo has exactly one script.
 

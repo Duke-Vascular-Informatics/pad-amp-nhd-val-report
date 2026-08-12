@@ -16,6 +16,7 @@ renv/staging/
 # Rendered reports + copied-in results — this repo renders, it does not store
 output/
 results/
+reports/
 *.docx
 
 # Duke PRCC export drop-zone. Copy an approved export .zip in here and

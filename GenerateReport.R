@@ -148,7 +148,21 @@ if (!dir.exists(PRCC_DIR)) dir.create(PRCC_DIR, showWarnings = FALSE)
 
 src         <- .resolve_source()
 results_dir <- src$dir
-output_dir  <- Sys.getenv("REPORT_OUTPUT_DIR", unset = results_dir)
+
+# Default output location. Writing next to the results is right for a
+# directory you control, but NOT for prcc_data/.extracted/ -- that is a
+# working copy this script deletes and re-creates whenever the archive
+# changes, so a report written there is destroyed by the next run with a new
+# export. Renders from an archive therefore default to reports/ instead.
+# (Observed on the first real Duke render, 2026-08-12.)
+.in_extraction <- function(d) {
+  a <- normalizePath(d, mustWork = FALSE)
+  b <- normalizePath(EXTRACT_DIR, mustWork = FALSE)
+  identical(a, b) || startsWith(a, paste0(b, .Platform$file.sep))
+}
+default_output <- if (.in_extraction(results_dir)) "reports" else results_dir
+output_dir     <- Sys.getenv("REPORT_OUTPUT_DIR", unset = default_output)
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Announce the data source unmissably. Rendering synthetic numbers while
 # believing they are Duke's is the expensive mistake here, and it is silent
