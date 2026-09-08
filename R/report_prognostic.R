@@ -25,7 +25,7 @@
 #     lasso  → .build_combined_covariate_table(covariate_summary)
 #     integer → .build_combined_component_table(covariate_summary)
 #   Branch 3 — Annual / monthly outcome rate plots:
-#     lasso  → .save_macce_rate_by_year_plot() / .save_macce_rate_by_month_plot()
+#     lasso  → (removed 2026-09-06 — see the stop() in that branch)
 #     integer → .save_nhd_rate_by_year_plot() / .save_nhd_rate_by_month_plot()
 #   Branch 4 — Methods §2.2 narrative text:
 #     lasso  → LASSO-specific paragraph
@@ -624,9 +624,11 @@
   # Small-multiple line chart, one facet per disposition type, replacing the
   # previous stacked area chart. The stacked area distinguished up to 5 bands
   # by hue alone (SNF/IRF/Hospice/LTAC/Other NHD) — five greys that far apart
-  # are not achievable on this repo's two-level grey table (.gs_series_palette
-  # tops out at 2 model greys + 2 reference greys, deliberately, so a figure
-  # never relies on a reader distinguishing more than 2 similar greys). A
+  # are not achievable on the two-level grey table (.gs_series_palette, in
+  # omopReportToolkit's R/figure_style.R -- NOT this repo's report_helpers.R,
+  # which only re-exports it) -- it tops out at 2 model greys + 2 reference
+  # greys, deliberately, so a figure never relies on a reader distinguishing
+  # more than 2 similar greys. A
   # facet removes the discrimination problem outright: each disposition gets
   # its own panel, so no colour/grey encoding is needed at all.
   p <- ggplot2::ggplot(yr_type_tbl, ggplot2::aes(x = year, y = nhd_rate)) +
@@ -719,15 +721,26 @@
     return(NULL)
   }
 
+  # Greyscale (2026-09-06). This was the last live figure still emitting a hue
+  # (#1F3864 navy) and the only one bypassing the manuscript figure pipeline —
+  # it used theme_minimal() and a bare ggsave() at 150 dpi instead of
+  # theme_manuscript() + save_figure(), so it also shipped no 600 dpi TIFF or
+  # vector PDF. A single-series bar chart is legible once desaturated, so this
+  # was never a discrimination problem; it was a consistency one.
+  #
+  # grey35 rather than black: the bars sit behind black error bars and black
+  # count labels, and a black-on-black bar loses both. grey35 keeps the bar
+  # clearly subordinate to its annotations while staying dark enough to read
+  # against the panel at print size.
   p <- ggplot2::ggplot(mo_tbl, ggplot2::aes(x = month_label, y = ssi_rate)) +
-    ggplot2::geom_col(fill = "#1F3864", width = 0.7, na.rm = TRUE) +
+    ggplot2::geom_col(fill = "grey35", width = 0.7, na.rm = TRUE) +
     ggplot2::geom_errorbar(
       ggplot2::aes(ymin = ci_lo, ymax = ci_hi),
-      width = 0.25, colour = "grey30", na.rm = TRUE
+      width = 0.25, colour = "black", na.rm = TRUE
     ) +
     ggplot2::geom_text(
       ggplot2::aes(label = ifelse(!is.na(ssi_rate), paste0("n=", n), "")),
-      vjust = -0.4, size = 2.8, colour = "grey30", na.rm = TRUE
+      vjust = -0.4, size = 2.8, colour = "black", na.rm = TRUE
     ) +
     ggplot2::scale_y_continuous(
       limits = c(0, NA),
@@ -742,17 +755,21 @@
                        "Error bars = 95% Wilson CI. ",
                        "Months with < 5 patients suppressed.")
     ) +
-    ggplot2::theme_minimal(base_size = 11) +
+    theme_manuscript() +
     ggplot2::theme(
-      plot.caption     = ggplot2::element_text(size = 8),
+      plot.caption       = ggplot2::element_text(size = 8),
       panel.grid.major.x = ggplot2::element_blank(),
       panel.grid.minor   = ggplot2::element_blank()
     )
 
-  out_file <- file.path(output_folder, "ssi_rate_by_month.png")
+  # File name corrected 2026-09-06: this wrote "ssi_rate_by_month.png", a
+  # leftover from the surgical-site-infection study this function was ported
+  # from. It is the NHD-by-month figure and had nothing to do with SSI. Routed
+  # through save_figure() so it gets the same 600 dpi TIFF + vector PDF as
+  # every other manuscript figure; save_figure() returns the .png path, which
+  # is what body_add_img() embeds.
   tryCatch({
-    ggplot2::ggsave(out_file, p, width = 7, height = 4.5, dpi = 150)
-    out_file
+    save_figure(p, output_folder, "nhd_rate_by_month.png", width = 7, height = 4.5)
   }, error = function(e) {
     message("[report] Could not save NHD-by-month plot: ", conditionMessage(e))
     NULL
@@ -1067,171 +1084,7 @@
   ft
 }
 
-# -----------------------------------------------------------------------------
-# .save_macce_rate_by_year_plot()
-#
-# Single-line trend of annual outcome rate (%) by procedure year.
-# Used for lasso score_type studies (e.g. MACCE outcome).
-# Copied verbatim from pad_oler_macce_val/R/report_extended.R.
-# -----------------------------------------------------------------------------
-.save_macce_rate_by_year_plot <- function(person_level_df, output_folder) {
-  if (!all(c("index_date", "outcome") %in% names(person_level_df))) {
-    message("[report] MACCE-by-year plot skipped: index_date or outcome column missing.")
-    return(NULL)
-  }
 
-  year_val <- tryCatch(
-    as.integer(format(as.Date(person_level_df$index_date), "%Y")),
-    error = function(e) NA_integer_
-  )
-
-  df_yr <- data.frame(
-    year    = year_val,
-    outcome = as.integer(person_level_df$outcome),
-    stringsAsFactors = FALSE
-  )
-  df_yr <- df_yr[!is.na(df_yr$year), ]
-
-  all_years <- sort(unique(df_yr$year))
-  yr_tbl <- do.call(rbind, lapply(all_years, function(y) {
-    sub_yr <- df_yr[df_yr$year == y, ]
-    n_yr   <- nrow(sub_yr)
-    events <- sum(sub_yr$outcome, na.rm = TRUE)
-    data.frame(
-      year       = y,
-      n          = n_yr,
-      events     = events,
-      macce_rate = if (n_yr >= 10L) 100 * events / n_yr else NA_real_,
-      stringsAsFactors = FALSE
-    )
-  }))
-
-  yr_tbl <- yr_tbl[!is.na(yr_tbl$macce_rate), ]
-
-  if (nrow(yr_tbl) < 2L) {
-    message("[report] MACCE-by-year plot skipped: fewer than 2 years with >= 10 procedures.")
-    return(NULL)
-  }
-
-  total_procs <- sum(yr_tbl$n)
-  total_years <- nrow(yr_tbl)
-
-  p <- ggplot2::ggplot(yr_tbl, ggplot2::aes(x = year, y = macce_rate)) +
-    ggplot2::geom_line(colour = "#1F3864", linewidth = 0.9) +
-    ggplot2::geom_point(colour = "#1F3864", size = 2.5, shape = 21,
-                        fill = "white", stroke = 1.2) +
-    ggplot2::scale_x_continuous(breaks = yr_tbl$year) +
-    ggplot2::scale_y_continuous(
-      limits = c(0, NA),
-      labels = function(x) paste0(round(x, 1), "%")
-    ) +
-    ggplot2::labs(
-      title   = "90-Day MACCE Rate by Procedure Year",
-      x       = "Year of procedure",
-      y       = "30-day MACCE rate (%)",
-      caption = paste0("N = ", total_procs, " procedures across ", total_years,
-                       " years; years with < 10 procedures suppressed.")
-    ) +
-    ggplot2::theme_minimal(base_size = 11) +
-    ggplot2::theme(
-      axis.text.x      = ggplot2::element_text(angle = 45, hjust = 1),
-      plot.caption     = ggplot2::element_text(size = 8),
-      panel.grid.minor = ggplot2::element_blank()
-    )
-
-  out_file <- file.path(output_folder, "macce_rate_by_year.png")
-  tryCatch({
-    ggplot2::ggsave(out_file, p, width = 7, height = 5, dpi = 150)
-    out_file
-  }, error = function(e) {
-    message("[report] Could not save MACCE-by-year plot: ", conditionMessage(e))
-    NULL
-  })
-}
-
-# -----------------------------------------------------------------------------
-# .save_macce_rate_by_month_plot()
-#
-# Bar chart of monthly outcome rate (%) by calendar month.
-# Used for lasso score_type studies.
-# Copied verbatim from pad_oler_macce_val/R/report_extended.R.
-# -----------------------------------------------------------------------------
-.save_macce_rate_by_month_plot <- function(person_level_df, output_folder) {
-  if (!all(c("index_date", "outcome") %in% names(person_level_df))) {
-    message("[report] MACCE-by-month plot skipped: index_date or outcome column missing.")
-    return(NULL)
-  }
-
-  month_val <- tryCatch(
-    as.integer(format(as.Date(person_level_df$index_date), "%m")),
-    error = function(e) NA_integer_
-  )
-
-  df_mo <- data.frame(
-    month   = month_val,
-    outcome = as.integer(person_level_df$outcome),
-    stringsAsFactors = FALSE
-  )
-  df_mo <- df_mo[!is.na(df_mo$month), ]
-
-  mo_tbl <- do.call(rbind, lapply(1:12, function(m) {
-    sub    <- df_mo[df_mo$month == m, ]
-    n      <- nrow(sub)
-    events <- sum(sub$outcome, na.rm = TRUE)
-    data.frame(
-      month      = m,
-      n          = n,
-      events     = events,
-      macce_rate = if (n >= 5L) 100 * events / n else NA_real_,
-      stringsAsFactors = FALSE
-    )
-  }))
-
-  mo_tbl$month_label <- factor(
-    mo_tbl$month,
-    levels = 1:12,
-    labels = c("Jan","Feb","Mar","Apr","May","Jun",
-               "Jul","Aug","Sep","Oct","Nov","Dec")
-  )
-
-  if (all(is.na(mo_tbl$macce_rate))) {
-    message("[report] MACCE-by-month plot skipped: all months suppressed (< 5 procedures each).")
-    return(NULL)
-  }
-
-  p <- ggplot2::ggplot(mo_tbl, ggplot2::aes(x = month_label, y = macce_rate)) +
-    ggplot2::geom_col(fill = "#1F3864", width = 0.7, na.rm = TRUE) +
-    ggplot2::geom_text(
-      ggplot2::aes(label = ifelse(!is.na(macce_rate), paste0("n=", n), "")),
-      vjust = -0.4, size = 2.8, colour = "grey30", na.rm = TRUE
-    ) +
-    ggplot2::scale_y_continuous(
-      limits = c(0, NA),
-      expand = ggplot2::expansion(mult = c(0, 0.15)),
-      labels = function(x) paste0(round(x, 1), "%")
-    ) +
-    ggplot2::labs(
-      title   = "90-Day MACCE Rate by Month of Procedure",
-      x       = "Month of index procedure",
-      y       = "30-day MACCE rate (%)",
-      caption = "Pooled across all study years. Months with < 5 procedures suppressed."
-    ) +
-    ggplot2::theme_minimal(base_size = 11) +
-    ggplot2::theme(
-      plot.caption       = ggplot2::element_text(size = 8),
-      panel.grid.major.x = ggplot2::element_blank(),
-      panel.grid.minor   = ggplot2::element_blank()
-    )
-
-  out_file <- file.path(output_folder, "macce_rate_by_month.png")
-  tryCatch({
-    ggplot2::ggsave(out_file, p, width = 7, height = 4.5, dpi = 150)
-    out_file
-  }, error = function(e) {
-    message("[report] Could not save MACCE-by-month plot: ", conditionMessage(e))
-    NULL
-  })
-}
 
 
 # ===========================================================================
@@ -1913,20 +1766,65 @@
   # Which entries exist depends on which score pipelines supplied output, so the
   # plan is built after the pipeline outputs are loaded (see .init_supp_labels()
   # below). Look up a label with supp("<key>").
+  #
+  # A KEY MUST ONLY BE ALLOCATED IF ITS ITEM WILL ACTUALLY RENDER.
+  # Allocating one for an item that then does not render produces a dangling
+  # cross-reference: the Methods promises "Supplemental Table S9" and no S9
+  # exists. That is exactly what happened on Duke data, where the subgroup keys
+  # were gated on "did the mFI-5 score run?" while the render site was gated on
+  # "does subgroup_bias.csv exist?" — two different questions with two different
+  # answers. Gate both on the same predicate; see .read_subgroup_bias() below.
   # ---------------------------------------------------------------------------
   .supp_labels <- list()
 
-  .init_supp_labels <- function(has_mfi5, has_vqifs) {
+  # ---------------------------------------------------------------------------
+  # .read_subgroup_bias()
+  #
+  # Single source of truth for "is there a usable subgroup bias analysis for
+  # this score?". Returns the parsed data frame, or NULL.
+  #
+  # Both the supplemental-label plan and add_subgroup_section() call this, so
+  # the label allocation and the rendering decision cannot disagree. Do not
+  # reimplement the file/parse/row check anywhere else — that divergence is the
+  # bug this exists to prevent.
+  #
+  # NULL when the analysis did not run on THIS dataset for any reason: the
+  # scoring step skipped it, the CSV is unreadable, or every subgroup fell below
+  # the event-suppression floor. In all of those cases the report must render no
+  # subgroup section, no caption, and no Methods cross-reference to one.
+  # ---------------------------------------------------------------------------
+  .read_subgroup_bias <- function(dir_path) {
+    if (is.null(dir_path)) return(NULL)
+    bias_path <- file.path(dir_path, "subgroup_bias.csv")
+    if (!file.exists(bias_path)) return(NULL)
+    df <- tryCatch(readr::read_csv(bias_path, show_col_types = FALSE),
+                   error = function(e) NULL)
+    if (is.null(df) || nrow(df) == 0) return(NULL)
+    df
+  }
+
+  .init_supp_labels <- function(has_mfi5, has_vqifs, has_mfi5_bias) {
     keys <- c(
       # "Supplemental Material" section, in render order
       "cdm_metadata", "model_descriptions", "cpt_codes", "discharge_codes",
       "nhd_rate_by_month", "score_dist_iannuzzi",
       if (has_mfi5)  "score_dist_mfi5",
       if (has_vqifs) "score_dist_vqifs",
-      # Subgroup bias sections (table then forest plot per model)
-      "subgroup_tbl_iannuzzi", "subgroup_fig_iannuzzi",
-      if (has_mfi5)  c("subgroup_tbl_mfi5",  "subgroup_fig_mfi5"),
-      if (has_vqifs) c("subgroup_tbl_vqifs", "subgroup_fig_vqifs")
+      # Subgroup bias section — mFI-5 only (2026-09-06), and only when the
+      # analysis actually produced results on THIS dataset.
+      #
+      # Iannuzzi and sVQI-FS subgroup keys are deliberately NOT allocated. All
+      # three scores now produce a subgroup_bias.csv (see the prediction_col
+      # change in pad-amp-nhd-prog's compute_subgroup_bias()), so leaving their
+      # keys here would silently reintroduce two sections the study team asked
+      # not to report.
+      #
+      # has_mfi5_bias, NOT has_mfi5: the former asks "did the subgroup analysis
+      # yield anything here?", the latter only "did the mFI-5 score run?". They
+      # differ on Duke data, where the score ran and the subgroup analysis did
+      # not — and gating on the wrong one is what produced a Methods sentence
+      # pointing at a Supplemental Table S9 that was never rendered.
+      if (has_mfi5_bias) c("subgroup_tbl_mfi5", "subgroup_fig_mfi5", "subgroup_fig_mfi5_auroc")
     )
     .supp_labels <<- stats::setNames(paste0("S", seq_along(keys)), keys)
   }
@@ -2078,12 +1976,26 @@
   has_mfi5  <- !is.null(metrics_mfi5)
   has_vqifs <- !is.null(metrics_vqifs)
 
+  # Does a usable mFI-5 subgroup bias analysis exist for THIS dataset? Resolved
+  # here, before the label plan is fixed, because the Methods cross-reference
+  # and the S-number allocation both depend on it. Read once and reused at the
+  # render site so the two cannot drift apart.
+  subgroup_bias_mfi5 <- .read_subgroup_bias(mfi5_output_dir)
+  has_mfi5_bias      <- !is.null(subgroup_bias_mfi5)
+  if (has_mfi5  && !has_mfi5_bias) {
+    message("[report] No usable subgroup_bias.csv for mFI-5 in ",
+            if (is.null(mfi5_output_dir)) "<none>" else mfi5_output_dir,
+            " — the subgroup bias section, its supplemental table/figure, and the ",
+            "Methods cross-reference to them are all omitted for this dataset.")
+  }
+
   # Now that we know which score pipelines produced output, fix the supplemental
   # S-number plan. Everything downstream refers to labels via supp()/supp_table()
   # /supp_figure() so Methods cross-references and render sites cannot diverge.
   .init_supp_labels(
-    has_mfi5  = has_mfi5,
-    has_vqifs = has_vqifs
+    has_mfi5      = has_mfi5,
+    has_vqifs     = has_vqifs,
+    has_mfi5_bias = has_mfi5_bias
   )
 
   # --- Temporal split metadata (written by evaluate_integer_risk_score()) ----
@@ -2755,22 +2667,45 @@
   # ---------------------------------------------------------------------------
   # save_subgroup_forest_plot()
   #
-  # Builds a forest plot of ECE (95% CI) by subgroup from the subgroup_bias
-  # data frame.  Each subgroup variable is drawn as a labelled section (via
-  # ggplot2 faceting on subgroup_var).  A dashed vertical reference line shows
-  # the overall ECE for the lookup model (read from metrics.csv).
+  # Builds a forest plot of a subgroup performance metric (95% CI) by subgroup
+  # from the subgroup_bias data frame.  Each subgroup variable is drawn as a
+  # labelled section (via ggplot2 faceting on subgroup_var).  A dashed vertical
+  # reference line shows the overall metric value for the assessed model
+  # (read from metrics.csv).
   #
   # Arguments:
-  #   bias_df      — data frame from subgroup_bias.csv
-  #   overall_ece  — numeric overall ECE (lookup model) for the reference line
+  #   bias_df       — data frame from subgroup_bias.csv
+  #   overall_value — numeric overall metric value for the reference line
+  #                   (overall ECE when metric = "ece", overall AUROC when
+  #                   metric = "auroc")
   #   output_folder — directory where the PNG will be written
+  #   metric        — "ece" (calibration, default) or "auroc" (discrimination).
+  #                   Selects which pair of value/ci_lower/ci_upper columns is
+  #                   plotted, and the axis label/title/caption wording.
+  #
+  # Rows with a missing value for the selected metric are dropped before
+  # plotting — AUROC can be NA for a subgroup whose outcome happened to be
+  # constant within a bootstrap resample even when ECE is not.
   #
   # Returns the path to the saved PNG, or NULL on failure.
   # ---------------------------------------------------------------------------
-  save_subgroup_forest_plot <- function(bias_df, overall_ece, output_folder,
-                                        file_name = "subgroup_forest_plot.png") {
+  save_subgroup_forest_plot <- function(bias_df, overall_value, output_folder,
+                                        file_name = "subgroup_forest_plot.png",
+                                        metric = c("ece", "auroc")) {
+
+    metric <- match.arg(metric)
+    value_col <- if (metric == "auroc") "auroc" else "ece"
+    lo_col    <- if (metric == "auroc") "auroc_ci_lower" else "ci_lower"
+    hi_col    <- if (metric == "auroc") "auroc_ci_upper" else "ci_upper"
 
     if (is.null(bias_df) || nrow(bias_df) == 0) return(NULL)
+
+    bias_df <- bias_df[!is.na(bias_df[[value_col]]), , drop = FALSE]
+    if (nrow(bias_df) == 0) return(NULL)
+
+    bias_df$.value <- bias_df[[value_col]]
+    bias_df$.lo    <- bias_df[[lo_col]]
+    bias_df$.hi    <- bias_df[[hi_col]]
 
     # Impose Table 1 ordering on subgroup facets.
     var_order <- c("age_group", "sex", "race", "ethnicity",
@@ -2787,10 +2722,11 @@
       bias_df$subgroup_level
     )
 
-    # Order labels within each facet by ECE (ascending) for readability.
+    # Order labels within each facet by the selected metric (ascending) for
+    # readability.
     bias_df$label <- factor(
       bias_df$label,
-      levels = bias_df$label[order(bias_df$subgroup_var, bias_df$ece)]
+      levels = bias_df$label[order(bias_df$subgroup_var, bias_df$.value)]
     )
 
     # Facet labels: capitalise the subgroup variable name for display.
@@ -2799,15 +2735,31 @@
       levels(bias_df$subgroup_var)
     )
 
+    x_label <- if (metric == "auroc") "AUROC (95% CI)" else "Expected Calibration Error (95% CI)"
+    title   <- if (metric == "auroc") "Subgroup Discrimination (AUROC)" else "Subgroup Calibration (ECE)"
+    caption <- if (metric == "auroc") {
+      paste0(
+        "Dashed line = overall AUROC (", round(overall_value, 3), "). ",
+        "Groups with < 10 events suppressed. ",
+        "CIs from 200 bootstrap resamples."
+      )
+    } else {
+      paste0(
+        "Dashed line = overall ECE (", round(overall_value, 3), "). ",
+        "Groups with < 10 events suppressed. ",
+        "CIs from 200 bootstrap resamples."
+      )
+    }
+
     p <- ggplot2::ggplot(bias_df,
-           ggplot2::aes(x = ece, y = label)) +
+           ggplot2::aes(x = .value, y = label)) +
       ggplot2::geom_point(size = 2, colour = "black") +
       ggplot2::geom_errorbar(
-        ggplot2::aes(xmin = ci_lower, xmax = ci_upper),
+        ggplot2::aes(xmin = .lo, xmax = .hi),
         width = 0.25, colour = "grey40", orientation = "y"
       ) +
       ggplot2::geom_vline(
-        xintercept = overall_ece,
+        xintercept = overall_value,
         linetype   = "dashed",
         colour     = "black"
       ) +
@@ -2818,14 +2770,10 @@
         labeller = ggplot2::as_labeller(facet_labels)
       ) +
       ggplot2::labs(
-        x     = "Expected Calibration Error (95% CI)",
+        x     = x_label,
         y     = NULL,
-        title = "Subgroup Calibration (ECE)",
-        caption = paste0(
-          "Dashed line = overall ECE (", round(overall_ece, 3), "). ",
-          "Groups with < 10 events suppressed. ",
-          "CIs from 200 bootstrap resamples."
-        )
+        title = title,
+        caption = caption
       ) +
       theme_manuscript() +
       ggplot2::theme(
@@ -2872,7 +2820,7 @@
     # Greyscale fill: the previous #4472C4 / #C00000 pair has near-identical
     # luminance and merges into one band once desaturated. grey25/grey80 is
     # the two-level table used everywhere else in this repo's fills (see
-    # .gs_series_palette in R/report_helpers.R) — far enough apart on the
+    # .gs_series_palette, in omopReportToolkit's R/figure_style.R) — far enough apart on the
     # grey ramp to stay legible after a bad photocopy.
     p <- ggplot2::ggplot(df, ggplot2::aes(x = total_score, y = count, fill = Outcome)) +
       ggplot2::geom_col(position = "stack", colour = "white", width = 1) +
@@ -3289,18 +3237,20 @@
   } else NULL
 
   # Branch 3 — Annual and monthly outcome rate plots.
-  # LASSO (MACCE-style): single-line trend via .save_macce_rate_by_year_plot().
-  # NHD integer: stacked area chart by disposition type via .save_nhd_rate_by_year_plot().
+  # NHD integer: faceted per-disposition trend via .save_nhd_rate_by_year_plot().
   if (identical(config$score_type, "lasso")) {
-    # The LASSO/MACCE branch is inherited scaffolding that this study never
-    # runs (score_type is "integer"). It still expects a person_level frame and
-    # has NOT been converted to aggregate inputs -- if a LASSO study is ever
-    # rendered from this repo, these two calls need the same treatment the NHD
-    # branch below received. Failing loudly beats silently drawing nothing.
-    stop("score_type = 'lasso' is not supported by this report repo since the ",
-         "2026-08-11 aggregate-inputs conversion: .save_macce_rate_by_*_plot() ",
-         "still require patient-level data. Convert them the same way ",
-         ".save_nhd_rate_by_*_plot() were before enabling this branch.")
+    # The LASSO/MACCE branch is inherited scaffolding this study never runs
+    # (score_type is "integer"). Its two figure functions were DELETED on
+    # 2026-09-06: they were unreachable, had never been converted to aggregate
+    # inputs, and were the last figure code in this file still hardcoding a hue
+    # (#1F3864 navy) rather than the greyscale palette. Recover them from git
+    # history if a LASSO study is ever rendered here -- and convert them on both
+    # counts before re-enabling this branch.
+    stop("score_type = 'lasso' is not supported by this report repo. Its figure ",
+         "functions were removed 2026-09-06 (unreachable, patient-level-only, ",
+         "and not greyscale-safe). Recover .save_macce_rate_by_*_plot() from git ",
+         "history, convert them to aggregate inputs the way .save_nhd_rate_by_*_plot() ",
+         "were, and apply theme_manuscript() + save_figure() before enabling this branch.")
   } else {
     nhd_year_plot_file  <- .save_nhd_rate_by_year_plot(
       read_report_input("agg_nhd_by_year"), temp_figure_dir)
@@ -3726,32 +3676,43 @@
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Subgroup analysis and bias assessment"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
-    "\tModel calibration was assessed across prespecified patient subgroups to identify populations ",
-    "in which the recalibrated risk scores may systematically over- or underestimate observed non-home ",
-    "discharge risk. ",
+    "\tModel calibration and discrimination were assessed across prespecified patient subgroups to ",
+    "identify populations in which the recalibrated risk scores may systematically over- or ",
+    "underestimate observed non-home discharge risk, or discriminate less reliably between patients ",
+    "who did and did not experience it. ",
     "Subgroups evaluated included biological sex, race, ethnicity, age group (<65, 65–74, ",
     "≥75 years), amputation level (above-knee, below-knee, other), and calendar year of the ",
     "index procedure. Expected calibration error (ECE) was computed within each subgroup as the ",
     "weighted mean absolute difference between grouped predicted and observed event rates across ",
-    "quantile-based bins. Uncertainty was quantified using 200 bootstrap resamples (percentile ",
-    "95% CI). Subgroup levels with fewer than 10 observed NHD events were suppressed to avoid ",
-    "unreliable estimates. Subgroup ECE is computed on the same temporal test partition as the ",
-    "overall ECE reported in Table 4, so the two are directly comparable. ",
-    "Results are presented separately for the ",
-    paste(c(
-      paste0("Iannuzzi 2020 (Recalibrated) model in Supplemental Table ",
-             supp("subgroup_tbl_iannuzzi"), " and Supplemental Figure ",
-             supp("subgroup_fig_iannuzzi")),
-      if (has_mfi5)
-        paste0("the mFI-5 (Recalibrated) model in Supplemental Table ",
-               supp("subgroup_tbl_mfi5"), " and Supplemental Figure ",
-               supp("subgroup_fig_mfi5")),
-      if (has_vqifs)
-        paste0("the sVQI-FS (Recalibrated) model in Supplemental Table ",
-               supp("subgroup_tbl_vqifs"), " and Supplemental Figure ",
-               supp("subgroup_fig_vqifs"))
-    ), collapse = "; "),
-    "."
+    "quantile-based bins; the area under the receiver operating characteristic curve (AUROC) was ",
+    "computed within each subgroup using the same recalibrated predicted probabilities. Uncertainty ",
+    "for both metrics was quantified using 200 bootstrap resamples drawn from the same resample per ",
+    "iteration (percentile 95% CI). Subgroup levels with fewer than 10 observed NHD events were ",
+    "suppressed to avoid unreliable estimates; subgroup AUROC is additionally suppressed where the ",
+    "outcome was constant within that subgroup. Subgroup ECE and AUROC are computed on the same ",
+    "temporal test partition as the overall ECE and AUROC reported in Table 4, so the subgroup and ",
+    "overall figures are directly comparable. ",
+    # Gated on has_mfi5_bias, not has_mfi5 — see .init_supp_labels(). When the
+    # subgroup analysis produced nothing for this dataset the sentence is
+    # replaced rather than dropped silently, so a reader is told the assessment
+    # was attempted and did not yield reportable results, instead of finding the
+    # paragraph describing a method that then points nowhere.
+    if (has_mfi5_bias)
+      paste0("Subgroup results are reported for the mFI-5 (Recalibrated) model in ",
+             "Supplemental Table ", supp("subgroup_tbl_mfi5"), " and Supplemental Figures ",
+             supp("subgroup_fig_mfi5"), " (calibration) and ",
+             supp("subgroup_fig_mfi5_auroc"), " (discrimination).")
+    else
+      # Deliberately states only the FACT, not a cause. An earlier draft of this
+      # sentence said "no subgroup met the minimum event threshold", which is a
+      # specific empirical claim the report is in no position to make: the
+      # subgroup analysis can yield nothing for several reasons (the scoring
+      # step skipped it, the demographic lookup failed against this CDM, or the
+      # event floor genuinely suppressed every level), and this repo sees only
+      # the absence of a file. On the 2026-08-12 Duke export, with 698 patients
+      # and 449 events, the event floor is almost certainly NOT the explanation
+      # -- so that wording would have printed something false.
+      paste0("Subgroup calibration results are not reported for this data source.")
   ), style = "Normal")
 
   doc <- add_doc_page_break(doc)
@@ -4463,19 +4424,25 @@
     message("[report] Figure 4 (DCA) added.")
   }
 
-  # Helper: load, sort, and render a subgroup_bias.csv as a table + forest plot.
-  # Used for both Iannuzzi recalibrated and mFI-5 recalibrated subgroup sections.
-  add_subgroup_section <- function(doc, bias_path, overall_ece_val,
+  # Helper: load, sort, and render a subgroup_bias.csv as a table + two forest
+  # plots (calibration ECE, then discrimination AUROC). Used for both Iannuzzi
+  # recalibrated and mFI-5 recalibrated subgroup sections. Takes the
+  # ALREADY-READ data frame (from .read_subgroup_bias()), not a path. It used
+  # to re-read and re-test the file itself, which is how the render decision
+  # drifted away from the supplemental-label decision: two reads, two
+  # predicates, two answers. One read, one predicate, passed in.
+  #
+  # `auroc` / `auroc_ci_lower` / `auroc_ci_upper` may be absent in a stale
+  # subgroup_bias.csv written before compute_subgroup_bias() assessed
+  # discrimination \u2014 the AUROC column/figure are skipped gracefully rather
+  # than erroring in that case.
+  add_subgroup_section <- function(doc, df, overall_ece_val, overall_auroc_val,
                                    section_heading, table_caption, figure_caption,
-                                   forest_file_name) {
-    df <- NULL
-    if (file.exists(bias_path)) {
-      df <- tryCatch(
-        readr::read_csv(bias_path, show_col_types = FALSE),
-        error = function(e) NULL
-      )
-    }
+                                   figure_caption_auroc, forest_file_name,
+                                   forest_file_name_auroc) {
     if (is.null(df) || nrow(df) == 0) return(doc)
+
+    has_auroc <- all(c("auroc", "auroc_ci_lower", "auroc_ci_upper") %in% names(df))
 
     subgroup_order <- c(age_group = 1, sex = 2, race = 3, ethnicity = 4,
                         indication = 5, proc_type = 6, year = 7)
@@ -4489,11 +4456,21 @@
       N         = df$n,
       Events    = df$n_events,
       ECE       = round(df$ece, 3),
-      "95% CI"  = paste0("(", round(df$ci_lower, 3),
+      "ECE 95% CI"  = paste0("(", round(df$ci_lower, 3),
                          "\u2013",
                          round(df$ci_upper, 3), ")"),
       check.names = FALSE, stringsAsFactors = FALSE
     )
+    if (has_auroc) {
+      bias_display$AUROC <- ifelse(is.na(df$auroc), "\u2014", round(df$auroc, 3))
+      bias_display[["AUROC 95% CI"]] <- ifelse(
+        is.na(df$auroc_ci_lower) | is.na(df$auroc_ci_upper), "\u2014",
+        paste0("(", round(df$auroc_ci_lower, 3), "\u2013", round(df$auroc_ci_upper, 3), ")")
+      )
+    }
+
+    center_cols <- c("N", "Events", "ECE", "ECE 95% CI")
+    if (has_auroc) center_cols <- c(center_cols, "AUROC", "AUROC 95% CI")
 
     bias_ft <- flextable::flextable(bias_display) |>
       flextable::bold(part = "header") |>
@@ -4502,29 +4479,35 @@
       flextable::bg(part = "header", bg = "#1F3864") |>
       flextable::color(part = "header", color = "white") |>
       flextable::padding(padding = 4, part = "all") |>
-      flextable::align(j = c("N", "Events", "ECE", "95% CI"),
-                       align = "center", part = "all") |>
-      flextable::width(j = "Subgroup", width = 1.2) |>
-      flextable::width(j = "Level",    width = 1.6) |>
-      flextable::width(j = "N",        width = 0.6) |>
-      flextable::width(j = "Events",   width = 0.7) |>
-      flextable::width(j = "ECE",      width = 0.7) |>
-      flextable::width(j = "95% CI",   width = 1.2) |>
+      flextable::align(j = center_cols, align = "center", part = "all") |>
+      flextable::width(j = "Subgroup",     width = 1.2) |>
+      flextable::width(j = "Level",        width = 1.6) |>
+      flextable::width(j = "N",            width = 0.6) |>
+      flextable::width(j = "Events",       width = 0.7) |>
+      flextable::width(j = "ECE",          width = 0.7) |>
+      flextable::width(j = "ECE 95% CI",   width = 1.1) |>
       flextable::set_table_properties(layout = "fixed")
+    if (has_auroc) {
+      bias_ft <- bias_ft |>
+        flextable::width(j = "AUROC",        width = 0.7) |>
+        flextable::width(j = "AUROC 95% CI", width = 1.1)
+    }
 
     doc <- body_add_par(doc, section_heading, style = "heading 3")
     doc <- body_add_flextable(doc, bias_ft)
     doc <- add_doc_caption(doc,
       table_caption,
       paste0("Subgroups with fewer than 10 observed NHD events are suppressed. ",
-             "Overall ECE = ", round(overall_ece_val, 3), ". ",
-             "95% CI = bootstrap percentile interval (B\u2009=\u2009200 resamples).")
+             "Overall ECE = ", round(overall_ece_val, 3),
+             if (has_auroc) paste0(". Overall AUROC = ", round(overall_auroc_val, 3)) else "",
+             ". 95% CI = bootstrap percentile interval (B\u2009=\u2009200 resamples).")
     )
     doc <- body_add_par(doc, "", style = "Normal")
 
     forest_png <- save_subgroup_forest_plot(df, overall_ece_val,
                                             temp_figure_dir,
-                                            file_name = forest_file_name)
+                                            file_name = forest_file_name,
+                                            metric = "ece")
     if (!is.null(forest_png) && file.exists(forest_png)) {
       plot_height <- max(4.0, nrow(df) * 0.35 + 1.5)
       doc <- body_add_img(doc, src = forest_png,
@@ -4539,71 +4522,76 @@
       )
       doc <- body_add_par(doc, "", style = "Normal")
     }
+
+    if (has_auroc) {
+      auroc_df <- df[!is.na(df$auroc), , drop = FALSE]
+      forest_png_auroc <- save_subgroup_forest_plot(auroc_df, overall_auroc_val,
+                                                     temp_figure_dir,
+                                                     file_name = forest_file_name_auroc,
+                                                     metric = "auroc")
+      if (!is.null(forest_png_auroc) && file.exists(forest_png_auroc)) {
+        plot_height <- max(4.0, nrow(auroc_df) * 0.35 + 1.5)
+        doc <- body_add_img(doc, src = forest_png_auroc,
+                            width  = 5.5,
+                            height = min(plot_height, 9.0))
+        doc <- add_doc_caption(doc,
+          figure_caption_auroc,
+          paste0("AUROC with 95% bootstrap percentile CIs ",
+                 "(B\u2009=\u2009200) by subgroup. ",
+                 "Dashed vertical line = overall AUROC. ",
+                 "Subgroups with < 10 NHD events, or a constant outcome within ",
+                 "a subgroup, are suppressed.")
+        )
+        doc <- body_add_par(doc, "", style = "Normal")
+      }
+    }
     doc
   }
 
-  # ---- Subgroup \u2014 Iannuzzi recalibrated -------------------------------------
-  ece_iannuzzi_recal <- tryCatch(
-    as.numeric(metric_value("ECE", "recalibrated")),
-    error = function(e) NA_real_
-  )
-  if (is.na(ece_iannuzzi_recal)) ece_iannuzzi_recal <- 0.0
-
-  doc <- add_subgroup_section(
-    doc,
-    bias_path        = file.path(score_output_dir, "subgroup_bias.csv"),
-    overall_ece_val  = ece_iannuzzi_recal,
-    section_heading  = section_num("Subgroup bias assessment \u2014 Iannuzzi 2020 (Recalibrated)"),
-    table_caption    = paste0(supp_table("subgroup_tbl_iannuzzi"), ". ECE by subgroup \u2014 Iannuzzi 2020 (Recalibrated)."),
-    figure_caption   = paste0(supp_figure("subgroup_fig_iannuzzi"), ". Subgroup calibration forest plot \u2014 Iannuzzi 2020 (Recalibrated)."),
-    forest_file_name = "subgroup_forest_iannuzzi.png"
-  )
-  message("[report] Subgroup section (Iannuzzi recalibrated) processed.")
+  # ---- Subgroup bias assessment \u2014 mFI-5 ONLY --------------------------------
+  #
+  # Iannuzzi 2020 and sVQI-FS subgroup sections were removed 2026-09-06 at the
+  # study team's request: the report presents subgroup calibration for the
+  # mFI-5 alone. Their subgroup_bias.csv files are still WRITTEN by the scoring
+  # step (all three scores produce one now) and remain available for inspection
+  # in output/<score>/ -- they are simply not rendered. The supplemental label
+  # plan in .init_supp_labels() allocates no keys for them; if either section is
+  # ever restored, restore its keys there in the same change.
 
   # ---- Subgroup \u2014 mFI-5 recalibrated ----------------------------------------
-  if (!is.null(mfi5_output_dir)) {
-    ece_mfi5_recal <- tryCatch({
+  # Gated on has_mfi5_bias (resolved once, near the top, by .read_subgroup_bias)
+  # rather than on the output directory merely existing. This is the same flag
+  # that decided whether to allocate the S-numbers and whether to write the
+  # Methods cross-reference, so all three agree by construction.
+  if (has_mfi5_bias) {
+    mfi5_recal_metrics <- tryCatch({
       mfi5_met <- readr::read_csv(file.path(mfi5_output_dir, "metrics.csv"),
                                   show_col_types = FALSE)
       names(mfi5_met) <- tolower(names(mfi5_met))
-      as.numeric(mfi5_met$value[mfi5_met$metric == "ECE" &
-                                  mfi5_met$model == "recalibrated"][1])
-    }, error = function(e) NA_real_)
-    if (is.na(ece_mfi5_recal)) ece_mfi5_recal <- 0.0
+      list(
+        ece   = as.numeric(mfi5_met$value[mfi5_met$metric == "ECE" &
+                                            mfi5_met$model == "recalibrated"][1]),
+        auroc = as.numeric(mfi5_met$value[mfi5_met$metric == "AUROC" &
+                                            mfi5_met$model == "recalibrated"][1])
+      )
+    }, error = function(e) list(ece = NA_real_, auroc = NA_real_))
+    ece_mfi5_recal   <- if (is.na(mfi5_recal_metrics$ece))   0.0 else mfi5_recal_metrics$ece
+    auroc_mfi5_recal <- if (is.na(mfi5_recal_metrics$auroc)) 0.0 else mfi5_recal_metrics$auroc
 
     doc <- add_subgroup_section(
       doc,
-      bias_path        = file.path(mfi5_output_dir, "subgroup_bias.csv"),
-      overall_ece_val  = ece_mfi5_recal,
-      section_heading  = section_num("Subgroup bias assessment \u2014 mFI-5 (Recalibrated)"),
-      table_caption    = paste0(supp_table("subgroup_tbl_mfi5"), ". ECE by subgroup \u2014 mFI-5 (Recalibrated)."),
-      figure_caption   = paste0(supp_figure("subgroup_fig_mfi5"), ". Subgroup calibration forest plot \u2014 mFI-5 (Recalibrated)."),
-      forest_file_name = "subgroup_forest_mfi5.png"
+      df                = subgroup_bias_mfi5,
+      overall_ece_val   = ece_mfi5_recal,
+      overall_auroc_val = auroc_mfi5_recal,
+      section_heading   = section_num("Subgroup bias assessment \u2014 mFI-5 (Recalibrated)"),
+      table_caption     = paste0(supp_table("subgroup_tbl_mfi5"), ". ECE and AUROC by subgroup \u2014 mFI-5 (Recalibrated)."),
+      figure_caption    = paste0(supp_figure("subgroup_fig_mfi5"), ". Subgroup calibration forest plot \u2014 mFI-5 (Recalibrated)."),
+      figure_caption_auroc = paste0(supp_figure("subgroup_fig_mfi5_auroc"), ". Subgroup discrimination forest plot \u2014 mFI-5 (Recalibrated)."),
+      forest_file_name  = "subgroup_forest_mfi5.png",
+      forest_file_name_auroc = "subgroup_forest_mfi5_auroc.png"
     )
-    message("[report] Subgroup section (mFI-5 recalibrated) processed.")
-  }
-
-  # ---- Subgroup \u2014 sVQI-FS recalibrated --------------------------------------
-  if (!is.null(vqifs_output_dir)) {
-    ece_vqifs_recal <- tryCatch({
-      vqifs_met <- readr::read_csv(file.path(vqifs_output_dir, "metrics.csv"),
-                                   show_col_types = FALSE)
-      names(vqifs_met) <- tolower(names(vqifs_met))
-      as.numeric(vqifs_met$value[vqifs_met$metric == "ECE" &
-                                   vqifs_met$model == "recalibrated"][1])
-    }, error = function(e) NA_real_)
-    if (is.na(ece_vqifs_recal)) ece_vqifs_recal <- 0.0
-
-    doc <- add_subgroup_section(
-      doc,
-      bias_path        = file.path(vqifs_output_dir, "subgroup_bias.csv"),
-      overall_ece_val  = ece_vqifs_recal,
-      section_heading  = section_num("Subgroup bias assessment \u2014 sVQI-FS (Recalibrated)"),
-      table_caption    = paste0(supp_table("subgroup_tbl_vqifs"), ". ECE by subgroup \u2014 sVQI-FS (Recalibrated)."),
-      figure_caption   = paste0(supp_figure("subgroup_fig_vqifs"), ". Subgroup calibration forest plot \u2014 sVQI-FS (Recalibrated)."),
-      forest_file_name = "subgroup_forest_vqifs.png"
-    )
-    message("[report] Subgroup section (sVQI-FS recalibrated) processed.")
+    message("[report] Subgroup section (mFI-5 recalibrated) rendered: ",
+            nrow(subgroup_bias_mfi5), " subgroup rows.")
   }
 
   # ---- Supplemental section ------------------------------------------------
