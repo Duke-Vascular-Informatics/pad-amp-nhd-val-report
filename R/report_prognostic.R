@@ -3287,27 +3287,28 @@
     if ("split_set" %in% names(df)) df$split_set == "test" else rep(TRUE, nrow(df))
   }
 
-  # Decision curve analysis plot (Figure 4) — pass every available model's
-  # predictions as a named list so all curves the report actually has (up to
-  # six: Iannuzzi lookup/recal, mFI-5 raw/recal, sVQI-FS raw/recal) appear on
-  # the same plot, driven from the SAME model list Table 4 uses (previously
-  # Figure 4 and Table 4 iterated independent lists and drifted — Table 4
-  # included sVQI-FS while Figure 4 silently omitted it).
+  # Decision curve analysis plot (Figure 4) — restricted to the three
+  # recalibrated model specifications (Iannuzzi/mFI-5/sVQI-FS) plus the
+  # 'treat-all'/'treat-none' reference strategies. The published Iannuzzi
+  # lookup curve is computed by the aggregate step and present in
+  # agg_dca_net_benefit.csv (strategy == "Iannuzzi (Lookup)") but deliberately
+  # excluded from this figure so it shows only the recalibrated specifications
+  # the study is actually comparing against each other.
   #
   # EVALUATION SET: restricted to the temporal test partition, matching Table 5
   # (recalibrated tiers) and the subgroup ECE analysis — every curve on this
-  # plot compares net benefit across the same patients. The published Iannuzzi
-  # lookup is included on this same test-set population for comparability with
-  # the other curves on this specific figure, even though Table 4/Table 5 report
-  # it over the full cohort elsewhere (it requires no fitting, so evaluating it
-  # on a subset introduces no leakage — only fewer events).
+  # plot compares net benefit across the same patients.
   # Every curve, including the two reference strategies and the cross-model
-  # alignment onto a common evaluation set, is now resolved in the aggregate
+  # alignment onto a common evaluation set, is resolved in the aggregate
   # step -- the per-subject_id join that alignment used to require is exactly
   # the kind of operation this repo should no longer be doing.
+  dca_df <- read_report_input("agg_dca_net_benefit")
+  if (!is.null(dca_df) && "strategy" %in% names(dca_df)) {
+    dca_df <- dca_df[dca_df$strategy != "Iannuzzi (Lookup)", , drop = FALSE]
+  }
   dca_plot_file <- tryCatch(
     save_dca_plot(
-      read_report_input("agg_dca_net_benefit"),
+      dca_df,
       read_report_input("agg_dca_meta"),
       temp_figure_dir,
       threshold_max_pct = config$dca_threshold_max_pct
@@ -4314,25 +4315,34 @@
 
   agg_tiers <- read_report_input("agg_risk_tiers")
 
+  # Restricted to the three recalibrated specifications -- the published
+  # Iannuzzi lookup and the Iannuzzi 2020 publication's own raw-score strata
+  # are still computed and present in agg_risk_tiers.csv (see
+  # pad-amp-nhd-val's R/aggregate_report_inputs.R) but deliberately not
+  # rendered here, so this table compares only the recalibrated models
+  # against each other.
   tier_sections <- list()
-  for (.lbl in c("Iannuzzi 2020 (Lookup, full cohort)",
-                 "Iannuzzi 2020 (Recalibrated, test set)",
+  for (.lbl in c("Iannuzzi 2020 (Recalibrated, test set)",
                  "mFI-5 (Recalibrated, test set)",
-                 "sVQI-FS (Recalibrated, test set)",
-                 "Iannuzzi 2020 published score strata (full cohort)")) {
+                 "sVQI-FS (Recalibrated, test set)")) {
     sec <- build_tier_rows_from_agg(agg_tiers, .lbl)
     if (!is.null(sec)) tier_sections[[.lbl]] <- sec
   }
 
-  # The Iannuzzi published score strata (Table II / Fig 2 of the paper -- Low
-  # 0-4, Moderate 5-9, High >=10, with published NHD rates 10.1 / 36.7 / 66.1%)
-  # used to be tabulated here from person_level$total_score. They are now one
-  # of the model_label sections read from agg_risk_tiers.csv above, and the
-  # published rates travel with that artifact rather than being duplicated in
-  # this repo -- so there is exactly one place to correct if a rate is ever
-  # found to be mis-transcribed from the paper.
-
   tier_sections <- Filter(Negate(is.null), tier_sections)
+
+  # The caption's tier-threshold description is derived directly from the
+  # tier labels actually present in the data (e.g. "Low (<50%)") rather than
+  # hardcoded here, so it can never drift out of sync with
+  # aggregate_report_inputs.R's actual bin edges -- exactly the kind of
+  # two-sources-of-truth bug this report has been bitten by before (see the
+  # subgroup-bias supplemental-label history elsewhere in this file).
+  tier_threshold_desc <- if (length(tier_sections) > 0) {
+    first_sec <- tier_sections[[1]]
+    paste(trimws(first_sec[["Risk Tier"]][!first_sec$is_model_header]), collapse = ", ")
+  } else {
+    "Low, Intermediate, and High"
+  }
 
   if (length(tier_sections) > 0) {
     tier_all <- do.call(rbind, tier_sections)
@@ -4375,26 +4385,21 @@
     doc <- add_doc_caption(doc,
       paste0(
         "Table 5. Risk tier classification by model specification. ",
-        "Patients are stratified into three tiers based on each model's predicted NHD risk: ",
-        "Low (<30%), Intermediate (30\u201370%), and High (>70%); a final section instead uses ",
-        "the Iannuzzi 2020 publication's own raw-score strata. ",
+        "Patients are stratified into three tiers based on each recalibrated model's ",
+        "predicted NHD risk: ", tier_threshold_desc, ". ",
         "The observed NHD rate within each tier provides a direct assessment of clinical utility."
       ),
       paste0(
         n_word, " specification", if (n_tier_models > 1) "s are" else " is",
         " shown in separate sections: ",
         paste(model_names_used, collapse = "; "), ". ",
-        "EVALUATION SET: recalibrated specifications are restricted to the temporal test ",
+        "EVALUATION SET: all three specifications are restricted to the temporal test ",
         "partition, matching Table 4, because the training half was used to fit their ",
-        "recalibration. The published lookup and the published score strata involve no ",
-        "fitting and are therefore reported over the full cohort. ",
+        "recalibration. ",
         "N = number of patients assigned to that tier by the corresponding model. ",
         "NHD Events = number with non-home discharge. ",
         "Observed NHD Rate = NHD Events / N. ",
-        "Predicted risk thresholds: Low <30%, Intermediate 30\u201370%, High >70%. ",
-        "Iannuzzi published score strata: Low 0\u20134, Moderate 5\u20139, High \u226510, with the ",
-        "publication's own observed rates (10.1% / 36.7% / 66.1%) shown in parentheses for ",
-        "direct comparison. ",
+        "Predicted risk thresholds: ", tier_threshold_desc, ". ",
         "Note that logistic recalibration of a weakly discriminating integer score compresses ",
         "the predicted probability range toward the cohort base rate; when this places every ",
         "patient in a single probability tier, that is a substantive finding about the score's ",
@@ -4411,10 +4416,9 @@
   if (!is.null(dca_plot_file) && file.exists(dca_plot_file)) {
     doc <- body_add_img(doc, src = dca_plot_file, width = 5.5, height = 3.8)
     doc <- add_doc_caption(doc, "Figure 4. Decision curve analysis.", paste0(
-      "Decision curve analysis for every NHD risk prediction model specification available in ",
-      "this run (Iannuzzi lookup and recalibrated; mFI-5 and sVQI-FS recalibrated, when their ",
-      "pipelines were run), evaluated on the temporal test partition so that all curves compare ",
-      "net benefit across the same patients. ",
+      "Decision curve analysis for the recalibrated Iannuzzi 2020, mFI-5, and sVQI-FS ",
+      "specifications available in this run, evaluated on the temporal test partition so ",
+      "that all curves compare net benefit across the same patients. ",
       "Net benefit is plotted across threshold probabilities from 1% to 99%. ",
       "Model curves are compared with the 'treat-all' (dashed) and ",
       "'treat-none' (zero reference) strategies. Threshold probabilities correspond ",
