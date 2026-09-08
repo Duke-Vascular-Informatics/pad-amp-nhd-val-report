@@ -1,10 +1,10 @@
 ################################################################################
-# GenerateReport.R — render the pad-amp-nhd-prog manuscript report
+# GenerateReport.R — render the pad-amp-nhd-val manuscript report
 #
 # Renders from result artifacts only. No database connection, no VPN, no
 # credentials — this script must remain runnable on a laptop with nothing but
 # a clone of this repo and a results directory copied over (e.g. a Duke PRCC
-# export, or a local Strategus run of pad-amp-nhd-prog).
+# export, or a local Strategus run of pad-amp-nhd-val).
 #
 # WHERE THE DATA COMES FROM — resolved in this order, first match wins:
 #
@@ -22,7 +22,7 @@
 #
 #   3. Already-extracted content in prcc_data/ (i.e. you unzipped by hand).
 #
-#   4. ../pad-amp-nhd-prog/output — the synthetic dev-container run. This is
+#   4. ../pad-amp-nhd-val/output — the synthetic dev-container run. This is
 #      the fallback, not the default-in-spirit: it exists so the repo stays
 #      runnable in the workspace with no export present.
 #
@@ -34,7 +34,7 @@
 # INPUT LAYOUT — whichever directory is chosen must contain:
 #   iannuzzi/  mfi5/  vqifs/     (metrics, calibration tables, subgroup bias)
 #   report_inputs/               (agg_*.csv + _report_config.yaml)
-# This is exactly the shape of pad-amp-nhd-prog's own output/ folder, and of a
+# This is exactly the shape of pad-amp-nhd-val's own output/ folder, and of a
 # duke-prcc-deploy export archive once unzipped.
 #
 # USAGE
@@ -47,7 +47,7 @@ if (file.exists("renv/activate.R")) source("renv/activate.R")
 
 PRCC_DIR      <- "prcc_data"
 EXTRACT_DIR   <- file.path(PRCC_DIR, ".extracted")
-SYNTHETIC_DIR <- file.path("..", "pad-amp-nhd-prog", "output")
+SYNTHETIC_DIR <- file.path("..", "pad-amp-nhd-val", "output")
 
 # A results directory is only usable if it has the two things every table and
 # figure needs. Checked before selecting a source rather than after, so a
@@ -91,7 +91,7 @@ SYNTHETIC_DIR <- file.path("..", "pad-amp-nhd-prog", "output")
   if (length(zips) > 0) {
     # Choose by the RUN TIMESTAMP IN THE FILENAME, not by file mtime.
     # export_results_for_review.R names its archives
-    #   pad_amp_nhd_prog_strategusOutput_<cdm_id>_YYYYMMDD-HHMMSS.zip
+    #   pad_amp_nhd_val_strategusOutput_<cdm_id>_YYYYMMDD-HHMMSS.zip
     # so the filename records when the analysis actually ran. mtime records when
     # the file last landed on this machine, which is a different thing: re-copying
     # or re-downloading an older export makes it the newest file on disk and would
@@ -188,7 +188,7 @@ SYNTHETIC_DIR <- file.path("..", "pad-amp-nhd-prog", "output")
     "Do one of:\n",
     "  - copy a Duke PRCC export .zip into ", PRCC_DIR, "/ (created for you), or\n",
     "  - set RESULTS_DIR to a directory containing report_inputs/ and iannuzzi/, or\n",
-    "  - run pad-amp-nhd-prog's StrategusCodeToRun.R so ", SYNTHETIC_DIR,
+    "  - run pad-amp-nhd-val's StrategusCodeToRun.R so ", SYNTHETIC_DIR,
     " exists.\n"
   )
 }

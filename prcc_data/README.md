@@ -5,7 +5,7 @@ Copy an approved Duke PRCC export archive into this directory and run
 instead of the synthetic development data, and will say so on startup.
 
 ```bash
-cp ~/Downloads/pad_amp_nhd_prog_strategusOutput_*.zip prcc_data/
+cp ~/Downloads/pad_amp_nhd_val_strategusOutput_*.zip prcc_data/
 Rscript GenerateReport.R
 ```
 
@@ -20,7 +20,7 @@ repo does not check that and cannot — it only renders what it is given.
   cheap.
 - Already-unzipped content placed here directly works too.
 - With this directory empty, the report falls back to the synthetic run at
-  `../pad-amp-nhd-prog/output` and prints a prominent warning that the output
+  `../pad-amp-nhd-val/output` and prints a prominent warning that the output
   is **not** a Duke result.
 - `RESULTS_DIR=<path>` overrides all of the above.
 

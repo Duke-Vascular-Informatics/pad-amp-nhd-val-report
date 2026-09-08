@@ -577,7 +577,7 @@
   # AGGREGATE-ONLY INPUT (2026-08-11). This used to take the person_level frame
   # and do the year x disposition tabulation itself, which is why the report
   # needed index_date and a per-subject discharge_type. That tabulation moved
-  # to pad-amp-nhd-prog's R/aggregate_report_inputs.R, which applies the same
+  # to pad-amp-nhd-val's R/aggregate_report_inputs.R, which applies the same
   # >= 11-patients-per-year minimum plus small-cell suppression and emits
   # agg_nhd_by_year.csv. This function now only plots.
   #
@@ -670,7 +670,7 @@
 .save_nhd_rate_by_month_plot <- function(mo_counts, output_folder) {
   # AGGREGATE-ONLY INPUT (2026-08-11) -- see the sibling by-year function above
   # for the rationale. The month x outcome tabulation and its >= 5-patient
-  # minimum moved to pad-amp-nhd-prog's aggregate step (agg_nhd_by_month.csv);
+  # minimum moved to pad-amp-nhd-val's aggregate step (agg_nhd_by_month.csv);
   # the Wilson CI is still computed here, since it is a display concern derived
   # from the two counts rather than something the analysis repo needs to emit.
   if (is.null(mo_counts) || nrow(mo_counts) == 0 ||
@@ -1116,7 +1116,7 @@
   stop(
     "generate_word_report() / .report_word_simple() is disabled.\n",
     "It renders from person_level_scores.csv (patient-level), which this repo ",
-    "no longer reads -- see R/aggregate_report_inputs.R in pad-amp-nhd-prog.\n",
+    "no longer reads -- see R/aggregate_report_inputs.R in pad-amp-nhd-val.\n",
     "Use generate_manuscript_report() instead (that is what GenerateReport.R ",
     "calls), or convert this function to the agg_*.csv artifacts first."
   )
@@ -1815,7 +1815,7 @@
       #
       # Iannuzzi and sVQI-FS subgroup keys are deliberately NOT allocated. All
       # three scores now produce a subgroup_bias.csv (see the prediction_col
-      # change in pad-amp-nhd-prog's compute_subgroup_bias()), so leaving their
+      # change in pad-amp-nhd-val's compute_subgroup_bias()), so leaving their
       # keys here would silently reintroduce two sections the study team asked
       # not to report.
       #
@@ -1861,7 +1861,7 @@
 
   # NOTE (2026-08-11): person_level_scores.csv is no longer read here. Every
   # figure and table that used it now renders from the agg_*.csv artifacts
-  # written by pad-amp-nhd-prog's R/aggregate_report_inputs.R, so this repo
+  # written by pad-amp-nhd-val's R/aggregate_report_inputs.R, so this repo
   # needs no patient-level data at all. covariate_summary.csv and metrics.csv
   # are already aggregate (per-covariate counts; model-level metrics).
   covariate_summary_path <- file.path(score_output_dir, "covariate_summary.csv")
@@ -2442,7 +2442,7 @@
     # ---- Age ------------------------------------------------------------------
     # AGGREGATE-ONLY (2026-08-11). This previously read demographics_age.csv --
     # one row per patient, every exact age -- purely to compute a median and
-    # IQR. Those three numbers are now computed in pad-amp-nhd-prog's aggregate
+    # IQR. Those three numbers are now computed in pad-amp-nhd-val's aggregate
     # step and arrive as a one-row agg_age_summary.csv, so the report never sees
     # an individual age.
     age_row <- row1("Age, median (IQR), years", "N/A")
@@ -2875,7 +2875,7 @@
   save_dca_plot <- function(dca_df, dca_meta, output_folder, threshold_max_pct = NULL) {
     # AGGREGATE-ONLY INPUT (2026-08-11). This used to take patient-level y and
     # a named list of per-patient prediction vectors, and compute net benefit
-    # here. That computation moved to pad-amp-nhd-prog's aggregate step (it is
+    # here. That computation moved to pad-amp-nhd-val's aggregate step (it is
     # exactly reproducible from per-score-value counts -- verified equal to
     # machine epsilon), which emits agg_dca_net_benefit.csv with the reference
     # strategies included, plus agg_dca_meta.csv carrying the two cohort
@@ -3225,7 +3225,7 @@
   # Figure 2 — ROC. Rendered from pre-computed curve points (aggregate) rather
   # than from patient-level outcome/prediction vectors; see
   # .save_roc_plot_from_points() in R/report_helpers.R and the aggregate step
-  # in pad-amp-nhd-prog for why the two are equivalent. The published Iannuzzi
+  # in pad-amp-nhd-val for why the two are equivalent. The published Iannuzzi
   # lookup curve is the primary one for this figure, matching what this report
   # plotted before the conversion.
   .roc_pts <- read_report_input("agg_roc_points")
@@ -4269,7 +4269,7 @@
   # (.test_rows() itself is defined earlier in this function, near the DCA plot,
   # since that is its first point of use.)
   # AGGREGATE-ONLY (2026-08-11). Tiering itself -- assigning each patient to a
-  # risk band and counting -- moved to pad-amp-nhd-prog's aggregate step, which
+  # risk band and counting -- moved to pad-amp-nhd-val's aggregate step, which
   # emits agg_risk_tiers.csv with one row per (model, tier) plus the published
   # Iannuzzi strata and their published rates. This function now only formats
   # those counts into the table's two-level layout.
