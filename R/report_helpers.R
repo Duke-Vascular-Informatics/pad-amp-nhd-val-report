@@ -30,7 +30,7 @@
 # and neither report_prognostic.R, report_extended.R, nor this file calls
 # anything cohort_demographics.R defines). That file's real functions
 # (fetch_subgroup_labels(), fetch_proc_type_labels()) are DB-touching and
-# belong with the scoring step — pad-amp-nhd-prog's R/risk_score_pipeline.R
+# belong with the scoring step — pad-amp-nhd-val's R/risk_score_pipeline.R
 # already sources it independently, with its own graceful skip-if-missing
 # guard. This repo must never source a file that queries a database; removed
 # rather than carried over as dead weight when this file was extracted.
@@ -132,7 +132,7 @@ library(omopReportToolkit)
 # WHY THIS EXISTS (2026-08-11). omopReportToolkit's .save_roc_plot() and
 # .save_dual_roc_plot() both take y/p vectors -- i.e. one row per patient --
 # which is exactly the dependency this repo was converting away from. The
-# curve points themselves are aggregate: pad-amp-nhd-prog's aggregate step
+# curve points themselves are aggregate: pad-amp-nhd-val's aggregate step
 # derives them from per-score-value event counts and emits agg_roc_points.csv,
 # verified to reproduce the person-level curve exactly (identical point set,
 # AUC matching metrics.csv to 10 decimal places).

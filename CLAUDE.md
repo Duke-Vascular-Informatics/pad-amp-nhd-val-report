@@ -1,4 +1,4 @@
-# pad-amp-nhd-prog-report — CLAUDE Instructions (Local Wrapper)
+# pad-amp-nhd-val-report — CLAUDE Instructions (Local Wrapper)
 
 Shared baseline (applies first):
 
@@ -9,7 +9,7 @@ Shared baseline (applies first):
 - **This repo renders a Word report from result artifacts. It must never gain
   a database dependency.** If a change here seems to need `DatabaseConnector`,
   `connection_details`, or any live CDM query, the query belongs in
-  `pad-amp-nhd-prog`'s `R/extract_report_inputs.R` instead, writing a new CSV
+  `pad-amp-nhd-val`'s `R/extract_report_inputs.R` instead, writing a new CSV
   artifact this repo reads. This is the one rule that must never be broken —
   see `docs/MIGRATION_PLAN_REPO_SPLIT.md` (in `omop-dev-workspace`) for why.
 - Consumes [`omopReportToolkit`](https://github.com/Duke-Vascular-Informatics/omop-report-toolkit)
@@ -21,7 +21,7 @@ Shared baseline (applies first):
   over an existing project; see that package's own README for the same
   warning.
 - No `study_params.yaml` here — see `config.R`'s header. Report parameters
-  come from `_report_config.yaml`, written by `pad-amp-nhd-prog`'s extract
+  come from `_report_config.yaml`, written by `pad-amp-nhd-val`'s extract
   step, not duplicated in this repo.
 - Repo is **private**.
 
@@ -40,7 +40,7 @@ Shared baseline (applies first):
    render real Duke results.** Newest archive wins; re-extracts only when the
    archive changes.
 3. Already-unzipped content in `prcc_data/`.
-4. `../pad-amp-nhd-prog/output` — the synthetic dev-container run.
+4. `../pad-amp-nhd-val/output` — the synthetic dev-container run.
 
 The chosen source is announced in a banner on startup, and a synthetic render
 prints an explicit "do not circulate as a Duke result" warning at the end. That
@@ -59,7 +59,7 @@ silently destroyed by the next render of a new export. `REPORT_OUTPUT_DIR`
 overrides.
 
 There is no Step 1/2/9 numbering here — that convention belongs to
-`pad-amp-nhd-prog`'s Strategus pipeline. This repo has exactly one script.
+`pad-amp-nhd-val`'s Strategus pipeline. This repo has exactly one script.
 
 ### Version Control Routing
 
@@ -68,7 +68,7 @@ root's index.
 
 | Remote | URL | What to push |
 |--------|-----|---------------|
-| `origin` | `git@github.com:Duke-Vascular-Informatics/pad-amp-nhd-prog-report.git` | Full repository |
+| `origin` | `git@github.com:Duke-Vascular-Informatics/pad-amp-nhd-val-report.git` | Full repository |
 
 ```bash
 BRANCH=$(gh api user --jq .login)
