@@ -4610,6 +4610,15 @@
       # column. This table is static (it describes the study design, not a
       # data source), so it is built directly rather than read from a CSV.
       tryCatch({
+        # Concept IDs below are the cohort's ACTUAL primary/anchor concept(s)
+        # as authored in pad-amp-nhd-val/inst/cohorts/*.json and inst/Cohorts.csv
+        # (verified against those files directly, not recalled from memory --
+        # e.g. the target cohort's PAD indication is anchored on 3654996 with
+        # 13 related concepts, a DIFFERENT and broader set than cohort 9100003's
+        # 317309, which is used only for the sVQI-FS pvd covariate; conflating
+        # the two would have been a real transcription error). Large concept
+        # sets are given as "anchor + N others" rather than enumerated in full
+        # -- the full expansion is in the source repo's inst/cohorts/*.json.
         atlas_inventory <- data.frame(
           "ATLAS ID" = c(
             "9100011", "9100001",
@@ -4641,13 +4650,35 @@
             "Non-White race",
             "Underweight (BMI, sVQI-FS)"
           ),
+          "Concept ID(s)" = c(
+            "Procedure: 4195136 + 8 others; PAD: 3654996 + 13 others; DM: 201820, 442793; Wound: 197304 + 23 others; Trauma excl.: 194229, 72487, 197751, 4095264, 4187096; Malignancy excl.: 4177242",
+            "None — dynamic vocabulary lookup",
+            "4185932",
+            "316139",
+            "316866, 442604, 201313, 195556",
+            "201820, 4034964",
+            "255573",
+            "317309",
+            "4029926, 4291464",
+            "4086506, 4306934",
+            "4012645, 437643, 439405, 36714126, 4085915, 4044714, 4240470",
+            "21600713",
+            "3000963",
+            "3000963",
+            "3016723, 4146536, 4032243",
+            "Same procedure concepts as 9100011 above",
+            "None — computed from person.year_of_birth",
+            "8532",
+            "Excludes 8527 (White)",
+            "3038553 + 8 others (weight/height fallback)"
+          ),
           "Standard-Concept Logic" = c(
             "Major LE amputation procedure with a qualifying PAD, diabetes, or lower-extremity wound indication; excludes limb-trauma or lower-limb-malignancy codes on the index visit",
             "Discharge disposition resolved dynamically against the local vocabulary; no fixed concept id",
             "Ischemic heart disease diagnosis",
             "Heart failure diagnosis",
             "Hypertension diagnosis (includes hypertensive heart/renal disease)",
-            "Diabetes mellitus diagnosis",
+            "Diabetes mellitus diagnosis (includes a metabolic-complication code)",
             "COPD diagnosis and descendants",
             "Peripheral arterial disease diagnosis and descendants",
             "Ischemic ulcer or ischemic gangrene diagnosis",
@@ -4679,15 +4710,16 @@
         )
         atlas_ft <- flextable::flextable(atlas_inventory) |>
           flextable::bold(part = "header") |>
-          flextable::fontsize(size = 9, part = "all") |>
+          flextable::fontsize(size = 8, part = "all") |>
           flextable::font(fontname = "Calibri", part = "all") |>
           flextable::bg(part = "header", bg = "#1F3864") |>
           flextable::color(part = "header", color = "white") |>
           flextable::padding(padding = 3, part = "all") |>
-          flextable::width(j = "ATLAS ID", width = 0.8) |>
-          flextable::width(j = "Cohort / Concept Set", width = 2.2) |>
-          flextable::width(j = "Standard-Concept Logic", width = 2.6) |>
-          flextable::width(j = "OMOP Table(s)", width = 1.4) |>
+          flextable::width(j = "ATLAS ID", width = 0.6) |>
+          flextable::width(j = "Cohort / Concept Set", width = 1.6) |>
+          flextable::width(j = "Concept ID(s)", width = 2.4) |>
+          flextable::width(j = "Standard-Concept Logic", width = 2.0) |>
+          flextable::width(j = "OMOP Table(s)", width = 1.2) |>
           flextable::set_table_properties(layout = "fixed")
         doc <- body_add_par(doc, "ATLAS concept sets and cohorts", style = "heading 3")
         doc <- body_add_flextable(doc, atlas_ft)
@@ -4698,7 +4730,10 @@
                  "to this study's reserved id block and not yet pushed to the shared ATLAS instance; all ",
                  "others are shared, previously registered cohorts reused unchanged. The final four rows ",
                  "are predictors resolved by a direct concept or demographic query rather than a cohort ",
-                 "definition (ATLAS ID: N/A).")
+                 "definition (ATLAS ID: N/A). Concept ID(s) lists each definition's primary standard ",
+                 "concept(s); a set with more than a few members is given as an anchor concept plus a ",
+                 "count of additional descendants/related concepts, with the full expansion available in ",
+                 "the study repository's cohort definitions.")
         )
         doc <- body_add_par(doc, "", style = "Normal")
         message("[report] Supplemental Table (ATLAS concept sets and cohorts) added.")
