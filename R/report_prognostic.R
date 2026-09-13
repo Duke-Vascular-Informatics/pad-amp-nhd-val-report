@@ -526,10 +526,15 @@
 # -----------------------------------------------------------------------------
 # .save_nhd_rate_by_year_plot()
 #
-# Stacked area chart of NHD rate (%) by procedure year with each non-home
-# discharge disposition type (SNF, IRF, Hospice, LTAC, Other NHD) as a
-# distinct filled band. Requires discharge_type column in person_level_df
-# (populated by read_discharge_types() before this is called).
+# One panel, all series overlaid: NHD rate (%) by procedure year, one line
+# per disposition type (SNF, IRF, Hospice, LTAC, Other NHD) plus an overall
+# NHD line (any of those dispositions), distinguished by grey level +
+# linetype + shape via .gs_scales() -- the same idiom used for the ROC/
+# calibration overlays elsewhere in this file. REDESIGNED 2026-09-13 from a
+# facet_wrap (one disposition type per panel, no Overall line) back to a
+# single overlaid chart per Adam's request; the "Overall" series is
+# expected in agg_nhd_by_year.csv as of the same date (see
+# pad-amp-nhd-val/R/aggregate_report_inputs.R).
 # Returns the output file path, or NULL if the plot cannot be generated.
 # -----------------------------------------------------------------------------
 .save_nhd_rate_by_year_plot <- function(yr_type_tbl, output_folder) {
@@ -567,41 +572,41 @@
     return(NULL)
   }
 
-  # Drop disposition categories with ZERO events across every year before
-  # plotting (added 2026-07-26) — see the identical fix and rationale in the
-  # sibling NHD-by-year function above this one in this file.
+  # "Overall" (any NHD disposition) is always included, in the most
+  # prominent palette slot, alongside whichever named disposition types have
+  # any events (dropped otherwise, same rule as before). All series are
+  # overlaid on one panel via .gs_scales() (grey level + linetype + shape) --
+  # replacing the previous facet_wrap, which gave up the ability to show an
+  # overall line at all in exchange for a legibility workaround this repo no
+  # longer needs now that .gs_series_palette has 10 slots (up from 2 model +
+  # 2 reference greys when the facet design was chosen).
   present_levels <- nhd_levels[
     vapply(nhd_levels, function(tp) sum(yr_type_tbl$events[yr_type_tbl$discharge_type == tp]) > 0,
            logical(1))
   ]
   if (length(present_levels) == 0) present_levels <- nhd_levels
-  yr_type_tbl <- yr_type_tbl[yr_type_tbl$discharge_type %in% present_levels, ]
-  yr_type_tbl$discharge_type <- factor(yr_type_tbl$discharge_type, levels = present_levels)
+  all_levels  <- c("Overall", present_levels)
+  yr_type_tbl <- yr_type_tbl[yr_type_tbl$discharge_type %in% all_levels, ]
+  yr_type_tbl$discharge_type <- factor(yr_type_tbl$discharge_type, levels = all_levels)
   total_procs <- sum(yr_type_tbl$n[!duplicated(yr_type_tbl$year)])
   total_years <- length(unique(yr_type_tbl$year))
 
-  # Small-multiple line chart, one facet per disposition type, replacing the
-  # previous stacked area chart. The stacked area distinguished up to 5 bands
-  # by hue alone (SNF/IRF/Hospice/LTAC/Other NHD) — five greys that far apart
-  # are not achievable on the two-level grey table (.gs_series_palette, in
-  # omopReportToolkit's R/figure_style.R -- NOT this repo's report_helpers.R,
-  # which only re-exports it) -- it tops out at 2 model greys + 2 reference
-  # greys, deliberately, so a figure never relies on a reader distinguishing
-  # more than 2 similar greys. A
-  # facet removes the discrimination problem outright: each disposition gets
-  # its own panel, so no colour/grey encoding is needed at all.
-  p <- ggplot2::ggplot(yr_type_tbl, ggplot2::aes(x = year, y = nhd_rate)) +
-    ggplot2::geom_line(colour = "black", linewidth = 0.8) +
-    ggplot2::geom_point(colour = "black", size = 2, shape = 16) +
-    ggplot2::facet_wrap(~ discharge_type, ncol = min(3, length(present_levels))) +
+  gs <- .gs_scales(all_levels, slots = seq_along(all_levels))
+
+  p <- ggplot2::ggplot(yr_type_tbl,
+      ggplot2::aes(x = year, y = nhd_rate, colour = discharge_type,
+                   linetype = discharge_type, shape = discharge_type)) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::geom_point(size = 2) +
+    gs$colour + gs$linetype + gs$shape +
     ggplot2::scale_x_continuous(breaks = sort(unique(yr_type_tbl$year))) +
     ggplot2::scale_y_continuous(limits = c(0, NA),
                                 labels = function(x) paste0(round(x, 1), "%")) +
     ggplot2::labs(
       title    = "Non-Home Discharge Rate by Disposition Type and Amputation Year",
-      subtitle = "Each panel is one disposition type's share of the NHD rate",
       x        = "Year of index amputation",
       y        = "NHD rate (%)",
+      colour = NULL, linetype = NULL, shape = NULL,
       caption  = paste0("N = ", total_procs, " patients across ", total_years,
                         " years; years with < 11 patients suppressed.")
     ) +
@@ -3512,38 +3517,29 @@
   # definitions" above, since they are covariate definitions, not evaluation
   # methodology; n_scores/score_word are computed there.)
 
-  # Model specifications, condensed 2026-09-13: the two kinds of specification
-  # (published/raw vs. temporal recalibration) are now described once, generically,
-  # rather than walking through each score by number -- Table 4/Figure 3 report the
-  # recalibrated specification only (see their captions), so the per-score
-  # itemization is no longer needed here.
+  # Model specifications + train/test split, merged into one paragraph
+  # 2026-09-13 (was two) -- they are one topic, how each model was fit and
+  # evaluated. Discrimination/calibration and DCA paragraphs tightened at the
+  # same time: Table 4/Figure 3/Figure 4's own captions already carry the
+  # specifics, so this prose states each method once without restating it.
   doc <- body_add_par(doc, paste0(
     "\tFor each score, two kinds of specification were considered: the published mapping, where ",
-    "one exists, and a temporal recalibration. Iannuzzi 2020's published score-to-risk lookup ",
-    "required a monotone (isotonic) fit pooling the derivation and validation columns of the ",
-    "source publication's Table III, since the published table's tail is non-monotonic in the ",
-    "sparse high-score cells (both raw columns are retained in covariates/risk_lookup.csv for ",
-    "provenance); no equivalent published mapping exists for the mFI-5 or sVQI-FS. Each score's ",
-    "temporal recalibration is a logistic regression of its total integer value on the observed ",
-    "NHD outcome, fitted on the chronologically earlier half of the cohort and evaluated on the ",
-    "later half, re-anchoring the score's probability scale to the local event rate. Because ",
-    "recalibration is a monotone transform of a single predictor, AUROC and AUPRC do not differ ",
-    "between a score's published/raw and recalibrated specifications; Table 4 and Figure 3 report ",
-    "the recalibrated specification for every score, and Figure 2 reports discrimination for the ",
-    "published/raw specification."
-  ), style = "Normal")
-
-  doc <- body_add_par(doc, paste0(
-    "\tPatients were sorted chronologically by index amputation date and divided at the midpoint ",
-    "(floor(n / 2) training rows). Each recalibration logistic regression was fitted exclusively ",
-    "on the training set (earlier half), and every specification that involves local fitting — ",
-    "the recalibrated and raw-score models — was evaluated on the test set (later half) only. ",
-    "This prevents optimistic bias from evaluating a locally fitted model on the data used to fit ",
-    "it, and provides an estimate of prospective performance on future patients from the same ",
-    "source. The Iannuzzi published-lookup specification is the exception: it is a fixed external ",
-    "mapping with no parameters estimated from these data, so restricting it to the test half ",
-    "would discard half the available events without removing any bias. It is therefore evaluated ",
-    "over the full cohort. Table 4 states the evaluation set for every column."
+    "one exists, and a temporal recalibration — a logistic regression of the score's total integer ",
+    "value on the observed NHD outcome. Iannuzzi 2020's published score-to-risk lookup required a ",
+    "monotone (isotonic) fit pooling the derivation and validation columns of the source ",
+    "publication's Table III, since the published table's tail is non-monotonic in the sparse ",
+    "high-score cells (both raw columns are retained in covariates/risk_lookup.csv for provenance); ",
+    "no equivalent published mapping exists for the mFI-5 or sVQI-FS. Patients were sorted ",
+    "chronologically by index amputation date and divided at the midpoint; each recalibration was ",
+    "fitted on the earlier half only and evaluated on the later half, preventing optimistic bias ",
+    "from evaluating a locally fitted model on the data used to fit it. The Iannuzzi published-",
+    "lookup specification is the exception: as a fixed external mapping with no parameters ",
+    "estimated from these data, it is evaluated over the full cohort rather than discarding half ",
+    "the available events for no bias-reduction benefit (Table 4 states the evaluation set for ",
+    "every column). Because recalibration is a monotone transform of a single predictor, AUROC and ",
+    "AUPRC do not differ between a score's published/raw and recalibrated specifications; Table 4 ",
+    "and Figure 3 report the recalibrated specification for every score, and Figure 2 reports ",
+    "discrimination for the published/raw specification."
   ), style = "Normal")
   # Append the split sample sizes when split_info.csv was found. The split is
   # identical across scores by construction (same patients, same index dates),
@@ -3554,42 +3550,29 @@
   }
   if (!is.null(split_sent)) doc <- body_add_par(doc, split_sent, style = "Normal")
   doc <- body_add_par(doc, paste0(
-    "\tDiscrimination was summarised using the area under the receiver operating characteristic curve ",
-    "(AUROC) and the area under the precision-recall curve (AUPRC), each with 95% bootstrap ",
-    "percentile confidence intervals (B = 500 resamples). Calibration was assessed using ",
-    "the Brier score, expected calibration error (ECE), calibration intercept, and calibration slope, ",
-    "each with 95% bootstrap percentile CIs. ECE was computed as the probability-weighted mean ",
-    "absolute difference between mean predicted and observed NHD rates across quantile-based bins. ",
-    "Calibration plots compare mean predicted risk versus observed event rate within each bin; the ",
-    "dashed diagonal represents perfect calibration."
+    "\tDiscrimination was summarised using AUROC and AUPRC, and calibration using the Brier score, ",
+    "expected calibration error (ECE), calibration intercept, and calibration slope — each with 95% ",
+    "bootstrap percentile confidence intervals (B = 500 resamples). ECE is the probability-weighted ",
+    "mean absolute difference between predicted and observed NHD rates across quantile-based bins, ",
+    "which the calibration plots also depict directly (dashed diagonal = perfect calibration)."
   ), style = "Normal")
   doc <- body_add_par(doc, paste0(
-    "\tClinical utility was assessed using decision curve analysis (DCA), which quantifies the net ",
-    "benefit of using a model to guide a binary treat/do-not-treat decision across a range of ",
-    "threshold probabilities — the minimum predicted risk at which a clinician would recommend an ",
-    "intervention. Net benefit was computed for each recalibrated model specification across ",
-    "threshold probabilities from 1% to 99%, on the same temporal test partition used for ",
-    "discrimination and calibration, and compared against the 'treat-all' and 'treat-none' reference ",
-    "strategies."
+    "\tClinical utility was assessed using decision curve analysis (DCA): net benefit of using a ",
+    "model to guide a binary treat/do-not-treat decision, across threshold probabilities from 1% to ",
+    "99%, on the same temporal test partition, compared against 'treat-all' and 'treat-none' ",
+    "reference strategies."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Subgroup analysis and bias assessment"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
-    "\tModel calibration and discrimination were assessed across prespecified patient subgroups to ",
-    "identify populations in which the recalibrated risk scores may systematically over- or ",
-    "underestimate observed non-home discharge risk, or discriminate less reliably between patients ",
-    "who did and did not experience it. ",
-    "Subgroups evaluated included biological sex, race, ethnicity, age group (<65, 65–74, ",
-    "≥75 years), amputation level (above-knee, below-knee, other), and calendar year of the ",
-    "index procedure. Expected calibration error (ECE) was computed within each subgroup as the ",
-    "weighted mean absolute difference between grouped predicted and observed event rates across ",
-    "quantile-based bins; the area under the receiver operating characteristic curve (AUROC) was ",
-    "computed within each subgroup using the same recalibrated predicted probabilities. Uncertainty ",
-    "for both metrics was quantified using 200 bootstrap resamples drawn from the same resample per ",
-    "iteration (percentile 95% CI). Subgroup levels with fewer than 10 observed NHD events were ",
-    "suppressed to avoid unreliable estimates; subgroup AUROC is additionally suppressed where the ",
-    "outcome was constant within that subgroup. Subgroup ECE and AUROC are computed on the same ",
-    "temporal test partition as the overall ECE and AUROC reported in Table 4, so the subgroup and ",
-    "overall figures are directly comparable. ",
+    "\tModel calibration and discrimination were assessed across prespecified subgroups — ",
+    "biological sex, race, ethnicity, age group (<65, 65–74, ≥75 years), amputation level ",
+    "(above-knee, below-knee, other), and calendar year of the index procedure — to identify ",
+    "populations where the recalibrated scores may be miscalibrated or discriminate less reliably. ",
+    "Expected calibration error (ECE) and AUROC were computed within each subgroup using the same ",
+    "recalibrated predicted probabilities and temporal test partition as the overall figures in ",
+    "Table 4, with 95% CIs from 200 bootstrap resamples. Subgroup levels with fewer than 10 observed ",
+    "NHD events were suppressed; AUROC was additionally suppressed where the outcome was constant ",
+    "within that subgroup. ",
     # Gated on has_mfi5_bias, not has_mfi5 — see .init_supp_labels(). When the
     # subgroup analysis produced nothing for this dataset the sentence is
     # replaced rather than dropped silently, so a reader is told the assessment
@@ -3768,15 +3751,13 @@
     doc <- add_doc_caption(doc,
       "Figure 1. Non-home discharge (NHD) rate by disposition type and amputation year.",
       paste0(
-        "Non-home discharge (NHD) rate (%) by calendar year of index amputation, ",
-        "stratified by discharge disposition (SNF = Skilled Nursing Facility; ",
-        "IRF = Inpatient Rehabilitation Facility; LTAC = Long-term Acute Care; Hospice; Other NHD). ",
-        "Stacked bands show the cumulative NHD rate by disposition; the top edge of the uppermost ",
-        "band equals the overall NHD rate for that year. ",
-        "Points and lines trace the top edge of each disposition's contribution. ",
-        "Years with fewer than 11 patients are suppressed (small-cell privacy rule, matching ",
-        "Table 2's discharge-destination suppression threshold). ",
-        "Disposition is mapped from UB-04 discharged_to_source_value codes."
+        "Non-home discharge (NHD) rate (%) by calendar year of index amputation. The Overall line ",
+        "is the combined NHD rate across all dispositions; the remaining lines break it out by ",
+        "disposition (SNF = Skilled Nursing Facility; IRF = Inpatient Rehabilitation Facility; ",
+        "LTAC = Long-term Acute Care; Hospice; Other NHD), distinguished by grey level, line type, ",
+        "and point shape. Years with fewer than 11 patients are suppressed (small-cell privacy ",
+        "rule, matching Table 2's discharge-destination suppression threshold). Disposition is ",
+        "mapped from UB-04 discharged_to_source_value codes."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
