@@ -181,69 +181,59 @@
   covariate_defs <- list(
     "Age 60-69 years at index" = list(
       points = "+2", definition = "Age 60–69 years at the index amputation date",
-      omop_concept = "person.year_of_birth (no OMOP concept ID required)",
       derivation = "Computed from person.year_of_birth; age 60–69 at index date"
     ),
     "Age 70-79 years at index" = list(
       points = "+4", definition = "Age 70–79 years at the index amputation date",
-      omop_concept = "person.year_of_birth (no OMOP concept ID required)",
       derivation = "Computed from person.year_of_birth; age 70–79 at index date"
     ),
     "Age 80 or more years at index" = list(
       points = "+6", definition = "Age ≥80 years at the index amputation date",
-      omop_concept = "person.year_of_birth (no OMOP concept ID required)",
       derivation = "Computed from person.year_of_birth; age ≥80 at index date"
     ),
     "Female sex" = list(
       points = "+1", definition = "Female gender recorded in OMOP person table",
-      omop_concept = "Concept 8532 (Female) [vocab query]",
       derivation = "person.gender_concept_id = 8532"
     ),
     "Non-White race" = list(
       points = "+2", definition = "Non-White race recorded in OMOP person table",
-      omop_concept = "Concept 8527 (White) as reference [vocab query]; non-White = race_concept_id ≠ 8527",
       derivation = "person.race_concept_id ≠ 8527 and ≠ 0 (unknown)"
     ),
     "Ambulatory deficit (use of any ambulatory device)" = list(
       points = "+3", definition = "Use of any ambulatory assistive device (cane, walker, wheelchair, etc.)",
-      omop_concept = "4012645, 437643, 439405, 36714126 + descendants [vocab query]",
       derivation = "observation_occurrence with ambulatory device concepts within 365 days before index"
     ),
     "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(
       points = "+3", definition = "Critical limb ischaemia indication: wound, ulcer, or gangrene",
-      omop_concept = "4029926, 4291464 + descendants [vocab query]; see catalog entry tissue_loss",
       derivation = "condition_occurrence within 365 days before or on the index amputation date"
     ),
     "Anemia (Hgb less than 10 g/dL)" = list(
       points = "+2", definition = "Pre-operative anemia: hemoglobin < 10 g/dL",
-      omop_concept = "3000963 (LOINC 718-7, Hgb) [vocab query]; see covariate_concepts.csv :: anemia",
       derivation = "Most recent Hgb in measurement table within 365 days before index; g/L values converted"
     ),
     "Insulin-dependent diabetes mellitus" = list(
       points = "+2", definition = "Insulin use as proxy for insulin-dependent diabetes mellitus",
-      omop_concept = "21600713 (ATC: Insulins and analogues) + descendants [vocab query]",
       derivation = "drug_exposure with qualifying insulin ancestor within 365 days before index"
     )
   )
-  
+
   combined_data <- data.frame(
     Component = character(),
     Points = character(),
     Definition = character(),
-    OMOP_Concept = character(),
     Count = integer(),
     Total = integer(),
     Prevalence = character(),
     stringsAsFactors = FALSE
   )
-  
+
   for (i in seq_len(nrow(covariate_summary_df))) {
     cov_name <- covariate_summary_df$covariate_name[i]
     cov_def <- covariate_defs[[cov_name]]
 
     if (is.null(cov_def)) {
       cov_def <- list(
-        points = "—", definition = cov_name, omop_concept = "—", derivation = "—"
+        points = "—", definition = cov_name, derivation = "—"
       )
     }
 
@@ -251,7 +241,6 @@
       Component = cov_name,
       Points = cov_def$points,
       Definition = cov_def$definition,
-      OMOP_Concept = cov_def$omop_concept,
       Count = covariate_summary_df$n_positive[i],
       Total = covariate_summary_df$n_total[i],
       Prevalence = paste0(
@@ -266,7 +255,6 @@
       Component = "Component",
       Points = "Points",
       Definition = "Definition",
-      OMOP_Concept = "OMOP Standard Concept ID(s)",
       Count = "Count",
       Total = "Total",
       Prevalence = "Prevalence %"
@@ -274,13 +262,12 @@
     bold(part = "header") |>
     fontsize(size = 9, part = "all") |>
     font(fontname = "Calibri", part = "all") |>
-    width(j = "Component", width = 1.8) |>
-    width(j = "Points", width = 0.5) |>
-    width(j = "Definition", width = 1.8) |>
-    width(j = "OMOP_Concept", width = 1.8) |>
-    width(j = "Count", width = 0.6) |>
-    width(j = "Total", width = 0.6) |>
-    width(j = "Prevalence", width = 0.8) |>
+    width(j = "Component", width = 2.4) |>
+    width(j = "Points", width = 0.6) |>
+    width(j = "Definition", width = 3.0) |>
+    width(j = "Count", width = 0.7) |>
+    width(j = "Total", width = 0.7) |>
+    width(j = "Prevalence", width = 0.9) |>
     align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
     bg(part = "header", bg = "#1F3864") |>
     color(part = "header", color = "white") |>
@@ -288,7 +275,7 @@
     border_outer(border = border_out, part = "all") |>
     set_table_properties(layout = "fixed") |>
     padding(padding = 3, part = "all")
-  
+
   ft
 }
 
@@ -312,31 +299,26 @@
     "Dependent functional status (frailty / impaired mobility)" = list(
       points = "+1",
       definition = "Partial or total dependence for ADLs, frailty, or impaired mobility",
-      omop_concept = "Concept 4086506 (Frailty, SNOMED 248279007) + 4306934 (Impaired mobility, SNOMED 82971005) + descendants [vocab query]",
       derivation = "observation_occurrence within 10 years before index (lookback_start_day = −3650)"
     ),
     "Diabetes mellitus (any type)" = list(
       points = "+1",
       definition = "Any type of diabetes mellitus",
-      omop_concept = "Concept 201820 (Diabetes mellitus, SNOMED 73211009) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     ),
     "Chronic obstructive pulmonary disease" = list(
       points = "+1",
       definition = "COPD (current-pneumonia sub-component of mFI-5 omitted — documented limitation in EHR data)",
-      omop_concept = "Concept 255573 (COPD, SNOMED 13645005) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     ),
     "Congestive heart failure (within 30 days prior)" = list(
       points = "+1",
       definition = "Congestive heart failure within 30 days before the index amputation date",
-      omop_concept = "Concept 316139 (Heart failure, SNOMED 84114007) + descendants [vocab query]",
       derivation = "condition_occurrence within 30 days before index (lookback_start_day = −30)"
     ),
     "Hypertension" = list(
       points = "+1",
       definition = "Hypertensive disorder (medication requirement not enforced — documented limitation)",
-      omop_concept = "Concept 316866 (Hypertensive disorder, SNOMED 38341003) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     )
   )
@@ -345,7 +327,6 @@
     Component    = character(),
     Points       = character(),
     Definition   = character(),
-    OMOP_Concept = character(),
     Count        = integer(),
     Total        = integer(),
     Prevalence   = character(),
@@ -356,13 +337,12 @@
     cov_name <- covariate_summary_df$covariate_name[i]
     cov_def  <- covariate_defs[[cov_name]]
     if (is.null(cov_def)) {
-      cov_def <- list(points = "—", definition = cov_name, omop_concept = "—", derivation = "—")
+      cov_def <- list(points = "—", definition = cov_name, derivation = "—")
     }
     combined_data <- rbind(combined_data, data.frame(
       Component    = cov_name,
       Points       = cov_def$points,
       Definition   = cov_def$definition,
-      OMOP_Concept = cov_def$omop_concept,
       Count        = covariate_summary_df$n_positive[i],
       Total        = covariate_summary_df$n_total[i],
       Prevalence   = paste0(
@@ -377,7 +357,6 @@
       Component    = "Component",
       Points       = "Points",
       Definition   = "Definition",
-      OMOP_Concept = "OMOP Standard Concept ID(s)",
       Count        = "Count",
       Total        = "Total",
       Prevalence   = "Prevalence %"
@@ -385,13 +364,12 @@
     bold(part = "header") |>
     fontsize(size = 9, part = "all") |>
     font(fontname = "Calibri", part = "all") |>
-    width(j = "Component",    width = 1.8) |>
-    width(j = "Points",       width = 0.5) |>
-    width(j = "Definition",   width = 1.8) |>
-    width(j = "OMOP_Concept", width = 1.8) |>
-    width(j = "Count",        width = 0.6) |>
-    width(j = "Total",        width = 0.6) |>
-    width(j = "Prevalence",   width = 0.8) |>
+    width(j = "Component",    width = 2.4) |>
+    width(j = "Points",       width = 0.6) |>
+    width(j = "Definition",   width = 3.0) |>
+    width(j = "Count",        width = 0.7) |>
+    width(j = "Total",        width = 0.7) |>
+    width(j = "Prevalence",   width = 0.9) |>
     align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
     bg(part = "header", bg = "#1F3864") |>
     color(part = "header", color = "white") |>
@@ -423,37 +401,31 @@
     "Hypertension" = list(
       points = "+1",
       definition = "Hypertensive disorder",
-      omop_concept = "Concept 316866 (Hypertensive disorder, SNOMED 38341003) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index (lookback_start_day = −3650)"
     ),
     "Congestive heart failure" = list(
       points = "+1",
       definition = "Congestive heart failure",
-      omop_concept = "Concept 316139 (Heart failure, SNOMED 84114007) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     ),
     "Coronary artery disease" = list(
       points = "+1",
       definition = "Coronary artery disease",
-      omop_concept = "Concept 4185932 (Coronary arteriosclerosis) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     ),
     "Peripheral vascular disease" = list(
       points = "+1",
       definition = "Peripheral arterial occlusive disease (diagnosis proxy; paper uses ABI <0.7 or prior arterial intervention/amputation)",
-      omop_concept = "Concept 317309 (Peripheral arterial occlusive disease, SNOMED 399957001) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     ),
     "Diabetes mellitus (any type)" = list(
       points = "+1",
       definition = "Any type of diabetes mellitus",
-      omop_concept = "Concept 201820 (Diabetes mellitus, SNOMED 73211009) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     ),
     "Chronic obstructive pulmonary disease" = list(
       points = "+1",
       definition = "COPD",
-      omop_concept = "Concept 255573 (COPD, SNOMED 13645005) + descendants [vocab query]",
       derivation = "condition_occurrence within 10 years before index"
     ),
     # RENAL IMPAIRMENT — key updated 2026-07-26 to match the covariate_name in
@@ -466,31 +438,22 @@
     "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(
       points = "+1",
       definition = "Creatinine > 1.8 mg/dL or dialysis, the paper's own lab-value definition (no longer a diagnosis proxy — CORRECTED 2026-07-26 after the prior CKD-diagnosis proxy activated in 224/225 patients, 99.6%, due to an over-broad concept-ancestor expansion)",
-      omop_concept = "Concept 3016723 (Creatinine [Mass/volume] in Serum or Plasma, LOINC) thresholded at >1.8 mg/dL, OR Concepts 4146536 (Renal dialysis) / 4032243 (Dialysis procedure) [vocab query]",
       derivation = "query_renal_impairment_covariate_counts() in R/risk_score_pipeline.R: measurement value threshold OR procedure/condition dialysis presence, within 10 years before index"
     ),
     # ANEMIA — key updated 2026-07-26, same reason as renal impairment above.
     "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(
       points = "+1",
       definition = "Hgb < 13 g/dL (male) / < 12 g/dL (female), the paper's own sex-specific lab threshold (no longer a diagnosis proxy — CORRECTED 2026-07-26 after the prior anemia-diagnosis proxy activated in only 3/225 patients, 1.3%, under-capturing relative to the lab threshold)",
-      omop_concept = "Concept 3000963 (Hemoglobin [Mass/volume] in Blood, LOINC 718-7) — the same measurement Iannuzzi's single-threshold anemia component uses [vocab query]",
       derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 10 years before index; missing_is_negative = FALSE (unmeasured Hgb is unknown, not \"not anaemic\")"
     ),
     "Underweight (BMI < 18.5)" = list(
       points = "+1",
       definition = "BMI < 18.5, the paper's own cut-point (direct measurement preferred; weight/height fallback)",
-      omop_concept = "Concepts 3038553, 36304833 (BMI direct); 3025315, 3013762, 3011054, 3026600 (weight); 3036277, 3023540, 3015514 (height) [vocab query]",
       derivation = "measurement within 10 years before index; missing_is_negative = FALSE (unmeasured BMI is unknown, not \"not underweight\")"
     ),
     "Non-ambulatory / impaired ambulation status" = list(
       points = "+1",
       definition = "Impaired ambulation, walking aid use, or gait abnormality",
-      omop_concept = paste0(
-        "Concepts 4012645, 437643, 439405, 36714126 (Observation/Clinical Finding) + ",
-        "4085915 (Provision of long cane, Procedure) + 4044714 (Using wheelchair, Observation) + ",
-        "4240470 (Wheelchair, Device) [vocab query]; see phenotype_library/catalog.yaml :: ",
-        "ambulatory_deficit for per-concept domain notes"
-      ),
       derivation = paste0(
         "query_auto_domain_covariate_counts() in R/risk_score_pipeline.R (domain = \"auto\" in ",
         "covariates_vqifs.csv — CHANGED 2026-07-26 from \"observation\", which found 0/225 ",
@@ -505,7 +468,6 @@
     Component    = character(),
     Points       = character(),
     Definition   = character(),
-    OMOP_Concept = character(),
     Count        = integer(),
     Total        = integer(),
     Prevalence   = character(),
@@ -516,13 +478,12 @@
     cov_name <- covariate_summary_df$covariate_name[i]
     cov_def  <- covariate_defs[[cov_name]]
     if (is.null(cov_def)) {
-      cov_def <- list(points = "—", definition = cov_name, omop_concept = "—", derivation = "—")
+      cov_def <- list(points = "—", definition = cov_name, derivation = "—")
     }
     combined_data <- rbind(combined_data, data.frame(
       Component    = cov_name,
       Points       = cov_def$points,
       Definition   = cov_def$definition,
-      OMOP_Concept = cov_def$omop_concept,
       Count        = covariate_summary_df$n_positive[i],
       Total        = covariate_summary_df$n_total[i],
       Prevalence   = paste0(
@@ -537,7 +498,6 @@
       Component    = "Component",
       Points       = "Points",
       Definition   = "Definition",
-      OMOP_Concept = "OMOP Standard Concept ID(s)",
       Count        = "Count",
       Total        = "Total",
       Prevalence   = "Prevalence %"
@@ -545,13 +505,12 @@
     bold(part = "header") |>
     fontsize(size = 9, part = "all") |>
     font(fontname = "Calibri", part = "all") |>
-    width(j = "Component",    width = 1.8) |>
-    width(j = "Points",       width = 0.5) |>
-    width(j = "Definition",   width = 1.8) |>
-    width(j = "OMOP_Concept", width = 1.8) |>
-    width(j = "Count",        width = 0.6) |>
-    width(j = "Total",        width = 0.6) |>
-    width(j = "Prevalence",   width = 0.8) |>
+    width(j = "Component",    width = 2.4) |>
+    width(j = "Points",       width = 0.6) |>
+    width(j = "Definition",   width = 3.0) |>
+    width(j = "Count",        width = 0.7) |>
+    width(j = "Total",        width = 0.7) |>
+    width(j = "Prevalence",   width = 0.9) |>
     align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
     bg(part = "header", bg = "#1F3864") |>
     color(part = "header", color = "white") |>
@@ -3023,10 +2982,17 @@
       function(d) d[seq(1, nrow(d), by = max(1, floor(nrow(d) / 12))), , drop = FALSE]
     ))
 
+    # Model curves drawn heavier than the two reference strategies (0.9 vs 1.15)
+    # so the reference lines recede visually behind the curves being compared,
+    # on top of the existing grey/linetype/shape channels -- a small addition
+    # for readers who find the lines hard to tell apart even with those.
     p_dca <- ggplot2::ggplot(dca_df,
         ggplot2::aes(x = threshold * 100, y = net_benefit,
                      colour = Strategy, linetype = Strategy)) +
-      ggplot2::geom_line(linewidth = 0.9) +
+      ggplot2::geom_line(data = dca_df[dca_df$Strategy %in% model_names, , drop = FALSE],
+                         linewidth = 1.15) +
+      ggplot2::geom_line(data = dca_df[dca_df$Strategy %in% ref_names, , drop = FALSE],
+                         linewidth = 0.7) +
       ggplot2::geom_point(data = dca_points, ggplot2::aes(shape = Strategy), size = 1.6) +
       gs$colour + gs$linetype + gs$shape +
       # coord_cartesian(), not scale limits: zooming keeps every computed row
@@ -3454,40 +3420,31 @@
 
   doc <- body_add_par(doc, paste0(
     "\t", score_word, " published integer risk scores were evaluated as candidate predictors of ",
-    "NHD. The Iannuzzi 2020 NHD score (range 0–18 points) uses age, a sex/race term, ambulatory ",
-    "status, tissue loss, anemia, and insulin-dependent diabetes; its published four-level sex/race ",
-    "interaction is implemented here as two additive binary components (female +1, non-White +2), ",
-    "reproducing the published point totals exactly. ",
-    if (has_mfi5) paste0(
-      "The Subramaniam 2018 modified Frailty Index-5 (mFI-5, range 0–5 points) assigns one point ",
-      "each for diabetes mellitus, COPD, congestive heart failure, hypertension requiring ",
-      "medication, and dependent functional status. "
-    ) else "",
+    "NHD: the Iannuzzi 2020 NHD score (range 0–18 points; its published four-level sex/race ",
+    "interaction is implemented as two additive binary components, female +1 and non-White +2, ",
+    "reproducing the published point totals exactly)",
+    if (has_mfi5) ", the Subramaniam 2018 modified Frailty Index-5 (mFI-5, range 0–5 points)" else "",
     if (has_vqifs) paste0(
       # NOTE: this list must match covariates/covariates_vqifs.csv exactly — ten items,
       # NOT the paper's eleven. Non-home residence is deliberately omitted (near-circular
       # with the NHD outcome; no clean standard concept in this vocabulary build).
-      "The Kraiss 2022 simple VQI Frailty Score (sVQI-FS, implemented as a 0–10 integer point sum) ",
-      "assigns one point each for hypertension, congestive heart failure, coronary artery disease, ",
-      "peripheral vascular disease, diabetes, COPD, renal impairment, anemia, underweight status, ",
-      "and non-ambulatory status; the published eleventh item, non-home residence, is omitted as ",
-      "near-circular with the outcome. We evaluate the equally weighted form of the score, since the ",
-      "authors' preferred differentially weighted variant requires a procedure-specific risk term ",
-      "with categories that do not include major amputation; both departures are addressed in the ",
-      "Limitations. "
+      ", and the Kraiss 2022 simple VQI Frailty Score (sVQI-FS, implemented as 0–10 points; the ",
+      "published eleventh item, non-home residence, is omitted as near-circular with the outcome, ",
+      "and the equally weighted form is evaluated rather than the authors' differentially weighted ",
+      "variant — both addressed in the Limitations)"
     ) else "",
-    "Each component was ascertained from clinical documentation on or before the index date using ",
-    "a component-specific lookback window (Tables 3a–3c); a patient meeting a component's minimum ",
-    "evidence threshold received its full published point value, and an absent record was treated ",
-    "as zero evidence.",
+    ". Every component was ascertained from clinical documentation on or before the index date ",
+    "using a component-specific lookback window; a patient meeting a component's evidence ",
+    "threshold received its full published point value, and an absent record was treated as zero ",
+    "evidence.",
     if (has_vqifs) paste0(
-      " The source publication suppresses the sVQI-FS when fewer than five frailty domains have ",
-      "data; because ascertainment here is presence/absence of coded records rather than an ",
-      "explicit missing state, no equivalent suppression was applied and every patient received a ",
-      "score."
+      " The source publication's rule suppressing sVQI-FS when fewer than five frailty domains ",
+      "have data was not applied, since ascertainment here is presence/absence of coded records ",
+      "rather than an explicit missing state."
     ) else "",
-    " The full ATLAS concept-set/cohort inventory underlying every definition in this paragraph is ",
-    "in ", supp_table("concept_set_inventory"), "."
+    " Component definitions, point values, and observed activation are in Tables 3a–c; the ",
+    "ATLAS concept-set/cohort inventory underlying every definition is in ",
+    supp_table("concept_set_inventory"), "."
   ), style = "Normal")
 
   # ---------------------------------------------------------------------------
@@ -3555,35 +3512,25 @@
   # definitions" above, since they are covariate definitions, not evaluation
   # methodology; n_scores/score_word are computed there.)
 
-  # Model specifications: two per score (raw/lookup + recalibrated).
-  spec_n    <- if (has_vqifs) 6L else if (has_mfi5) 4L else 2L
-  spec_word <- c("2" = "Two", "4" = "Four", "6" = "Six")[[as.character(spec_n)]]
-
+  # Model specifications, condensed 2026-09-13: the two kinds of specification
+  # (published/raw vs. temporal recalibration) are now described once, generically,
+  # rather than walking through each score by number -- Table 4/Figure 3 report the
+  # recalibrated specification only (see their captions), so the per-score
+  # itemization is no longer needed here.
   doc <- body_add_par(doc, paste0(
-    "\t", spec_word, " model specifications were evaluated. ",
-    "(1) Iannuzzi 2020 — published lookup: predicted NHD probabilities drawn from the original ",
-    "score-to-risk table without any local refitting. Because the published table's tail is ",
-    "non-monotonic in the sparse high-score cells, the mapping used here is a monotone ",
-    "(isotonic) fit pooling the derivation and validation columns of the source publication's ",
-    "Table III; both raw columns are retained in covariates/risk_lookup.csv for provenance. ",
-    "(2) Iannuzzi 2020 — temporal recalibration: a logistic regression of the total integer ",
-    "score on the observed binary NHD outcome, fitted on the chronologically earlier half of the ",
-    "cohort (training set) and evaluated on the later half (test set). This quantifies the ",
-    "improvement in calibration obtainable by re-anchoring the score's probability scale to the ",
-    "local event rate. ",
-    if (has_mfi5) paste0(
-      "(3) mFI-5 — raw score and (4) mFI-5 — temporal recalibration: the same procedure applied ",
-      "to the mFI-5 raw integer score. Because no published NHD probability mapping exists for ",
-      "the mFI-5, recalibration is required to obtain predicted probabilities. "
-    ) else "",
-    if (has_vqifs) paste0(
-      "(5) sVQI-FS — raw score and (6) sVQI-FS — temporal recalibration: likewise applied to the ",
-      "sVQI-FS raw integer score, for which no published NHD probability mapping exists either. "
-    ) else "",
-    "Because logistic recalibration of a single predictor is a strictly monotone transform, the ",
-    "raw-score and recalibrated specifications of a given score share the same discrimination by ",
-    "construction; AUROC and AUPRC are therefore computed once per score and reported in both ",
-    "columns."
+    "\tFor each score, two kinds of specification were considered: the published mapping, where ",
+    "one exists, and a temporal recalibration. Iannuzzi 2020's published score-to-risk lookup ",
+    "required a monotone (isotonic) fit pooling the derivation and validation columns of the ",
+    "source publication's Table III, since the published table's tail is non-monotonic in the ",
+    "sparse high-score cells (both raw columns are retained in covariates/risk_lookup.csv for ",
+    "provenance); no equivalent published mapping exists for the mFI-5 or sVQI-FS. Each score's ",
+    "temporal recalibration is a logistic regression of its total integer value on the observed ",
+    "NHD outcome, fitted on the chronologically earlier half of the cohort and evaluated on the ",
+    "later half, re-anchoring the score's probability scale to the local event rate. Because ",
+    "recalibration is a monotone transform of a single predictor, AUROC and AUPRC do not differ ",
+    "between a score's published/raw and recalibrated specifications; Table 4 and Figure 3 report ",
+    "the recalibrated specification for every score, and Figure 2 reports discrimination for the ",
+    "published/raw specification."
   ), style = "Normal")
 
   doc <- body_add_par(doc, paste0(
@@ -3844,11 +3791,10 @@
     doc <- add_doc_caption(doc,
       "Table 3a. Subramaniam mFI-5: component definitions and activation summary.",
       paste0(
-        "The five Subramaniam 2018 mFI-5 components are listed with their ",
-        "point value (each = 1 point, range 0–5), OMOP-based definition, and observed ",
-        "activation rate in the validation cohort. All components use a 10-year lookback ",
-        "window except congestive heart failure (30-day lookback per the original publication). ",
-        "Absent records are treated as true negatives (missing_is_negative = TRUE for all components)."
+        "Point value (range 0–5) and observed activation rate for each of the five mFI-5 ",
+        "components. All use a 10-year lookback except congestive heart failure (30 days, per ",
+        "the original publication); absent records count as true negatives. Concept-set ",
+        "definitions are in ", supp_table("concept_set_inventory"), "."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
@@ -3865,12 +3811,10 @@
   doc <- add_doc_caption(doc,
     "Table 3b. Iannuzzi 2020 NHD score: component definitions and activation summary.",
     paste0(
-      "The nine components of the Iannuzzi 2020 non-home discharge integer risk score ",
-      "are listed with point values (range 0–18), OMOP-based definitions, and observed ",
-      "activation rates in the validation cohort. ",
-      "For the anemia component (Hgb < 10 g/dL), absent measurement records are treated as ",
-      "unknown (missing_is_negative = FALSE). All other components treat absent records as ",
-      "true negatives."
+      "Point values (range 0–18) and observed activation rates for the nine Iannuzzi 2020 ",
+      "components. Anemia (Hgb < 10 g/dL) treats an absent measurement as unknown ",
+      "(missing_is_negative = FALSE); all other components treat it as a true negative. ",
+      "Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -3882,24 +3826,18 @@
     doc <- add_doc_caption(doc,
       "Table 3c. Kraiss 2022 sVQI-FS: component definitions and activation summary.",
       paste0(
-        "Ten of the eleven Kraiss 2022 simple VQI Frailty Score components are listed ",
-        "with their point value (each = 1 point, range 0–10 as implemented here; ",
-        "non-home residence is omitted, see covariates/covariates_vqifs.csv header), ",
-        "OMOP-based definition, and observed activation rate in the validation cohort. ",
+        "Point value (range 0–10 as implemented; non-home residence, the paper's eleventh item, ",
+        "is omitted — see covariates/covariates_vqifs.csv) and observed activation rate for each ",
+        "of ten sVQI-FS components, all with a 10-year lookback. ",
         # Updated to match the 2026-07-26 switch from diagnosis proxies to the paper's
         # own lab thresholds (query_renal_impairment_covariate_counts() and
         # query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R).
         # This footnote previously still claimed diagnosis proxies, understating fidelity.
-        "All components use a 10-year lookback window. Renal impairment (serum creatinine ",
-        "> 1.8 mg/dL or dialysis) and anemia (hemoglobin < 13 g/dL in males, < 12 g/dL in ",
-        "females) apply the source publication's own laboratory thresholds rather than ",
-        "diagnosis proxies; underweight uses a direct BMI < 18.5 measurement threshold. ",
-        "Peripheral vascular disease remains a diagnosis-based proxy rather than the ",
-        "paper's ankle-brachial index < 0.7 or prior arterial intervention definition. ",
-        "Absent records are treated as true ",
-        "negatives (missing_is_negative = TRUE) for all components except underweight and ",
-        "anemia, where an unmeasured BMI or hemoglobin value is treated as unknown rather ",
-        "than a true negative."
+        "Renal impairment and anemia use the source publication's own laboratory thresholds ",
+        "rather than diagnosis proxies; peripheral vascular disease remains a diagnosis-based ",
+        "proxy rather than the paper's ankle-brachial index definition. Absent records count as ",
+        "true negatives except for underweight and anemia, where an unmeasured value is treated ",
+        "as unknown. Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
@@ -3934,14 +3872,6 @@
       "Calibration intercept",
       "Calibration slope"
     ),
-    "Iannuzzi Lookup" = c(
-      paste0(fmt(metric_value("AUROC",                "lookup")), " ", metric_ci("AUROC",                "lookup")),
-      paste0(fmt(metric_value("AUPRC",                "lookup")), " ", metric_ci("AUPRC",                "lookup")),
-      paste0(fmt(metric_value("Brier",                "lookup")), " ", metric_ci("Brier",                "lookup")),
-      paste0(fmt(metric_value("ECE",                  "lookup")), " ", metric_ci("ECE",                  "lookup")),
-      paste0(fmt(metric_value("CalibrationIntercept", "lookup")), " ", metric_ci("CalibrationIntercept", "lookup")),
-      paste0(fmt(metric_value("CalibrationSlope",     "lookup")), " ", metric_ci("CalibrationSlope",     "lookup"))
-    ),
     "Iannuzzi Recalibrated" = c(
       paste0(fmt(metric_value("AUROC",                "recalibrated")), " ", metric_ci("AUROC",                "recalibrated")),
       paste0(fmt(metric_value("AUPRC",                "recalibrated")), " ", metric_ci("AUPRC",                "recalibrated")),
@@ -3950,14 +3880,6 @@
       paste0(fmt(metric_value("CalibrationIntercept", "recalibrated")), " ", metric_ci("CalibrationIntercept", "recalibrated")),
       paste0(fmt(metric_value("CalibrationSlope",     "recalibrated")), " ", metric_ci("CalibrationSlope",     "recalibrated"))
     ),
-    "mFI-5 Raw" = if (!is.null(metrics_mfi5)) c(
-      paste0(fmt(metric_value_mfi5("AUROC", "score_only")), " ", metric_ci_mfi5("AUROC", "score_only")),
-      paste0(fmt(metric_value_mfi5("AUPRC", "score_only")), " ", metric_ci_mfi5("AUPRC", "score_only")),
-      "N/A",
-      "N/A",
-      "N/A",
-      "N/A"
-    ) else rep("—", 6),
     "mFI-5 Recalibrated" = if (!is.null(metrics_mfi5)) c(
       paste0(fmt(metric_value_mfi5("AUROC",                "recalibrated")), " ", metric_ci_mfi5("AUROC",                "recalibrated")),
       paste0(fmt(metric_value_mfi5("AUPRC",                "recalibrated")), " ", metric_ci_mfi5("AUPRC",                "recalibrated")),
@@ -3965,14 +3887,6 @@
       paste0(fmt(metric_value_mfi5("ECE",                  "recalibrated")), " ", metric_ci_mfi5("ECE",                  "recalibrated")),
       paste0(fmt(metric_value_mfi5("CalibrationIntercept", "recalibrated")), " ", metric_ci_mfi5("CalibrationIntercept", "recalibrated")),
       paste0(fmt(metric_value_mfi5("CalibrationSlope",     "recalibrated")), " ", metric_ci_mfi5("CalibrationSlope",     "recalibrated"))
-    ) else rep("—", 6),
-    "sVQI-FS Raw" = if (!is.null(metrics_vqifs)) c(
-      paste0(fmt(metric_value_vqifs("AUROC", "score_only")), " ", metric_ci_vqifs("AUROC", "score_only")),
-      paste0(fmt(metric_value_vqifs("AUPRC", "score_only")), " ", metric_ci_vqifs("AUPRC", "score_only")),
-      "N/A",
-      "N/A",
-      "N/A",
-      "N/A"
     ) else rep("—", 6),
     "sVQI-FS Recalibrated" = if (!is.null(metrics_vqifs)) c(
       paste0(fmt(metric_value_vqifs("AUROC",                "recalibrated")), " ", metric_ci_vqifs("AUROC",                "recalibrated")),
@@ -3991,11 +3905,8 @@
   perf_ft <- flextable::flextable(perf_tbl) |>
     flextable::set_header_labels(
       Metric                   = "Metric",
-      "Iannuzzi Lookup"        = "Iannuzzi 2020\n(Lookup, 95% CI)",
       "Iannuzzi Recalibrated"  = "Iannuzzi 2020\n(Recalibrated, 95% CI)",
-      "mFI-5 Raw"              = "mFI-5\n(Raw score, 95% CI)",
       "mFI-5 Recalibrated"     = "mFI-5\n(Recalibrated, 95% CI)",
-      "sVQI-FS Raw"            = "sVQI-FS\n(Raw score, 95% CI)",
       "sVQI-FS Recalibrated"   = "sVQI-FS\n(Recalibrated, 95% CI)"
     ) |>
     flextable::bold(part = "header") |>
@@ -4004,52 +3915,35 @@
     flextable::bg(part = "header", bg = "#1F3864") |>
     flextable::color(part = "header", color = "white") |>
     flextable::padding(padding = 3, part = "all") |>
-    flextable::width(j = "Metric",                  width = 1.3) |>
-    flextable::width(j = "Iannuzzi Lookup",         width = 1.0) |>
-    flextable::width(j = "Iannuzzi Recalibrated",   width = 1.0) |>
-    flextable::width(j = "mFI-5 Raw",               width = 0.9) |>
-    flextable::width(j = "mFI-5 Recalibrated",      width = 1.0) |>
-    flextable::width(j = "sVQI-FS Raw",             width = 0.9) |>
-    flextable::width(j = "sVQI-FS Recalibrated",    width = 1.0) |>
-    flextable::align(j = c("Iannuzzi Lookup", "Iannuzzi Recalibrated",
-                           "mFI-5 Raw", "mFI-5 Recalibrated",
-                           "sVQI-FS Raw", "sVQI-FS Recalibrated"),
+    flextable::width(j = "Metric",                  width = 1.6) |>
+    flextable::width(j = "Iannuzzi Recalibrated",   width = 1.8) |>
+    flextable::width(j = "mFI-5 Recalibrated",      width = 1.8) |>
+    flextable::width(j = "sVQI-FS Recalibrated",    width = 1.8) |>
+    flextable::align(j = c("Iannuzzi Recalibrated", "mFI-5 Recalibrated", "sVQI-FS Recalibrated"),
                      align = "center", part = "all") |>
     flextable::set_table_properties(layout = "fixed")
 
   doc <- body_add_flextable(doc, perf_ft)
   doc <- add_doc_caption(doc,
     paste0(
-      "Table 4. Model performance: discrimination and calibration metrics for ",
-      "Iannuzzi 2020 (published lookup), Subramaniam mFI-5 (raw integer score), and ",
-      "Kraiss 2022 sVQI-FS (raw integer score)."
+      "Table 4. Model performance: discrimination and calibration metrics for the ",
+      "temporally recalibrated Iannuzzi 2020, Subramaniam mFI-5, and Kraiss 2022 sVQI-FS ",
+      "specifications."
     ),
     paste0(
-      if (has_vqifs_metrics) "Six model specifications are compared. " else "Four model specifications are compared. ",
-      "Iannuzzi 2020 (Lookup): predicted probabilities drawn from a refitted ",
-      "score-to-risk lookup (monotone isotonic fit, resolving the non-monotonic inversion in ",
-      "the published Table III). ",
-      "Iannuzzi 2020 (Recalibrated): logistic regression of the total Iannuzzi integer score on the ",
-      "observed NHD outcome, fitted on the chronologically earlier half of the cohort ",
-      "(training set) and evaluated on the later half (test set). ",
-      "mFI-5 (Raw score): discrimination from the raw integer score (0–5) only; ",
-      "no published NHD probability mapping exists so calibration metrics are N/A. ",
-      "mFI-5 (Recalibrated): logistic recalibration of the mFI-5 raw score on the same ",
-      "temporal training split as above; all four metrics reported on the test set. ",
-      if (has_vqifs_metrics) paste0(
-        "sVQI-FS (Raw score): discrimination from the raw integer score only; ",
-        "no published NHD probability mapping exists so calibration metrics are N/A. ",
-        "sVQI-FS (Recalibrated): logistic recalibration of the sVQI-FS raw score on the same ",
-        "temporal training split as above; all four metrics reported on the test set. "
-      ) else "",
+      "Each recalibrated specification is a logistic regression of the score's total integer ",
+      "value on the observed NHD outcome, fitted on the chronologically earlier half of the ",
+      "cohort and evaluated on the later half; metrics reported here are on the test half only. ",
+      "AUROC and AUPRC are unchanged from the score's published-lookup or raw-score ",
+      "specification (recalibration is a monotone transform of a single predictor) and are also ",
+      "shown in Figure 2. ",
       if (nchar(split_caption) > 0) paste0(split_caption, " ") else "",
-      "N/A = metric not applicable for this specification. ",
       "95% CI = 95% bootstrap percentile confidence interval (B = 500 resamples). ",
-      "— indicates CI not available."
+      "— indicates the specification is unavailable for this run."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
-  message("[report] Table 4 (", if (has_vqifs_metrics) "six" else "four", "-model performance) added.")
+  message("[report] Table 4 (recalibrated-only performance) added.")
 
   # ---- Figure 2: Combined ROC curve (Iannuzzi + mFI-5 + sVQI-FS) ------------
   # Multi-model ROC, drawn from the same aggregate curve-point artifact as
@@ -4104,9 +3998,12 @@
     message("[report] Figure 2 (ROC) added.")
   }
 
-  # ---- Figure 3: Calibration — Iannuzzi lookup, Iannuzzi recal, mFI-5 recal ---
-  # Attempt to build a triple-curve combined plot; fall back to dual (Iannuzzi only)
-  # or single-curve when mFI-5 calibration data are unavailable.
+  # ---- Figure 3: Calibration — recalibrated specifications only -------------
+  # Recalibrated-only, matching Table 4, Table 5, and Figure 4 (DCA): the
+  # Iannuzzi published-lookup curve is never requested here (lookup_source
+  # is always NULL below). Attempt a triple-curve combined plot (Iannuzzi +
+  # mFI-5 + sVQI-FS recalibrated); fall back to dual, or single-curve when
+  # mFI-5/sVQI-FS calibration data are unavailable.
   mfi5_calibration_table_path <- if (!is.null(mfi5_output_dir)) {
     file.path(mfi5_output_dir, "calibration_table_recalibrated.csv")
   } else NULL
@@ -4117,9 +4014,7 @@
 
   dual_cal_file <- tryCatch(
     .save_dual_calibration_plot(
-      lookup_source = if (file.exists(calibration_table_lookup_path))
-                        calibration_table_lookup_path
-                      else NULL,
+      lookup_source = NULL,
       recal_source  = if (file.exists(calibration_table_recalibrated_path))
                         calibration_table_recalibrated_path
                       else NULL,
@@ -4147,57 +4042,43 @@
     has_vqifs_cal <- !is.null(vqifs_calibration_table_path) &&
                      file.exists(vqifs_calibration_table_path)
     fig3_title <- if (has_mfi5_cal && has_vqifs_cal)
-      "Figure 3. NHD risk score calibration — four model specifications."
+      "Figure 3. NHD risk score calibration — three recalibrated specifications."
     else if (has_mfi5_cal)
-      "Figure 3. NHD risk score calibration — three model specifications."
+      "Figure 3. NHD risk score calibration — two recalibrated specifications."
     else
-      "Figure 3. Iannuzzi 2020: calibration — published lookup vs. temporal recalibration."
+      "Figure 3. Iannuzzi 2020: temporal recalibration calibration plot."
     fig3_caption <- if (has_mfi5_cal && has_vqifs_cal)
-      paste0("Calibration curves for four NHD risk score specifications. ",
-             "Blue solid line: Iannuzzi 2020 refitted score-to-risk lookup (monotone isotonic). ",
-             "Red dashed line: Iannuzzi 2020 temporal recalibration — logistic regression of the ",
-             "total integer score fitted on the chronologically earlier half of the cohort and ",
-             "evaluated on the later half. ",
-             "Green dot-dash line: mFI-5 temporal recalibration — same split applied to the mFI-5 score. ",
-             "Orange dotted line: Kraiss 2022 sVQI-FS temporal recalibration — same split applied to ",
-             "the sVQI-FS score. ",
-             "Mean predicted NHD risk (x-axis) vs. observed NHD rate (y-axis) by quantile bin. ",
-             "Dotted diagonal = perfect calibration.")
+      paste0("Calibration curves for the temporally recalibrated Iannuzzi 2020, mFI-5, and ",
+             "sVQI-FS specifications (Table 4), each a logistic regression of the score's total ",
+             "integer value fitted on the chronologically earlier half of the cohort and ",
+             "evaluated on the later half. Mean predicted NHD risk (x-axis) vs. observed NHD ",
+             "rate (y-axis) by quantile bin. Dotted diagonal = perfect calibration.")
     else if (has_mfi5_cal)
-      paste0("Calibration curves for three NHD risk score specifications. ",
-             "Blue solid line: Iannuzzi 2020 refitted score-to-risk lookup (monotone isotonic). ",
-             "Red dashed line: Iannuzzi 2020 temporal recalibration — logistic regression of the ",
-             "total integer score fitted on the chronologically earlier half of the cohort and ",
-             "evaluated on the later half. ",
-             "Green dot-dash line: mFI-5 temporal recalibration — same split applied to the mFI-5 score. ",
-             "Mean predicted NHD risk (x-axis) vs. observed NHD rate (y-axis) by quantile bin. ",
-             "Dotted diagonal = perfect calibration.")
+      paste0("Calibration curves for the temporally recalibrated Iannuzzi 2020 and mFI-5 ",
+             "specifications (Table 4), each a logistic regression of the score's total integer ",
+             "value fitted on the chronologically earlier half of the cohort and evaluated on the ",
+             "later half. Mean predicted NHD risk (x-axis) vs. observed NHD rate (y-axis) by ",
+             "quantile bin. Dotted diagonal = perfect calibration.")
     else
-      paste0("Calibration of the Iannuzzi 2020 score under two specifications. ",
-             "Blue solid line: published score-to-risk lookup (no local refitting). ",
-             "Red dashed line: temporal recalibration — logistic regression fitted on the ",
-             "chronologically earlier half of the cohort and evaluated on the later half. ",
-             "Mean predicted NHD risk (x-axis) vs. observed NHD rate (y-axis) by quantile bin. ",
-             "Dotted diagonal = perfect calibration.")
+      paste0("Calibration of the Iannuzzi 2020 temporal recalibration specification (Table 4): ",
+             "a logistic regression of the total integer score fitted on the chronologically ",
+             "earlier half of the cohort and evaluated on the later half. Mean predicted NHD ",
+             "risk (x-axis) vs. observed NHD rate (y-axis) by quantile bin. Dotted diagonal = ",
+             "perfect calibration.")
     doc <- body_add_img(doc, src = dual_cal_file, width = 5.0, height = 5.0)
     doc <- add_doc_caption(doc, fig3_title, fig3_caption)
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] Figure 3 (calibration) added.")
-  } else if (file.exists(lookup_calibration_plot_temp) ||
-             file.exists(recalibrated_calibration_plot_temp)) {
-    # Fallback: single-curve from whichever source is available.
-    cal_plot_path <- if (file.exists(lookup_calibration_plot_temp))
-      lookup_calibration_plot_temp else recalibrated_calibration_plot_temp
-    cal_caption <- if (identical(cal_plot_path, lookup_calibration_plot_temp))
-      paste0("Calibration plot for the Iannuzzi 2020 published lookup model. ",
-             "Mean predicted non-home discharge risk (x-axis) vs. observed NHD rate (y-axis) ",
-             "by quantile bin. Dashed diagonal = perfect calibration.")
-    else
-      paste0("Calibration plot for the Iannuzzi 2020 temporal recalibration model. ",
-             "Mean predicted non-home discharge risk (x-axis) vs. observed NHD rate (y-axis) ",
-             "by quantile bin. Dashed diagonal = perfect calibration.")
-    doc <- body_add_img(doc, src = cal_plot_path, width = 4.5, height = 4.5)
-    doc <- add_doc_caption(doc, "Figure 3. Iannuzzi 2020: calibration plot.", cal_caption)
+  } else if (file.exists(recalibrated_calibration_plot_temp)) {
+    # Fallback: single-curve, Iannuzzi 2020 temporal recalibration only (the
+    # published-lookup plot is never used for Figure 3 — see header comment).
+    cal_caption <- paste0(
+      "Calibration plot for the Iannuzzi 2020 temporal recalibration model. ",
+      "Mean predicted non-home discharge risk (x-axis) vs. observed NHD rate (y-axis) ",
+      "by quantile bin. Dashed diagonal = perfect calibration."
+    )
+    doc <- body_add_img(doc, src = recalibrated_calibration_plot_temp, width = 4.5, height = 4.5)
+    doc <- add_doc_caption(doc, "Figure 3. Iannuzzi 2020: temporal recalibration calibration plot.", cal_caption)
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] Figure 3 (single calibration fallback) added.")
   }
@@ -4344,7 +4225,6 @@
         "N = number of patients assigned to that tier by the corresponding model. ",
         "NHD Events = number with non-home discharge. ",
         "Observed NHD Rate = NHD Events / N. ",
-        "Predicted risk thresholds: ", tier_threshold_desc, ". ",
         "Note that logistic recalibration of a weakly discriminating integer score compresses ",
         "the predicted probability range toward the cohort base rate; when this places every ",
         "patient in a single probability tier, that is a substantive finding about the score's ",
@@ -4371,6 +4251,48 @@
     ))
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] Figure 4 (DCA) added.")
+
+    # ---- Net benefit at selected thresholds (exact values) -------------------
+    # save_dca_plot() already computes this table purely to write it as a
+    # sidecar CSV (decision_curve_net_benefit.csv, next to the figure) --
+    # reading it back and rendering it here gives readers exact numbers at
+    # the thresholds where the curves above are hardest to tell apart, on top
+    # of the existing grey level/linetype/shape encoding and heavier model
+    # (vs. reference) line weight. No new computation; same values plotted.
+    nb_csv_path <- file.path(temp_figure_dir, "decision_curve_net_benefit.csv")
+    if (file.exists(nb_csv_path)) {
+      nb_tbl <- tryCatch(
+        utils::read.csv(nb_csv_path, check.names = FALSE, stringsAsFactors = FALSE),
+        error = function(e) NULL
+      )
+      if (!is.null(nb_tbl) && nrow(nb_tbl) > 0) {
+        pct_cols  <- setdiff(names(nb_tbl), "Strategy")
+        pct_width <- max(0.45, min(0.75, 5.0 / max(1, length(pct_cols))))
+        nb_ft <- flextable::flextable(nb_tbl) |>
+          flextable::colformat_double(j = pct_cols, digits = 3) |>
+          flextable::bold(part = "header") |>
+          flextable::fontsize(size = 8, part = "all") |>
+          flextable::font(fontname = "Calibri", part = "all") |>
+          flextable::bg(part = "header", bg = "#1F3864") |>
+          flextable::color(part = "header", color = "white") |>
+          flextable::padding(padding = 3, part = "all") |>
+          flextable::width(j = "Strategy", width = 1.6) |>
+          flextable::width(j = pct_cols, width = pct_width) |>
+          flextable::align(j = pct_cols, align = "center", part = "all") |>
+          flextable::set_table_properties(layout = "fixed")
+        doc <- body_add_flextable(doc, nb_ft)
+        doc <- add_doc_caption(doc,
+          "Net benefit at selected threshold probabilities.",
+          paste0(
+            "Exact net benefit for each strategy in Figure 4, at 10-percentage-point increments ",
+            "of the threshold probability, for comparing curves that are close together. Values ",
+            "match the plotted curves exactly."
+          )
+        )
+        doc <- body_add_par(doc, "", style = "Normal")
+        message("[report] DCA net-benefit table added.")
+      }
+    }
   }
 
   # Helper: load, sort, and render a subgroup_bias.csv as a table + two forest
