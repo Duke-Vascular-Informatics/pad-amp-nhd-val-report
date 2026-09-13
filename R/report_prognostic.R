@@ -1806,7 +1806,7 @@
   .init_supp_labels <- function(has_mfi5, has_vqifs, has_mfi5_bias) {
     keys <- c(
       # "Supplemental Material" section, in render order
-      "cdm_metadata", "model_descriptions", "cpt_codes", "discharge_codes",
+      "cdm_metadata", "concept_set_inventory", "model_descriptions", "cpt_codes", "discharge_codes",
       "nhd_rate_by_month", "score_dist_iannuzzi",
       if (has_mfi5)  "score_dist_mfi5",
       if (has_vqifs) "score_dist_vqifs",
@@ -3423,120 +3423,115 @@
     if (!is.null(config$study_start_date)) format(as.Date(config$study_start_date), "%B %d, %Y") else "N/A",
     " to ",
     if (!is.null(config$study_end_date))   format(as.Date(config$study_end_date),   "%B %d, %Y") else "N/A",
-    ". Full data source metadata are reported in Supplemental Table S1; the analytic ",
-    "implementation and its portability to other OMOP CDM v5 sources are described under ",
-    "Implementation and code deployment, below."
+    ". Full data source metadata are reported in ", supp_table("cdm_metadata"), ". Every cohort, ",
+    "outcome, and covariate definition used in this analysis is registered in OHDSI ATLAS and listed, ",
+    "with its standard-concept logic and source OMOP table(s), in ", supp_table("concept_set_inventory"), "."
   ), style = "Normal")
-  doc <- body_add_par(doc, section_num("Target and outcome cohort definitions"), style = "heading 3")
+  doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
-    "\tThe target cohort comprised adults aged 18 years or older who underwent an inpatient ",
-    "major lower-extremity amputation. The index event was defined by six OMOP procedure ",
-    "concept ancestors and all descendants via the concept_ancestor table: above-knee ",
-    "amputation (concept 4195136), amputation through tibia and fibula / below-knee ",
-    "(concept 4338257), through-knee amputation (concept 4143795), hip disarticulation ",
-    "(concept 4242396), ankle disarticulation (concept 4264289), and hemipelvectomy ",
-    "(concept 36675618). At least one of the following indications was required to be ",
-    "documented on or before the index date: peripheral arterial disease (SNOMED 399957001 ",
-    "and descendants), diabetes mellitus (SNOMED 73211009 and descendants), or a ",
-    "lower-extremity wound (ulcers, open wounds, gangrene, soft-tissue infection, ",
-    "osteomyelitis, or diabetic foot). These eligibility criteria exclude traumatic, ",
-    "burn, and oncologic amputations. Patients were required to have at least ",
+    "\tThe target cohort comprised adults aged 18 years or older undergoing an inpatient major ",
+    "lower-extremity amputation, with peripheral arterial disease, diabetes mellitus, or a ",
+    "lower-extremity wound documented on or before the index date, and at least ",
     config$min_prior_observation_days %||% 1,
-    " day(s) of prior observation before the index date ",
-    "(a minimal requirement that accommodates emergency presentations). ",
-    "All patients were enrolled from inpatient visits (OMOP visit_concept_id 9201) only."
-  ), style = "Normal")
-  doc <- body_add_par(doc, paste0(
-    "\tThe outcome was non-home discharge (NHD) at the end of the index hospitalization, defined as ",
-    "any unambiguously non-home discharge destination. Discharge destination was ascertained from ",
-    "visit_occurrence.discharged_to_concept_id using a dynamic vocabulary query resolved at runtime. ",
-    "Non-home destinations include skilled nursing facility (SNF), inpatient rehabilitation ",
-    "facility (IRF), long-term acute care (LTAC), hospice, and other institutional care. Hospice is ",
-    "classified as a single non-home category regardless of setting; a known limitation is that ",
-    "this does not distinguish home hospice (UB-04 NUBC code 50) from facility-based hospice ",
-    "(code 51), which the Iannuzzi 2020 score's own NHD definition (rehabilitation or SNF only, ",
-    "excluding hospice and LTAC entirely — see Supplemental Table S2) does not need to resolve; ",
-    "this distinction was not implemented because the current synthetic cohort does not generate ",
-    "hospice discharges to validate the split against, and should be addressed before this ",
-    "classification is relied on with a real-data cohort that does include hospice discharges. ",
-    "NHD is a complete-case classification, not an exclusion: every patient in the target cohort ",
-    "is retained in both the NHD rate's numerator and denominator, and is classified as NOT ",
-    "non-home discharge (i.e., presumed home) whenever the destination cannot be confirmed as ",
-    "non-home. Concretely: patients with null, zero, or unresolved discharge_to_concept_id ",
-    "(mapping to 'No matching concept' or equivalent in the local vocabulary) are classified as ",
-    "not-NHD because the true discharge destination could not be confirmed non-home — this is a ",
-    "conservative default that may under-count true NHD events among these patients, and is noted ",
-    "as a limitation. Patients whose UB-04 source code was 'HO' (Home) are classified as home ",
-    "discharges (not-NHD); where the ETL had additionally assigned a conflicting non-home ",
-    "concept_id to these visits, the source code is treated as authoritative. Patients with source ",
-    "code 'AM' (against medical advice) are likewise classified as home discharges (not-NHD). ",
-    "The outcome was attributed to the index hospitalization. The dataset contained ",
+    " day(s) of prior observation (a minimal requirement accommodating emergency presentations). ",
+    "Traumatic, burn, and oncologic amputations were excluded. The outcome, non-home discharge ",
+    "(NHD), was ascertained from each patient's discharge disposition at the end of the index ",
+    "hospitalization and classified as non-home for any unambiguous institutional destination ",
+    "(skilled nursing facility, inpatient rehabilitation, long-term acute care, hospice, or other ",
+    "institutional care). NHD is a complete-case classification: every target-cohort patient is ",
+    "retained, and a discharge is classified as not-NHD by default whenever the destination ",
+    "cannot be confirmed non-home — a conservative choice that may under-count true NHD events, ",
+    "discussed in the Limitations. Hospice discharges are classified as a single non-home category ",
+    "regardless of setting (home vs. facility); the Iannuzzi 2020 score's own NHD definition does ",
+    "not need to resolve this distinction, but not distinguishing the two here is noted as a ",
+    "limitation. The dataset contained ",
     if (!is.na(n_target)) n_target else "N",
     " patients with at least one qualifying amputation within the study window."
+  ), style = "Normal")
+
+  n_scores <- 1L + (has_mfi5) + (has_vqifs)
+  score_word <- c("One", "Two", "Three")[min(n_scores, 3)]
+
+  doc <- body_add_par(doc, paste0(
+    "\t", score_word, " published integer risk scores were evaluated as candidate predictors of ",
+    "NHD. The Iannuzzi 2020 NHD score (range 0–18 points) uses age, a sex/race term, ambulatory ",
+    "status, tissue loss, anemia, and insulin-dependent diabetes; its published four-level sex/race ",
+    "interaction is implemented here as two additive binary components (female +1, non-White +2), ",
+    "reproducing the published point totals exactly. ",
+    if (has_mfi5) paste0(
+      "The Subramaniam 2018 modified Frailty Index-5 (mFI-5, range 0–5 points) assigns one point ",
+      "each for diabetes mellitus, COPD, congestive heart failure, hypertension requiring ",
+      "medication, and dependent functional status. "
+    ) else "",
+    if (has_vqifs) paste0(
+      # NOTE: this list must match covariates/covariates_vqifs.csv exactly — ten items,
+      # NOT the paper's eleven. Non-home residence is deliberately omitted (near-circular
+      # with the NHD outcome; no clean standard concept in this vocabulary build).
+      "The Kraiss 2022 simple VQI Frailty Score (sVQI-FS, implemented as a 0–10 integer point sum) ",
+      "assigns one point each for hypertension, congestive heart failure, coronary artery disease, ",
+      "peripheral vascular disease, diabetes, COPD, renal impairment, anemia, underweight status, ",
+      "and non-ambulatory status; the published eleventh item, non-home residence, is omitted as ",
+      "near-circular with the outcome. We evaluate the equally weighted form of the score, since the ",
+      "authors' preferred differentially weighted variant requires a procedure-specific risk term ",
+      "with categories that do not include major amputation; both departures are addressed in the ",
+      "Limitations. "
+    ) else "",
+    "Each component was ascertained from clinical documentation on or before the index date using ",
+    "a component-specific lookback window (Tables 3a–3c); a patient meeting a component's minimum ",
+    "evidence threshold received its full published point value, and an absent record was treated ",
+    "as zero evidence.",
+    if (has_vqifs) paste0(
+      " The source publication suppresses the sVQI-FS when fewer than five frailty domains have ",
+      "data; because ascertainment here is presence/absence of coded records rather than an ",
+      "explicit missing state, no equivalent suppression was applied and every patient received a ",
+      "score."
+    ) else "",
+    " The full ATLAS concept-set/cohort inventory underlying every definition in this paragraph is ",
+    "in ", supp_table("concept_set_inventory"), "."
   ), style = "Normal")
 
   # ---------------------------------------------------------------------------
   # Methods: implementation and code deployment.
   #
-  # Added when this study was ported to Strategus. The Methods previously
-  # described only the statistical procedure, which left a reader unable to tell
-  # which artefacts are network-portable OHDSI cohort definitions and which are
-  # local SQL — a distinction that matters for reproducing this analysis at
-  # another site, and one this study cannot avoid because its outcome is not
-  # expressible in Circe.
+  # Consolidated 2026-09-13 (was 4 separate paragraphs) into one shorter
+  # subsection, now that the analysis runs on real Duke data and the emphasis
+  # has shifted from "how this was built" toward the results themselves.
   # ---------------------------------------------------------------------------
   doc <- body_add_par(doc, section_num("Implementation and code deployment"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
-    "\tThe analysis was implemented as an OHDSI Strategus (v1.5.0) study package, so that the ",
-    "same code and cohort definitions can be executed unmodified at any site holding an OMOP CDM ",
-    "v5 instance. Cohort construction, cohort diagnostics, and baseline characterization are ",
-    "delegated to standard HADES modules — CohortGenerator, CohortDiagnostics, and ",
-    "Characterization — invoked from a single declarative analysis specification. Cohorts are ",
-    "specified as OHDSI Circe JSON expressions and are rendered to dialect-specific SQL by CirceR ",
-    "at execution time, so no site-specific SQL editing is required. All schema and table names ",
-    "are supplied at run time; no credentials or institution-specific identifiers are embedded in ",
-    "the analytic code."
-  ), style = "Normal")
-  doc <- body_add_par(doc, paste0(
-    "\tPredictor ascertainment is likewise cohort-based rather than expressed as ad hoc queries ",
-    "against the CDM domain tables. Each component of each risk score is resolved to a named ",
-    "cohort definition, and a single mapping table links every published score item to the cohort ",
-    "that operationalizes it, together with that item's point value and its lookback window. ",
-    "Where an equivalent cohort definition already existed in the investigators' shared phenotype ",
-    "library it was reused unchanged; the remainder were authored for this study and are named and ",
-    "versioned for later contribution to that library. Two consequences of this design are ",
-    "reported transparently in the Limitations, because they affect what the scores measure: some ",
-    "reused definitions are broader than the corresponding published score item, and some cannot ",
-    "carry a lookback window."
-  ), style = "Normal")
-  doc <- body_add_par(doc, paste0(
-    "\tThree elements fall outside what the Strategus modules can express and are implemented as ",
-    "documented extensions. First, the non-home discharge outcome is derived from ",
-    "visit_occurrence.discharged_to_concept_id, an attribute the Circe cohort-definition schema ",
-    "does not support; it is therefore implemented as hand-authored, parameterized SQL that is ",
-    "applied to the generated cohort table before any analysis reads it, and is protected by an ",
-    "automated check that halts the pipeline if the definition is ever silently replaced. Second, ",
-    "application of the three published scoring rules is performed by a study-specific step, ",
-    "because the Strategus prediction module fits new models rather than applying fixed published ",
-    "weights. Third, three predictors requiring arithmetic on measurement values — body mass index ",
-    "computed from height and weight, and unit normalization of laboratory results — are computed ",
-    "in analytic code rather than as cohort definitions. Every such deviation is recorded in the ",
-    "study repository alongside the definition it applies to."
-  ), style = "Normal")
-  doc <- body_add_par(doc, paste0(
-    "\tTo verify that moving predictor ascertainment from direct CDM queries to cohort definitions ",
-    "did not change what was measured, both implementations are retained and an automated ",
-    "regression test scores every instrument twice — once by each route — and compares the ",
-    "resulting per-patient predictor values. Predictors whose definitions are semantically ",
-    "identical between the two routes are required to agree exactly; predictors that are expected ",
-    "to differ, because the reused cohort definition cannot carry a lookback window, are quantified ",
-    "rather than suppressed, and the magnitude of each difference is reported. A second automated ",
-    "check confirms that each authored cohort's concept set still matches the concept set recorded ",
-    "for that score component, so that a later revision of a shared definition cannot silently ",
-    "change this study's predictors."
+    "\tThe analysis was implemented as an OHDSI Strategus (v1.5.0) study package: cohort ",
+    "construction, cohort diagnostics, and baseline characterization run through standard HADES ",
+    "modules (CohortGenerator, CohortDiagnostics, Characterization) from a single declarative ",
+    "specification, so the same code executes unmodified at any OMOP CDM v5 site with no ",
+    "site-specific SQL editing, credentials, or institution-specific identifiers embedded. ",
+    "Predictor ascertainment is likewise cohort-based: every score component resolves to a named, ",
+    "ATLAS-registered cohort definition (", supp_table("concept_set_inventory"), "), reused from the ",
+    "investigators' shared phenotype library where an equivalent definition already existed. Three ",
+    "elements fall outside what Strategus/Circe can express and are implemented as documented ",
+    "extensions: the non-home discharge outcome (Circe has no discharge-disposition criterion), ",
+    "application of the three published scoring rules (Strategus's prediction module fits new ",
+    "models rather than applying fixed published weights), and arithmetic on measurement values ",
+    "(body mass index, laboratory unit normalization). To verify that cohort-based ascertainment ",
+    "measures the same thing as a direct CDM query, both routes are retained and an automated ",
+    "regression test compares every predictor's per-patient values between them; differences that ",
+    "are expected (a reused definition that cannot carry a lookback window) are quantified rather ",
+    "than suppressed, and a second automated check confirms each cohort's concept set still matches ",
+    "the concept set recorded for that score component."
   ), style = "Normal")
 
-  doc <- body_add_par(doc, section_num("Risk score evaluation"), style = "heading 3")
+  # ---------------------------------------------------------------------------
+  # Methods: model evaluation.
+  #
+  # NEW subsection (2026-09-13), consolidating what was previously split across
+  # the back half of "Risk score evaluation" (model specifications, train/test
+  # split, discrimination/calibration definitions) with a new decision-curve-
+  # analysis paragraph (previously described only in Figure 4's caption) so
+  # discrimination, calibration, and DCA methodology all live in one place.
+  # Score component descriptions moved to "Cohort, outcome, and covariate
+  # definitions" above, since they are covariate definitions, not evaluation
+  # methodology.
+  # ---------------------------------------------------------------------------
+  doc <- body_add_par(doc, section_num("Model evaluation"), style = "heading 3")
 
   # --- Transportability framing ---------------------------------------------
   # Peer review flagged that "external validation" overstates what is being done
@@ -3556,63 +3551,9 @@
     "scores against the outcomes and populations for which they were designed."
   ), style = "Normal")
 
-  n_scores <- 1L + (has_mfi5) + (has_vqifs)
-  score_word <- c("One", "Two", "Three")[min(n_scores, 3)]
-
-  doc <- body_add_par(doc, paste0(
-    "\t", score_word, " published integer risk scores were evaluated. ",
-    "The Iannuzzi 2020 NHD integer risk score (range 0–18 points) predicts non-home discharge ",
-    "using age, the sex/race interaction, ambulatory status, tissue loss, anemia, and ",
-    "insulin-dependent diabetes. Its published sex/race term is a four-level interaction ",
-    "(white male 0, white female +1, nonwhite male +2, nonwhite female +3); because those ",
-    "integer weights are exactly additive, we implement them as two independent binary ",
-    "components (female +1, non-White +2), which reproduces the published point totals exactly ",
-    "rather than ignoring the interaction. ",
-    if (has_mfi5) paste0(
-      "The Subramaniam 2018 modified Frailty Index — 5-item (mFI-5, range 0–5 points) assigns ",
-      "one point each for diabetes mellitus, COPD, congestive heart failure, hypertension ",
-      "requiring medication, and dependent functional status. "
-    ) else "",
-    if (has_vqifs) paste0(
-      # NOTE: this list must match covariates/covariates_vqifs.csv exactly — ten items,
-      # NOT the paper's eleven. Non-home residence is deliberately omitted (near-circular
-      # with the NHD outcome; no clean standard concept in this vocabulary build). An
-      # earlier revision of this paragraph listed all eleven and so contradicted both
-      # Table 3c and Supplemental Table S2, which are generated from the CSV.
-      "The Kraiss 2022 simple VQI Frailty Score (sVQI-FS, implemented here as a 0–10 ",
-      "integer point sum) assigns one point each for hypertension, congestive heart ",
-      "failure, coronary artery disease, peripheral vascular disease, diabetes, COPD, ",
-      "renal impairment, anemia, underweight status, and non-ambulatory status. ",
-      # Equal-weighting disclosure: the source authors explicitly disavow the equally
-      # weighted form for THEIR outcome (9-month mortality), so naming the score without
-      # this clause would let a reader assume the differentially weighted VQI-FS.
-      "The eleventh published item — non-home residence — is omitted because it is ",
-      "near-circular with the non-home discharge outcome and has no clean standard ",
-      "concept in this vocabulary build. We evaluate the equally weighted form of the ",
-      "score; the authors' preferred differentially weighted VQI-FS could not be applied ",
-      "because it requires nomogram regression coefficients together with a ",
-      "procedure-specific risk term whose categories (carotid endarterectomy, carotid ",
-      "artery stenting, endovascular and open abdominal aortic aneurysm repair, ",
-      "peripheral vascular intervention, suprainguinal and infrainguinal bypass) do not ",
-      "include major amputation. The implications of both departures are addressed in ",
-      "the Limitations discussion. "
-    ) else "",
-    "For each score, covariates were extracted from the OMOP CDM using component-specific ",
-    "lookback windows relative to the index amputation date (Tables 3a–3c). ",
-    "A patient meeting the minimum event threshold for a given component received the full integer ",
-    "point value; those below threshold received zero. Absent records were treated as zero ",
-    "evidence for that component.",
-    # The source publication suppresses the score when fewer than five of its frailty
-    # domains have data; we score every patient instead, so this must be disclosed rather
-    # than left implicit in the missing_is_negative columns.
-    if (has_vqifs) paste0(
-      " The source publication does not compute the sVQI-FS when fewer than five frailty ",
-      "domains have available data; because component ascertainment here is based on the ",
-      "presence or absence of coded records rather than on registry fields with an explicit ",
-      "missing state, no equivalent suppression rule was applied and every patient in the ",
-      "cohort received a score."
-    ) else ""
-  ), style = "Normal")
+  # (Score component descriptions now live in "Cohort, outcome, and covariate
+  # definitions" above, since they are covariate definitions, not evaluation
+  # methodology; n_scores/score_word are computed there.)
 
   # Model specifications: two per score (raw/lookup + recalibrated).
   spec_n    <- if (has_vqifs) 6L else if (has_mfi5) 4L else 2L
@@ -3675,6 +3616,15 @@
     "Calibration plots compare mean predicted risk versus observed event rate within each bin; the ",
     "dashed diagonal represents perfect calibration."
   ), style = "Normal")
+  doc <- body_add_par(doc, paste0(
+    "\tClinical utility was assessed using decision curve analysis (DCA), which quantifies the net ",
+    "benefit of using a model to guide a binary treat/do-not-treat decision across a range of ",
+    "threshold probabilities — the minimum predicted risk at which a clinician would recommend an ",
+    "intervention. Net benefit was computed for each recalibrated model specification across ",
+    "threshold probabilities from 1% to 99%, on the same temporal test partition used for ",
+    "discrimination and calibration, and compared against the 'treat-all' and 'treat-none' reference ",
+    "strategies."
+  ), style = "Normal")
   doc <- body_add_par(doc, section_num("Subgroup analysis and bias assessment"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
     "\tModel calibration and discrimination were assessed across prespecified patient subgroups to ",
@@ -3735,15 +3685,10 @@
     "Table 1. Demographics and clinical characteristics of the validation cohort.",
     paste0(
       "Values are n (%) unless stated. Age is summarised as median (IQR). ",
-      "Race and ethnicity are derived from OMOP person table concept fields. ",
       "Indication rows are not mutually exclusive; a patient may have more than one. ",
-      "PAD = peripheral arterial disease (ancestor 317309); ",
-      "diabetes mellitus (ancestor 201820); ",
-      "lower-extremity wound / gangrene (25 SNOMED ancestors — ulcers, open wounds, gangrene, ",
-      "soft-tissue infection, osteomyelitis, diabetic foot). ",
-      "Amputation level is assigned hierarchically: AKA (ancestor 4195136), then BKA (4338257), ",
-      "then Other (through-knee 4143795, hip disarticulation 4242396, ankle disarticulation 4264289, ",
-      "hemipelvectomy 36675618). Amputation level rows are mutually exclusive."
+      "Amputation level is assigned hierarchically (AKA, then BKA, then Other) and is mutually ",
+      "exclusive. Concept-set definitions underlying every row are in ",
+      supp_table("concept_set_inventory"), "."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -4652,6 +4597,115 @@
         message("[report] CDM source table skipped: ", conditionMessage(e))
       })
 
+      # ---- Supplemental Table — ATLAS concept sets and cohorts ---------------
+      #
+      # Added 2026-09-13, replacing the concept IDs and OMOP table/column names
+      # that used to be listed inline in Methods and in Table 1's/Table S3's
+      # captions, now that every cohort and concept set this study uses is
+      # registered in OHDSI ATLAS (atlas-demo.ohdsi.org). One row per cohort in
+      # pad-amp-nhd-val/inst/Cohorts.csv, plus a final row group for the four
+      # predictors resolved by a direct concept/demographic query rather than a
+      # cohort (age bands, sex, race, and sVQI-FS's BMI-derived underweight
+      # item) — included for completeness, marked accordingly in the ATLAS ID
+      # column. This table is static (it describes the study design, not a
+      # data source), so it is built directly rather than read from a CSV.
+      tryCatch({
+        atlas_inventory <- data.frame(
+          "ATLAS ID" = c(
+            "9100011", "9100001",
+            "1797949", "1797950", "1797951", "1797952",
+            "9100002", "9100003", "9100004", "9100005", "9100006",
+            "9100007", "9100008", "9100009", "9100010",
+            "1797941",
+            "N/A", "N/A", "N/A", "N/A"
+          ),
+          "Cohort / Concept Set" = c(
+            "[DVI] Major LE Amputation (dysvascular, trauma/cancer excluded) — target",
+            "[DVI] Non-Home Discharge — outcome",
+            "[DVI] VA-FI Coronary Artery Disease",
+            "[DVI] VA-FI Heart Failure",
+            "[DVI] VA-FI Hypertension",
+            "[DVI] VA-FI Diabetes Mellitus",
+            "[DVI] COPD (risk score item)",
+            "[DVI] Peripheral Arterial Occlusive Disease",
+            "[DVI] Ischemic Tissue Loss",
+            "[DVI] Dependent Functional Status",
+            "[DVI] Ambulatory Deficit",
+            "[DVI] Insulin-Treated Diabetes",
+            "[DVI] Anemia (Hgb <10 g/dL)",
+            "[DVI] Anemia (sex-specific threshold)",
+            "[DVI] Renal Impairment",
+            "[DVI] Major LE Amputation — superseded target, kept for lineage",
+            "Age bands (60–69, 70–79, ≥80)",
+            "Female sex",
+            "Non-White race",
+            "Underweight (BMI, sVQI-FS)"
+          ),
+          "Standard-Concept Logic" = c(
+            "Major LE amputation procedure with a qualifying PAD, diabetes, or lower-extremity wound indication; excludes limb-trauma or lower-limb-malignancy codes on the index visit",
+            "Discharge disposition resolved dynamically against the local vocabulary; no fixed concept id",
+            "Ischemic heart disease diagnosis",
+            "Heart failure diagnosis",
+            "Hypertension diagnosis (includes hypertensive heart/renal disease)",
+            "Diabetes mellitus diagnosis",
+            "COPD diagnosis and descendants",
+            "Peripheral arterial disease diagnosis and descendants",
+            "Ischemic ulcer or ischemic gangrene diagnosis",
+            "Frailty diagnosis or impaired-mobility finding",
+            "Assistive-device use or provision (wheelchair, cane, prosthesis)",
+            "Insulin exposure",
+            "Hemoglobin measurement below a fixed threshold",
+            "Hemoglobin measurement below a sex-specific threshold",
+            "Elevated creatinine, or dialysis (procedure or diagnosis)",
+            "Inpatient visit containing a major LE amputation procedure",
+            "Computed from year of birth relative to the index date",
+            "Gender concept",
+            "Race concept (non-White)",
+            "Computed from height and weight measurements"
+          ),
+          "OMOP Table(s)" = c(
+            "ProcedureOccurrence, ConditionOccurrence, VisitOccurrence",
+            "VisitOccurrence",
+            "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
+            "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
+            "ConditionOccurrence, Observation",
+            "Observation, ProcedureOccurrence, DeviceExposure",
+            "DrugExposure", "Measurement", "Measurement",
+            "Measurement, ProcedureOccurrence, ConditionOccurrence",
+            "ProcedureOccurrence, VisitOccurrence",
+            "Person", "Person", "Person", "Measurement"
+          ),
+          check.names = FALSE, stringsAsFactors = FALSE
+        )
+        atlas_ft <- flextable::flextable(atlas_inventory) |>
+          flextable::bold(part = "header") |>
+          flextable::fontsize(size = 9, part = "all") |>
+          flextable::font(fontname = "Calibri", part = "all") |>
+          flextable::bg(part = "header", bg = "#1F3864") |>
+          flextable::color(part = "header", color = "white") |>
+          flextable::padding(padding = 3, part = "all") |>
+          flextable::width(j = "ATLAS ID", width = 0.8) |>
+          flextable::width(j = "Cohort / Concept Set", width = 2.2) |>
+          flextable::width(j = "Standard-Concept Logic", width = 2.6) |>
+          flextable::width(j = "OMOP Table(s)", width = 1.4) |>
+          flextable::set_table_properties(layout = "fixed")
+        doc <- body_add_par(doc, "ATLAS concept sets and cohorts", style = "heading 3")
+        doc <- body_add_flextable(doc, atlas_ft)
+        doc <- add_doc_caption(doc,
+          paste0(supp_table("concept_set_inventory"), ". ATLAS concept sets and cohorts used in this analysis."),
+          paste0("Every cohort and concept set referenced in the Methods is registered in OHDSI ATLAS ",
+                 "(atlas-demo.ohdsi.org), named with a [DVI] prefix. Cohorts numbered 9100xxx are local ",
+                 "to this study's reserved id block and not yet pushed to the shared ATLAS instance; all ",
+                 "others are shared, previously registered cohorts reused unchanged. The final four rows ",
+                 "are predictors resolved by a direct concept or demographic query rather than a cohort ",
+                 "definition (ATLAS ID: N/A).")
+        )
+        doc <- body_add_par(doc, "", style = "Normal")
+        message("[report] Supplemental Table (ATLAS concept sets and cohorts) added.")
+      }, error = function(e) {
+        message("[report] ATLAS concept set inventory table skipped: ", conditionMessage(e))
+      })
+
       # ---- Supplemental Table S2 — Model descriptions -------------------------
       #
       # Read from covariates/model_metadata.yaml — the single source of truth
@@ -4869,12 +4923,9 @@
           doc <- body_add_flextable(doc, cpt_ft)
           doc <- add_doc_caption(doc,
             paste0(supp_table("cpt_codes"), ". CPT codes for index amputation subgroups."),
-            paste0("CPT-4 codes identified via concept_relationship ('Mapped from') ",
-                   "from SNOMED concept-ancestor descendants of each amputation subgroup anchor ",
-                   "(AKA/transfemoral: 4195136; BKA/transtibial: 4338257; knee disarticulation: 4143795; ",
-                   "hip disarticulation: 4242396; ankle disarticulation: 4264289; hemipelvectomy: 36675618). ",
-                   "Cases (n) = number of distinct patients in procedure_occurrence with that source concept. ",
-                   "A code may appear in more than one group.")
+            paste0("CPT-4 codes mapped from each amputation subgroup's standard concept (see ",
+                   supp_table("concept_set_inventory"), "). Cases (n) = number of distinct patients ",
+                   "with that source concept. A code may appear in more than one group.")
           )
           doc <- body_add_par(doc, "", style = "Normal")
           message("[report] Supplemental Table S3 (CPT codes) added.")
