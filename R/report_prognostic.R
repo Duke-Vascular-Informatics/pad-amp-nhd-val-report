@@ -1768,27 +1768,19 @@
   }
 
   .init_supp_labels <- function(has_mfi5, has_vqifs, has_mfi5_bias) {
+    # The mFI-5 subgroup bias table/figures were promoted to main-text
+    # Table/Figure numbering 2026-09-13 (were "Supplemental Table/Figure S#")
+    # -- see the hardcoded "Table 7"/"Figure 5"/"Figure 6" captions at their
+    # render site below, and the Methods cross-reference in "Subgroup
+    # analysis and bias assessment" above. No key is allocated for them here
+    # any more; has_mfi5_bias still gates whether that section renders at
+    # all (used directly at the render site), just not the S-numbering.
     keys <- c(
       # "Supplemental Material" section, in render order
       "cdm_metadata", "concept_set_inventory", "model_descriptions", "cpt_codes", "discharge_codes",
       "nhd_rate_by_month", "score_dist_iannuzzi",
       if (has_mfi5)  "score_dist_mfi5",
-      if (has_vqifs) "score_dist_vqifs",
-      # Subgroup bias section — mFI-5 only (2026-09-06), and only when the
-      # analysis actually produced results on THIS dataset.
-      #
-      # Iannuzzi and sVQI-FS subgroup keys are deliberately NOT allocated. All
-      # three scores now produce a subgroup_bias.csv (see the prediction_col
-      # change in pad-amp-nhd-val's compute_subgroup_bias()), so leaving their
-      # keys here would silently reintroduce two sections the study team asked
-      # not to report.
-      #
-      # has_mfi5_bias, NOT has_mfi5: the former asks "did the subgroup analysis
-      # yield anything here?", the latter only "did the mFI-5 score run?". They
-      # differ on Duke data, where the score ran and the subgroup analysis did
-      # not — and gating on the wrong one is what produced a Methods sentence
-      # pointing at a Supplemental Table S9 that was never rendered.
-      if (has_mfi5_bias) c("subgroup_tbl_mfi5", "subgroup_fig_mfi5", "subgroup_fig_mfi5_auroc")
+      if (has_vqifs) "score_dist_vqifs"
     )
     .supp_labels <<- stats::setNames(paste0("S", seq_along(keys)), keys)
   }
@@ -3580,9 +3572,7 @@
     # paragraph describing a method that then points nowhere.
     if (has_mfi5_bias)
       paste0("Subgroup results are reported for the mFI-5 (Recalibrated) model in ",
-             "Supplemental Table ", supp("subgroup_tbl_mfi5"), " and Supplemental Figures ",
-             supp("subgroup_fig_mfi5"), " (calibration) and ",
-             supp("subgroup_fig_mfi5_auroc"), " (discrimination).")
+             "Table 7 and Figures 5 (calibration) and 6 (discrimination).")
     else
       # Deliberately states only the FACT, not a cause. An earlier draft of this
       # sentence said "no subgroup met the minimum event threshold", which is a
@@ -4216,6 +4206,78 @@
     message("[report] Risk tier table (Table 5, ", n_tier_models, " sections) added.")
   }
 
+  # ---- Table 6: NHD rate by mFI-5 point score -------------------------------
+  # Purely descriptive (not a model-evaluation metric like Table 4/5), so it
+  # combines the train+test partitions to describe the full validation cohort
+  # rather than restricting to the test half. Built from
+  # agg_score_value_counts.csv, which already carries one row per
+  # (split_set, total_score, score_id) -- no new upstream artifact needed.
+  # A score value's row is combined (train n + test n) only when NEITHER
+  # split's count was small-cell-suppressed; if either was, the combined row
+  # is suppressed too, since summing a known count with an unknown
+  # (suppressed) one would not be a safe disclosure.
+  sv_counts <- read_report_input("agg_score_value_counts")
+  sv_mfi5   <- if (!is.null(sv_counts) && "score_id" %in% names(sv_counts)) {
+    sv_counts[sv_counts$score_id == "mfi5", , drop = FALSE]
+  } else NULL
+
+  if (!is.null(sv_mfi5) && nrow(sv_mfi5) > 0) {
+    scores <- sort(unique(as.numeric(sv_mfi5$total_score)))
+    score_rate_tbl <- do.call(rbind, lapply(scores, function(s) {
+      rows      <- sv_mfi5[as.numeric(sv_mfi5$total_score) == s, , drop = FALSE]
+      train_row <- rows[rows$split_set == "train", , drop = FALSE]
+      test_row  <- rows[rows$split_set == "test",  , drop = FALSE]
+      # A missing row means zero patients at that score in that split (a true
+      # zero); a present row with NA n_total means suppressed. These are NOT
+      # the same thing, so absence defaults to 0, not NA.
+      n_train <- if (nrow(train_row) == 1) suppressWarnings(as.numeric(train_row$n_total[1]))  else 0
+      n_test  <- if (nrow(test_row)  == 1) suppressWarnings(as.numeric(test_row$n_total[1]))   else 0
+      e_train <- if (nrow(train_row) == 1) suppressWarnings(as.numeric(train_row$n_events[1])) else 0
+      e_test  <- if (nrow(test_row)  == 1) suppressWarnings(as.numeric(test_row$n_events[1]))  else 0
+      suppressed <- is.na(n_train) || is.na(n_test)
+      n_comb <- if (suppressed) NA_real_ else n_train + n_test
+      e_comb <- if (suppressed) NA_real_ else e_train + e_test
+      data.frame(
+        Score  = as.integer(s),
+        N      = if (is.na(n_comb)) "—" else as.character(n_comb),
+        Events = if (is.na(n_comb)) "—" else as.character(e_comb),
+        Rate   = if (is.na(n_comb) || n_comb == 0) "—"
+                 else paste0(round(100 * e_comb / n_comb, 1), "%"),
+        stringsAsFactors = FALSE
+      )
+    }))
+
+    score_rate_ft <- flextable::flextable(score_rate_tbl) |>
+      flextable::set_header_labels(
+        Score = "mFI-5 Score", N = "N", Events = "NHD Events", Rate = "Observed NHD Rate"
+      ) |>
+      flextable::bold(part = "header") |>
+      flextable::fontsize(size = 10, part = "all") |>
+      flextable::font(fontname = "Calibri", part = "all") |>
+      flextable::bg(part = "header", bg = "#1F3864") |>
+      flextable::color(part = "header", color = "white") |>
+      flextable::padding(padding = 4, part = "all") |>
+      flextable::align(j = c("Score", "N", "Events", "Rate"), align = "center", part = "all") |>
+      flextable::width(j = "Score",  width = 1.2) |>
+      flextable::width(j = "N",      width = 1.0) |>
+      flextable::width(j = "Events", width = 1.2) |>
+      flextable::width(j = "Rate",   width = 1.4) |>
+      flextable::set_table_properties(layout = "fixed")
+
+    doc <- body_add_flextable(doc, score_rate_ft)
+    doc <- add_doc_caption(doc,
+      "Table 6. Non-home discharge rate by mFI-5 point score.",
+      paste0(
+        "Observed NHD rate at each mFI-5 integer score value (0–5), combining the ",
+        "temporal train and test partitions to describe the full validation cohort. ",
+        "N = patients with that score; NHD Events = number with non-home discharge. ",
+        "Score values with fewer than 5 patients in either partition are suppressed."
+      )
+    )
+    doc <- body_add_par(doc, "", style = "Normal")
+    message("[report] mFI-5 score-rate table (Table 6) added.")
+  }
+
   # ---- Figure 4: Decision curve analysis ------------------------------------
   doc <- add_doc_page_break(doc)
   doc <- body_add_par(doc, section_num("Decision curve analysis"), style = "heading 3")
@@ -4436,9 +4498,9 @@
       overall_ece_val   = ece_mfi5_recal,
       overall_auroc_val = auroc_mfi5_recal,
       section_heading   = section_num("Subgroup bias assessment \u2014 mFI-5 (Recalibrated)"),
-      table_caption     = paste0(supp_table("subgroup_tbl_mfi5"), ". ECE and AUROC by subgroup \u2014 mFI-5 (Recalibrated)."),
-      figure_caption    = paste0(supp_figure("subgroup_fig_mfi5"), ". Subgroup calibration forest plot \u2014 mFI-5 (Recalibrated)."),
-      figure_caption_auroc = paste0(supp_figure("subgroup_fig_mfi5_auroc"), ". Subgroup discrimination forest plot \u2014 mFI-5 (Recalibrated)."),
+      table_caption     = "Table 7. ECE and AUROC by subgroup \u2014 mFI-5 (Recalibrated).",
+      figure_caption    = "Figure 5. Subgroup calibration forest plot \u2014 mFI-5 (Recalibrated).",
+      figure_caption_auroc = "Figure 6. Subgroup discrimination forest plot \u2014 mFI-5 (Recalibrated).",
       forest_file_name  = "subgroup_forest_mfi5.png",
       forest_file_name_auroc = "subgroup_forest_mfi5_auroc.png"
     )
