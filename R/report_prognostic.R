@@ -1770,7 +1770,7 @@
   .init_supp_labels <- function(has_mfi5, has_vqifs, has_mfi5_bias) {
     # The mFI-5 subgroup bias table/figures were promoted to main-text
     # Table/Figure numbering 2026-09-13 (were "Supplemental Table/Figure S#")
-    # -- see the hardcoded "Table 7"/"Figure 5"/"Figure 6" captions at their
+    # -- see the hardcoded "Table 7"/"Figure 6"/"Figure 7" captions at their
     # render site below, and the Methods cross-reference in "Subgroup
     # analysis and bias assessment" above. No key is allocated for them here
     # any more; has_mfi5_bias still gates whether that section renders at
@@ -3021,7 +3021,7 @@
     # Percentage of the cohort a model would actually classify as high risk at
     # each threshold — i.e. how many patients the decision above is even about.
     #
-    # WHY this and not a rug of predicted risks like Figure 3: the DCA x-axis is
+    # WHY this and not a rug of predicted risks like Figure 4: the DCA x-axis is
     # THRESHOLD probability, not predicted risk, and net benefit at threshold pt
     # is determined by the patients with predicted risk >= pt. The cumulative
     # "% classified high risk" therefore reads directly against the curve above
@@ -3185,7 +3185,7 @@
     invisible(NULL)
   }
 
-  # Figure 2 — ROC. Rendered from pre-computed curve points (aggregate) rather
+  # Figure 3 — ROC. Rendered from pre-computed curve points (aggregate) rather
   # than from patient-level outcome/prediction vectors; see
   # .save_roc_plot_from_points() in R/report_helpers.R and the aggregate step
   # in pad-amp-nhd-val for why the two are equivalent. The published Iannuzzi
@@ -3250,7 +3250,7 @@
     if ("split_set" %in% names(df)) df$split_set == "test" else rep(TRUE, nrow(df))
   }
 
-  # Decision curve analysis plot (Figure 4) — restricted to the three
+  # Decision curve analysis plot (Figure 5) — restricted to the three
   # recalibrated model specifications (Iannuzzi/mFI-5/sVQI-FS) plus the
   # 'treat-all'/'treat-none' reference strategies. The published Iannuzzi
   # lookup curve is computed by the aggregate step and present in
@@ -3482,7 +3482,7 @@
   # NEW subsection (2026-09-13), consolidating what was previously split across
   # the back half of "Risk score evaluation" (model specifications, train/test
   # split, discrimination/calibration definitions) with a new decision-curve-
-  # analysis paragraph (previously described only in Figure 4's caption) so
+  # analysis paragraph (previously described only in Figure 5's caption) so
   # discrimination, calibration, and DCA methodology all live in one place.
   # Score component descriptions moved to "Cohort, outcome, and covariate
   # definitions" above, since they are covariate definitions, not evaluation
@@ -3515,7 +3515,7 @@
   # Model specifications + train/test split, merged into one paragraph
   # 2026-09-13 (was two) -- they are one topic, how each model was fit and
   # evaluated. Discrimination/calibration and DCA paragraphs tightened at the
-  # same time: Table 4/Figure 3/Figure 4's own captions already carry the
+  # same time: Table 4/Figure 4/Figure 5's own captions already carry the
   # specifics, so this prose states each method once without restating it.
   doc <- body_add_par(doc, paste0(
     "\tFor each score, two kinds of specification were considered: the published mapping, where ",
@@ -3533,7 +3533,7 @@
     "the available events for no bias-reduction benefit (Table 4 states the evaluation set for ",
     "every column). Because recalibration is a monotone transform of a single predictor, AUROC and ",
     "AUPRC do not differ between a score's published/raw and recalibrated specifications; Table 4 ",
-    "and Figure 3 report the recalibrated specification for every score, and Figure 2 reports ",
+    "and Figure 4 report the recalibrated specification for every score, and Figure 3 reports ",
     "discrimination for the published/raw specification."
   ), style = "Normal")
   # Append the split sample sizes when split_info.csv was found. The split is
@@ -3575,7 +3575,7 @@
     # paragraph describing a method that then points nowhere.
     if (has_mfi5_bias)
       paste0("Subgroup results are reported for the mFI-5 (Recalibrated) model in ",
-             "Table 7 and Figures 5 (calibration) and 6 (discrimination).")
+             "Table 7 and Figures 6 (calibration) and 7 (discrimination).")
     else
       # Deliberately states only the FACT, not a cause. An earlier draft of this
       # sentence said "no subgroup met the minimum event threshold", which is a
@@ -3591,6 +3591,35 @@
 
   doc <- add_doc_page_break(doc)
   doc <- body_add_par(doc, section_major("Results"), style = "heading 2")
+
+  # ---- Figure 1: CONSORT-style patient-flow diagram ------------------------
+  # Reads agg_consort_flow.csv (pad-amp-nhd-val's R/extract_report_inputs.R),
+  # a cumulative cohort-attrition funnel built from CohortGenerator's own
+  # cg_cohort_attrition.csv/cg_cohort_inclusion.csv plus the facility-admission
+  # exclusion step's before/after counts. Absent in any export produced before
+  # that extraction was added -- read_report_input() and
+  # .save_consort_flow_plot() both degrade to NULL in that case, so this
+  # block is skipped rather than erroring, the same graceful-omission
+  # convention used for subgroup_bias.csv elsewhere in this file.
+  consort_flow <- read_report_input("agg_consort_flow")
+  consort_plot_file <- .save_consort_flow_plot(consort_flow, temp_figure_dir)
+  if (!is.null(consort_plot_file) && file.exists(consort_plot_file)) {
+    doc <- body_add_img(doc, src = consort_plot_file, width = 5.5, height = 6.5)
+    doc <- add_doc_caption(doc,
+      "Figure 1. Patient flow diagram.",
+      paste0(
+        "Cumulative cohort attrition from entry criteria to the final validation ",
+        "cohort. The first five stages are the target cohort's inclusion/exclusion ",
+        "rules, applied in the order evaluated; the final stage additionally excludes ",
+        "patients whose index admission originated from another hospital or a skilled ",
+        "nursing facility (see Methods)."
+      )
+    )
+    doc <- body_add_par(doc, "", style = "Normal")
+    message("[report] Figure 1 (CONSORT patient-flow diagram) added.")
+  } else {
+    message("[report] Figure 1 (CONSORT patient-flow diagram) skipped: agg_consort_flow.csv not available.")
+  }
 
   # ---- Table 1: Demographics -----------------------------------------------
   doc <- body_add_par(doc, section_num("Cohort characteristics"), style = "heading 3")
@@ -3738,11 +3767,11 @@
     message("[report] Table 2 (NHD outcomes) added.")
   }
 
-  # ---- Figure 1: NHD rate by year (placed after Tables 1-2) ---------------
+  # ---- Figure 2: NHD rate by year (placed after Tables 1-2) ---------------
   if (!is.null(nhd_year_plot_file) && file.exists(nhd_year_plot_file)) {
     doc <- body_add_img(doc, src = nhd_year_plot_file, width = 5.5, height = 3.5)
     doc <- add_doc_caption(doc,
-      "Figure 1. Non-home discharge (NHD) rate by disposition type and amputation year.",
+      "Figure 2. Non-home discharge (NHD) rate by disposition type and amputation year.",
       paste0(
         "Non-home discharge (NHD) rate (%) by calendar year of index amputation. The Overall line ",
         "is the combined NHD rate across all dispositions; the remaining lines break it out by ",
@@ -3754,7 +3783,7 @@
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
-    message("[report] Figure 1 (NHD rate by year) added.")
+    message("[report] Figure 2 (NHD rate by year) added.")
   }
 
   # ---- Table 3a: mFI-5 component activation --------------------------------
@@ -3910,7 +3939,7 @@
       "cohort and evaluated on the later half; metrics reported here are on the test half only. ",
       "AUROC and AUPRC are unchanged from the score's published-lookup or raw-score ",
       "specification (recalibration is a monotone transform of a single predictor) and are also ",
-      "shown in Figure 2. ",
+      "shown in Figure 3. ",
       if (nchar(split_caption) > 0) paste0(split_caption, " ") else "",
       "95% CI = 95% bootstrap percentile confidence interval (B = 500 resamples). ",
       "— indicates the specification is unavailable for this run."
@@ -3919,9 +3948,9 @@
   doc <- body_add_par(doc, "", style = "Normal")
   message("[report] Table 4 (recalibrated-only performance) added.")
 
-  # ---- Figure 2: Combined ROC curve (Iannuzzi + mFI-5 + sVQI-FS) ------------
+  # ---- Figure 3: Combined ROC curve (Iannuzzi + mFI-5 + sVQI-FS) ------------
   # Multi-model ROC, drawn from the same aggregate curve-point artifact as
-  # Figure 2's single-model version. The pre-conversion code normalised each
+  # Figure 3's single-model version. The pre-conversion code normalised each
   # raw integer score to [0, 1] before plotting; that was only ever a way to
   # put the scores on a common predictor scale for pROC, and it does not
   # change a ROC curve at all (the curve is rank-based). The aggregate step
@@ -3967,13 +3996,13 @@
 
   if (!is.null(fig2_file) && file.exists(fig2_file)) {
     doc <- body_add_img(doc, src = fig2_file, width = 5.0, height = 4.5)
-    doc <- add_doc_caption(doc, "Figure 2. Receiver operating characteristic (ROC) curves.", fig2_caption)
+    doc <- add_doc_caption(doc, "Figure 3. Receiver operating characteristic (ROC) curves.", fig2_caption)
     doc <- body_add_par(doc, "", style = "Normal")
-    message("[report] Figure 2 (ROC) added.")
+    message("[report] Figure 3 (ROC) added.")
   }
 
-  # ---- Figure 3: Calibration — recalibrated specifications only -------------
-  # Recalibrated-only, matching Table 4, Table 5, and Figure 4 (DCA): the
+  # ---- Figure 4: Calibration — recalibrated specifications only -------------
+  # Recalibrated-only, matching Table 4, Table 5, and Figure 5 (DCA): the
   # Iannuzzi published-lookup curve is never requested here (lookup_source
   # is always NULL below). Attempt a triple-curve combined plot (Iannuzzi +
   # mFI-5 + sVQI-FS recalibrated); fall back to dual, or single-curve when
@@ -4016,11 +4045,11 @@
     has_vqifs_cal <- !is.null(vqifs_calibration_table_path) &&
                      file.exists(vqifs_calibration_table_path)
     fig3_title <- if (has_mfi5_cal && has_vqifs_cal)
-      "Figure 3. NHD risk score calibration — three recalibrated specifications."
+      "Figure 4. NHD risk score calibration — three recalibrated specifications."
     else if (has_mfi5_cal)
-      "Figure 3. NHD risk score calibration — two recalibrated specifications."
+      "Figure 4. NHD risk score calibration — two recalibrated specifications."
     else
-      "Figure 3. Iannuzzi 2020: temporal recalibration calibration plot."
+      "Figure 4. Iannuzzi 2020: temporal recalibration calibration plot."
     fig3_caption <- if (has_mfi5_cal && has_vqifs_cal)
       paste0("Calibration curves for the temporally recalibrated Iannuzzi 2020, mFI-5, and ",
              "sVQI-FS specifications (Table 4), each a logistic regression of the score's total ",
@@ -4042,22 +4071,22 @@
     doc <- body_add_img(doc, src = dual_cal_file, width = 5.0, height = 5.0)
     doc <- add_doc_caption(doc, fig3_title, fig3_caption)
     doc <- body_add_par(doc, "", style = "Normal")
-    message("[report] Figure 3 (calibration) added.")
+    message("[report] Figure 4 (calibration) added.")
   } else if (file.exists(recalibrated_calibration_plot_temp)) {
     # Fallback: single-curve, Iannuzzi 2020 temporal recalibration only (the
-    # published-lookup plot is never used for Figure 3 — see header comment).
+    # published-lookup plot is never used for Figure 4 — see header comment).
     cal_caption <- paste0(
       "Calibration plot for the Iannuzzi 2020 temporal recalibration model. ",
       "Mean predicted non-home discharge risk (x-axis) vs. observed NHD rate (y-axis) ",
       "by quantile bin. Dashed diagonal = perfect calibration."
     )
     doc <- body_add_img(doc, src = recalibrated_calibration_plot_temp, width = 4.5, height = 4.5)
-    doc <- add_doc_caption(doc, "Figure 3. Iannuzzi 2020: temporal recalibration calibration plot.", cal_caption)
+    doc <- add_doc_caption(doc, "Figure 4. Iannuzzi 2020: temporal recalibration calibration plot.", cal_caption)
     doc <- body_add_par(doc, "", style = "Normal")
-    message("[report] Figure 3 (single calibration fallback) added.")
+    message("[report] Figure 4 (single calibration fallback) added.")
   }
 
-    # ---- Risk tier table (after Figure 3) ------------------------------------
+    # ---- Risk tier table (after Figure 4) ------------------------------------
   # Multi-model risk tier analysis across every available score specification.
   # Tier thresholds: Low <30%, Intermediate 30-70%, High >70%.
   # Each model section contributes three rows (one per tier) with a header separator row.
@@ -4281,12 +4310,12 @@
     message("[report] mFI-5 score-rate table (Table 6) added.")
   }
 
-  # ---- Figure 4: Decision curve analysis ------------------------------------
+  # ---- Figure 5: Decision curve analysis ------------------------------------
   doc <- add_doc_page_break(doc)
   doc <- body_add_par(doc, section_num("Decision curve analysis"), style = "heading 3")
   if (!is.null(dca_plot_file) && file.exists(dca_plot_file)) {
     doc <- body_add_img(doc, src = dca_plot_file, width = 5.5, height = 3.8)
-    doc <- add_doc_caption(doc, "Figure 4. Decision curve analysis.", paste0(
+    doc <- add_doc_caption(doc, "Figure 5. Decision curve analysis.", paste0(
       "Decision curve analysis for the recalibrated Iannuzzi 2020, mFI-5, and sVQI-FS ",
       "specifications available in this run, evaluated on the temporal test partition so ",
       "that all curves compare net benefit across the same patients. ",
@@ -4296,7 +4325,7 @@
       "to the minimum predicted NHD risk at which a clinician would recommend an intervention."
     ))
     doc <- body_add_par(doc, "", style = "Normal")
-    message("[report] Figure 4 (DCA) added.")
+    message("[report] Figure 5 (DCA) added.")
 
     # ---- Net benefit at selected thresholds (exact values) -------------------
     # save_dca_plot() already computes this table purely to write it as a
@@ -4330,7 +4359,7 @@
         doc <- add_doc_caption(doc,
           "Net benefit at selected threshold probabilities.",
           paste0(
-            "Exact net benefit for each strategy in Figure 4, at 10-percentage-point increments ",
+            "Exact net benefit for each strategy in Figure 5, at 10-percentage-point increments ",
             "of the threshold probability, for comparing curves that are close together. Values ",
             "match the plotted curves exactly."
           )
@@ -4502,8 +4531,8 @@
       overall_auroc_val = auroc_mfi5_recal,
       section_heading   = section_num("Subgroup bias assessment \u2014 mFI-5 (Recalibrated)"),
       table_caption     = "Table 7. ECE and AUROC by subgroup \u2014 mFI-5 (Recalibrated).",
-      figure_caption    = "Figure 5. Subgroup calibration forest plot \u2014 mFI-5 (Recalibrated).",
-      figure_caption_auroc = "Figure 6. Subgroup discrimination forest plot \u2014 mFI-5 (Recalibrated).",
+      figure_caption    = "Figure 6. Subgroup calibration forest plot \u2014 mFI-5 (Recalibrated).",
+      figure_caption_auroc = "Figure 7. Subgroup discrimination forest plot \u2014 mFI-5 (Recalibrated).",
       forest_file_name  = "subgroup_forest_mfi5.png",
       forest_file_name_auroc = "subgroup_forest_mfi5_auroc.png"
     )
@@ -5095,7 +5124,7 @@
   # be embedded into the Word document via officer::body_add_img(). Without
   # this step the .tiff/.pdf/.png trio that save_figure() (R/report_helpers.R)
   # writes for journal submission is deleted the moment this function returns
-  # — there is no standalone Figure 2/3/4 file to actually upload anywhere.
+  # — there is no standalone Figure 2/3/4/5 file to actually upload anywhere.
   # Copy the whole directory into output_dir/figures/ now, while
   # temp_figure_dir still exists (on.exit runs after this point, not before).
   #
