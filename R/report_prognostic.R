@@ -4088,8 +4088,12 @@
 
     # ---- Risk tier table (after Figure 4) ------------------------------------
   # Multi-model risk tier analysis across every available score specification.
-  # Tier thresholds: Low <30%, Intermediate 30-70%, High >70%.
-  # Each model section contributes three rows (one per tier) with a header separator row.
+  # Tier thresholds: Low <60%, High >60% (two tiers; see pad-amp-nhd-val's
+  # aggregate_report_inputs.R for the actual boundary -- not restated as a
+  # number here a second time after this comment went stale across two
+  # earlier threshold changes without being updated).
+  # Each model section contributes one row per tier (now two, was three)
+  # with a header separator row.
   #
   # EVALUATION SET: every recalibrated specification is restricted to the test
   # partition (split_set == "test"), matching Table 4. Tiering the recalibrated
@@ -4166,12 +4170,22 @@
   # aggregate_report_inputs.R's actual bin edges -- exactly the kind of
   # two-sources-of-truth bug this report has been bitten by before (see the
   # subgroup-bias supplemental-label history elsewhere in this file).
+  # n_tiers (and the "two"/"three" word derived from it below) is likewise
+  # counted from the data rather than hardcoded -- a caption once claimed
+  # "three tiers" through two separate threshold-scheme changes (3 tiers,
+  # then 2) before anyone noticed it never read the actual row count.
+  n_tiers <- if (length(tier_sections) > 0) {
+    sum(!tier_sections[[1]]$is_model_header)
+  } else {
+    2L
+  }
   tier_threshold_desc <- if (length(tier_sections) > 0) {
     first_sec <- tier_sections[[1]]
     paste(trimws(first_sec[["Risk Tier"]][!first_sec$is_model_header]), collapse = ", ")
   } else {
-    "Low, Intermediate, and High"
+    "Low and High"
   }
+  tier_count_word <- c("one", "two", "three", "four", "five")[min(n_tiers, 5)]
 
   if (length(tier_sections) > 0) {
     tier_all <- do.call(rbind, tier_sections)
@@ -4214,8 +4228,8 @@
     doc <- add_doc_caption(doc,
       paste0(
         "Table 5. Risk tier classification by model specification. ",
-        "Patients are stratified into three tiers based on each recalibrated model's ",
-        "predicted NHD risk: ", tier_threshold_desc, ". ",
+        "Patients are stratified into ", tier_count_word, " tiers based on each recalibrated ",
+        "model's predicted NHD risk: ", tier_threshold_desc, ". ",
         "The observed NHD rate within each tier provides a direct assessment of clinical utility."
       ),
       paste0(
