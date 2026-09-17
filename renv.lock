@@ -1624,8 +1624,8 @@
       "RemoteHost": "api.github.com",
       "RemoteUsername": "Duke-Vascular-Informatics",
       "RemoteRepo": "omop-report-toolkit",
-      "RemoteRef": "b09fc751129c993811baf9d0785f7a3066147a57",
-      "RemoteSha": "b09fc751129c993811baf9d0785f7a3066147a57"
+      "RemoteRef": "98be7fe1b045dcb021b7cb82f5d36b20a6e75d17",
+      "RemoteSha": "98be7fe1b045dcb021b7cb82f5d36b20a6e75d17"
     },
     "openssl": {
       "Package": "openssl",
