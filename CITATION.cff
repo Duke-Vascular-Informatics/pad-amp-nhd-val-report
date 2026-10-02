@@ -1,0 +1,55 @@
+cff-version: 1.2.0
+message: >
+  If you use this manuscript-rendering code in your research, please cite it
+  using the metadata below.
+
+title: >
+  pad-amp-nhd-val-report: Manuscript Report Renderer for the External Validation
+  of Three Published Integer Risk Scores for Non-Home Discharge After Major Lower
+  Extremity Amputation
+
+authors:
+  - given-names: "Adam P."
+    family-names: "Johnson"
+    name-suffix: "MD, MPH"
+    affiliation: "Duke University School of Medicine, Department of Surgery"
+    orcid: "https://orcid.org/0000-0002-3014-6372"
+  - given-names: "Sasank"
+    family-names: "Kalipatnapu"
+    name-suffix: "MD"
+    affiliation: "University of Massachusetts School of Medicine"
+  - given-names: "Ayman"
+    family-names: "Ali"
+    name-suffix: "MD"
+    affiliation: "Duke University School of Medicine, Department of Surgery"
+
+version: "1.0.0"
+date-released: "2026-10-02"
+
+repository-code: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report"
+url: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report"
+
+license: GPL-3.0
+
+abstract: >
+  The companion repository that renders the Word manuscript tables and figures for
+  the pad-amp-nhd-val study from aggregate result artifacts alone. It has no
+  database connection and no access to patient-level data: it reads only the
+  small-cell-suppressed CSV artifacts written by the analysis repository, so the
+  rendered report can be reproduced from an approved results export without
+  access to the source CDM.
+  Funding: Research reported in this publication was supported by the National
+  Center For Advancing Translational Sciences of the National Institutes of Health
+  under Award Number K12TR005435. The content is solely the responsibility of the
+  authors and does not necessarily represent the official views of the National
+  Institutes of Health.
+
+keywords:
+  - OMOP CDM
+  - OHDSI
+  - external validation
+  - risk score
+  - non-home discharge
+  - amputation
+  - reproducible reporting
+  - R
