@@ -23,7 +23,7 @@ Shared baseline (applies first):
 - No `study_params.yaml` here — see `config.R`'s header. Report parameters
   come from `_report_config.yaml`, written by `pad-amp-nhd-val`'s extract
   step, not duplicated in this repo.
-- Repo is **private**.
+- Repo is **public** (made public 2026-10-02 ahead of publication; GPL-2.0, see `LICENSE`). Nothing patient-level or site-credentialed may ever be committed here.
 
 ### Pipeline
 
