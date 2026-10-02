@@ -46,7 +46,7 @@ source("R/report_prognostic.R")
 #                          thread it into the prognostic branch to make the
 #                          signatures uniform; that would reintroduce exactly the
 #                          coupling Phase 0 removed. Those two templates are
-#                          Phase 4 work — see docs/MIGRATION_PLAN_REPO_SPLIT.md.
+#                          Phase 4 work — see charon's "Multi-Repo Analysis Pipeline" section (https://github.com/Duke-Vascular-Informatics/charon#multi-repo-analysis-pipeline).
 #   config               — named list from get_validation_config(); drives all routing
 #   citations            — optional character vector of citation strings
 # -----------------------------------------------------------------------------

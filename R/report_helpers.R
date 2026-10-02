@@ -3,8 +3,8 @@
 #
 # Study-specific helper for the manuscript report: the cohort summary table.
 #
-# MOVED TO omopReportToolkit (2026-08-10, docs/MIGRATION_PLAN_REPO_SPLIT.md
-# Phase 1). Everything generic used to live in this file — bibliography
+# MOVED TO omopReportToolkit (2026-08-10; see charon's "Multi-Repo Analysis
+# Pipeline" README section, https://github.com/Duke-Vascular-Informatics/charon#multi-repo-analysis-pipeline). Everything generic used to live in this file — bibliography
 # formatting, ECE, ROC/calibration figures, .build_table1() — and has been
 # extracted to the shared package, verified byte-identical there, with one
 # real bug fixed in the process (.compute_ece() — see that package's commit

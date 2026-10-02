@@ -1653,7 +1653,7 @@
 # monolith.  All 4 parameterization branches have been applied; the rest of
 # the body is verbatim.
 #
-# RENDER ONLY — NO DATABASE (Phase 0, docs/MIGRATION_PLAN_REPO_SPLIT.md).
+# RENDER ONLY — NO DATABASE (see charon's "Multi-Repo Analysis Pipeline" section, https://github.com/Duke-Vascular-Informatics/charon#multi-repo-analysis-pipeline).
 #
 # This function used to take `connection_details` and query the CDM live for
 # Table 1, Table 2, Figure 1, the cdm_source metadata line, three supplemental
