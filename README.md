@@ -21,7 +21,7 @@ exactly what this split removes.
 This repo owns the opposite half: given the CSVs `pad-amp-nhd-val` wrote,
 produce the manuscript. It shares generic figure/table helpers with other
 studies via [`omopReportToolkit`](https://github.com/Duke-Vascular-Informatics/omop-report-toolkit)
-(bucket 3 of `docs/MIGRATION_PLAN_REPO_SPLIT.md` in `omop-dev-workspace`); the
+(bucket 3 of charon's [Multi-Repo Analysis Pipeline](https://github.com/Duke-Vascular-Informatics/charon#multi-repo-analysis-pipeline)); the
 report composition here — which tables, which figures, the clinical
 narrative — is specific to this study and stays here, not in the toolkit.
 

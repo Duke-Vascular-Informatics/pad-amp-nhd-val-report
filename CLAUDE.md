@@ -2,7 +2,7 @@
 
 Shared baseline (applies first):
 
-- `../CLAUDE.md`
+- [charon's `CLAUDE.md`](https://github.com/Duke-Vascular-Informatics/charon/blob/main/CLAUDE.md)
 
 ## Local Overrides
 
@@ -11,7 +11,7 @@ Shared baseline (applies first):
   `connection_details`, or any live CDM query, the query belongs in
   `pad-amp-nhd-val`'s `R/extract_report_inputs.R` instead, writing a new CSV
   artifact this repo reads. This is the one rule that must never be broken —
-  see `docs/MIGRATION_PLAN_REPO_SPLIT.md` (in `omop-dev-workspace`) for why.
+  see charon's [Multi-Repo Analysis Pipeline](https://github.com/Duke-Vascular-Informatics/charon#multi-repo-analysis-pipeline) section for why.
 - Consumes [`omopReportToolkit`](https://github.com/Duke-Vascular-Informatics/omop-report-toolkit)
   for generic figure styling and report helpers, pinned to a commit in
   `renv.lock` (never a branch). Bump it deliberately: `renv::install(...)`
