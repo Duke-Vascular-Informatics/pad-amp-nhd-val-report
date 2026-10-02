@@ -1600,7 +1600,7 @@
       "Title": "Render-Only Manuscript Report Helpers for OMOP CDM Studies",
       "Authors@R": "person(\"Duke Vascular Informatics\", role = c(\"aut\", \"cre\"), email = \"noreply@duke.edu\")",
       "Description": "Greyscale-safe manuscript figure styling and generic Word-report helpers (bibliography formatting, calibration statistics, ROC/calibration figures, a styled Table 1 flextable, docx post-processing) shared across OMOP CDM study repos. Consumes only result artifacts already on disk (CSVs, person-level score tables) -- never a database connection. Per-study report composition (which tables, which figures, clinical narrative) is intentionally NOT part of this package; it lives in that study's own <study>-report repo (scaffolded from omop-report-template) that calls into this one.",
-      "License": "GPL-3",
+      "License": "GPL-2",
       "Encoding": "UTF-8",
       "Depends": [
         "R (>= 4.1.0)"
@@ -1611,7 +1611,8 @@
         "flextable",
         "patchwork",
         "pROC",
-        "devEMF"
+        "devEMF",
+        "grid"
       ],
       "Suggests": [
         "ragg",
@@ -1624,8 +1625,8 @@
       "RemoteHost": "api.github.com",
       "RemoteUsername": "Duke-Vascular-Informatics",
       "RemoteRepo": "omop-report-toolkit",
-      "RemoteRef": "98be7fe1b045dcb021b7cb82f5d36b20a6e75d17",
-      "RemoteSha": "98be7fe1b045dcb021b7cb82f5d36b20a6e75d17"
+      "RemoteRef": "7c3250b48004df2133affb68c023052e11f99ac7",
+      "RemoteSha": "7c3250b48004df2133affb68c023052e11f99ac7"
     },
     "openssl": {
       "Package": "openssl",
