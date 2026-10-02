@@ -65,3 +65,7 @@ Verified by running the full report end-to-end from this repo against
 `pad-amp-nhd-val`'s existing `output/` directory and diffing the result
 against the last report generated before the split: 31,901 paragraphs,
 identical except the generation date.
+
+## License
+
+Copyright 2026 Duke University. All Rights Reserved. The software is hereby licensed under the GNU GPL License v2 (see [LICENSE](LICENSE)).
