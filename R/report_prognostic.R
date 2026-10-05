@@ -4123,6 +4123,22 @@
       is_model_header         = TRUE,
       check.names = FALSE, stringsAsFactors = FALSE
     )
+    # Column percents (added 2026-10-05): each tier's share of THIS model's
+    # patients (N column) and of THIS model's NHD events (NHD Events column),
+    # i.e. the denominator is the model's own column total, not the whole
+    # table. The total is only knowable when no tier in the model was
+    # small-cell-suppressed (a suppressed cell arrives as NA); computing a
+    # percent against a total that silently omits it would be wrong, so the
+    # percents are left off for the whole model section in that case.
+    n_all  <- suppressWarnings(as.numeric(d$n))
+    ev_all <- suppressWarnings(as.numeric(d$events))
+    n_col_total  <- if (!anyNA(n_all)  && sum(n_all)  > 0) sum(n_all)  else NA_real_
+    ev_col_total <- if (!anyNA(ev_all) && sum(ev_all) > 0) sum(ev_all) else NA_real_
+    with_col_pct <- function(x, total) {
+      if (is.na(x)) return("\u2014")                       # suppressed
+      txt <- as.character(as.integer(x))
+      if (is.na(total)) txt else paste0(txt, " (", round(100 * x / total, 1), "%)")
+    }
     tier_rows <- do.call(rbind, lapply(seq_len(nrow(d)), function(i) {
       n_tier <- suppressWarnings(as.numeric(d$n[i]))
       n_ev   <- suppressWarnings(as.numeric(d$events[i]))
@@ -4136,8 +4152,8 @@
       } else "N/A"
       data.frame(
         "Risk Tier"             = paste0("  ", d$tier[i]),
-        "N"                     = if (is.na(n_tier)) "\u2014" else as.character(as.integer(n_tier)),
-        "NHD Events"            = if (is.na(n_ev)) "\u2014" else as.character(as.integer(n_ev)),
+        "N"                     = with_col_pct(n_tier, n_col_total),
+        "NHD Events"            = with_col_pct(n_ev, ev_col_total),
         "Observed NHD Rate (%)" = obs_rate,
         is_model_header         = FALSE,
         check.names = FALSE, stringsAsFactors = FALSE
@@ -4208,8 +4224,8 @@
       flextable::align(j = c("N", "NHD Events", "Observed NHD Rate (%)"),
                        align = "center", part = "all") |>
       flextable::width(j = "Risk Tier",              width = 2.2) |>
-      flextable::width(j = "N",                      width = 0.7) |>
-      flextable::width(j = "NHD Events",             width = 0.9) |>
+      flextable::width(j = "N",                      width = 1.1) |>
+      flextable::width(j = "NHD Events",             width = 1.2) |>
       flextable::width(j = "Observed NHD Rate (%)",  width = 1.6) |>
       flextable::set_table_properties(layout = "fixed")
 
@@ -4241,7 +4257,9 @@
         "recalibration. ",
         "N = number of patients assigned to that tier by the corresponding model. ",
         "NHD Events = number with non-home discharge. ",
-        "Observed NHD Rate = NHD Events / N. ",
+        "Percentages in parentheses are column percents: the share of that model's ",
+        "patients (N) or of its NHD events (NHD Events) falling in each tier. ",
+        "Observed NHD Rate = NHD Events / N (the row percent). ",
         "Note that logistic recalibration of a weakly discriminating integer score compresses ",
         "the predicted probability range toward the cohort base rate; when this places every ",
         "patient in a single probability tier, that is a substantive finding about the score's ",
