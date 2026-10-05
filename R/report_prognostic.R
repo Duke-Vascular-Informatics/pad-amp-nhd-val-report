@@ -200,8 +200,8 @@
       derivation = "person.race_concept_id ≠ 8527 and ≠ 0 (unknown)"
     ),
     "Ambulatory deficit (use of any ambulatory device)" = list(
-      points = "+3", definition = "Use of any ambulatory assistive device (cane, walker, wheelchair, etc.)",
-      derivation = "observation_occurrence with ambulatory device concepts within 365 days before index"
+      points = "+3", definition = "Use of an ambulatory aid (walking aid, wheelchair, walker, walking frame, crutch) or documented impaired ambulation (unable to walk, walking disability, bed-ridden, confined to chair, dependent for walking)",
+      derivation = "observation_occurrence and device_exposure records with ambulatory-status concepts within 365 days before index (day −365 to −1)"
     ),
     "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(
       points = "+3", definition = "Critical limb ischaemia indication: wound, ulcer, or gangrene",
@@ -296,20 +296,20 @@
   # Component definitions: Subramaniam S et al. J Am Coll Surg 2018;226(2):173-181.
   # Each item = 1 point; mFI-5 = sum of positive items (range 0–5).
   covariate_defs <- list(
-    "Dependent functional status (frailty / impaired mobility)" = list(
+    "Dependent functional status (ADL dependence)" = list(
       points = "+1",
-      definition = "Partial or total dependence for ADLs, frailty, or impaired mobility",
-      derivation = "observation_occurrence within 10 years before index (lookback_start_day = −3650)"
+      definition = "Partial or total dependence for activities of daily living (dependent for, or needs help with, bathing, dressing, feeding, grooming, hygiene, or mobility; requires assistance with daily activities), bed-ridden, confined to chair, or severe frailty",
+      derivation = "observation_occurrence and condition_occurrence records within 365 days before index (day −365 to −1)"
     ),
     "Diabetes mellitus (any type)" = list(
       points = "+1",
       definition = "Any type of diabetes mellitus",
-      derivation = "condition_occurrence within 10 years before index"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
-    "Chronic obstructive pulmonary disease" = list(
+    "COPD or current pneumonia" = list(
       points = "+1",
-      definition = "COPD (current-pneumonia sub-component of mFI-5 omitted — documented limitation in EHR data)",
-      derivation = "condition_occurrence within 10 years before index"
+      definition = "Chronic obstructive pulmonary disease within 365 days before index, or pneumonia within 30 days before index (current pneumonia); either qualifies",
+      derivation = "condition_occurrence: COPD within 365 days OR pneumonia within 30 days before index"
     ),
     "Congestive heart failure (within 30 days prior)" = list(
       points = "+1",
@@ -319,7 +319,7 @@
     "Hypertension" = list(
       points = "+1",
       definition = "Hypertensive disorder (medication requirement not enforced — documented limitation)",
-      derivation = "condition_occurrence within 10 years before index"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     )
   )
 
@@ -401,32 +401,32 @@
     "Hypertension" = list(
       points = "+1",
       definition = "Hypertensive disorder",
-      derivation = "condition_occurrence within 10 years before index (lookback_start_day = −3650)"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Congestive heart failure" = list(
       points = "+1",
       definition = "Congestive heart failure",
-      derivation = "condition_occurrence within 10 years before index"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Coronary artery disease" = list(
       points = "+1",
       definition = "Coronary artery disease",
-      derivation = "condition_occurrence within 10 years before index"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Peripheral vascular disease" = list(
       points = "+1",
       definition = "Peripheral arterial occlusive disease (diagnosis proxy; paper uses ABI <0.7 or prior arterial intervention/amputation)",
-      derivation = "condition_occurrence within 10 years before index"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Diabetes mellitus (any type)" = list(
       points = "+1",
       definition = "Any type of diabetes mellitus",
-      derivation = "condition_occurrence within 10 years before index"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Chronic obstructive pulmonary disease" = list(
       points = "+1",
       definition = "COPD",
-      derivation = "condition_occurrence within 10 years before index"
+      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     # RENAL IMPAIRMENT — key updated 2026-07-26 to match the covariate_name in
     # covariates_vqifs.csv after the definition itself changed. The dict key
@@ -438,28 +438,26 @@
     "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(
       points = "+1",
       definition = "Creatinine > 1.8 mg/dL or dialysis, the paper's own lab-value definition (no longer a diagnosis proxy — CORRECTED 2026-07-26 after the prior CKD-diagnosis proxy activated in 224/225 patients, 99.6%, due to an over-broad concept-ancestor expansion)",
-      derivation = "query_renal_impairment_covariate_counts() in R/risk_score_pipeline.R: measurement value threshold OR procedure/condition dialysis presence, within 10 years before index"
+      derivation = "query_renal_impairment_covariate_counts() in R/risk_score_pipeline.R: measurement value threshold OR procedure/condition dialysis presence, within 365 days before index"
     ),
     # ANEMIA — key updated 2026-07-26, same reason as renal impairment above.
     "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(
       points = "+1",
       definition = "Hgb < 13 g/dL (male) / < 12 g/dL (female), the paper's own sex-specific lab threshold (no longer a diagnosis proxy — CORRECTED 2026-07-26 after the prior anemia-diagnosis proxy activated in only 3/225 patients, 1.3%, under-capturing relative to the lab threshold)",
-      derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 10 years before index; missing_is_negative = FALSE (unmeasured Hgb is unknown, not \"not anaemic\")"
+      derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 365 days before index; missing_is_negative = FALSE (unmeasured Hgb is unknown, not \"not anaemic\")"
     ),
     "Underweight (BMI < 18.5)" = list(
       points = "+1",
       definition = "BMI < 18.5, the paper's own cut-point (direct measurement preferred; weight/height fallback)",
-      derivation = "measurement within 10 years before index; missing_is_negative = FALSE (unmeasured BMI is unknown, not \"not underweight\")"
+      derivation = "measurement within 365 days before index; missing_is_negative = FALSE (unmeasured BMI is unknown, not \"not underweight\")"
     ),
     "Non-ambulatory / impaired ambulation status" = list(
       points = "+1",
-      definition = "Impaired ambulation, walking aid use, or gait abnormality",
+      definition = "Impaired ambulation: walking aid, wheelchair, walker, walking-frame or crutch use, unable to walk, walking disability, bed-ridden, or confined to chair",
       derivation = paste0(
-        "query_auto_domain_covariate_counts() in R/risk_score_pipeline.R (domain = \"auto\" in ",
-        "covariates_vqifs.csv — CHANGED 2026-07-26 from \"observation\", which found 0/225 ",
-        "patients despite qualifying Synthea events, because 3 of the 7 concepts above resolve ",
-        "to Procedure/Device rather than Observation in this vocabulary build): unions across ",
-        "every clinical-event domain table, within 10 years before index"
+        "observation_occurrence and device_exposure records with ambulatory-status concepts ",
+        "(the same set as the Iannuzzi ambulatory-deficit component), within 365 days before ",
+        "index (day −365 to −1)"
       )
     )
   )
@@ -1291,8 +1289,9 @@
       "undergoing open lower-extremity revascularisation for peripheral artery disease. ",
       "Components and point values are: age 60–69 years (+2), age 70–79 years (+4), ",
       "age ≥80 years (+6), female sex (+1; OMOP concept 8532), non-White race (+2; ",
-      "concept 8527 [White] as reference), ambulatory deficit — use of any ambulatory ",
-      "assistive device (+3; concepts 4012645, 437643, 439405, 36714126 and descendants), ",
+      "concept 8527 [White] as reference), ambulatory deficit — use of an ambulatory ",
+      "aid or documented impaired ambulation (+3; walking-aid, wheelchair, walker, frame and ",
+      "crutch use, and unable-to-walk, bed-ridden and confined-to-chair findings), ",
       "tissue loss / critical limb ischaemia indication — wound, ulcer, or gangrene (+3; ",
       "concepts 4029926, 4291464 and descendants), anemia (hemoglobin <10 g/dL; +2; ",
       "LOINC 718-7, OMOP concept 3000963), and insulin-dependent diabetes mellitus (+2; ",
@@ -1306,10 +1305,11 @@
     paste0(
       "Subramaniam 2018 modified Frailty Index — 5-item (mFI-5; score range 0–5 points). ",
       "This five-component frailty index was derived in a large surgical registry (ACS NSQIP) ",
-      "and assigns one point for each of: dependent functional status or impaired mobility ",
-      "(OMOP concepts 4086506 and 4306934 and descendants), diabetes mellitus of any type ",
-      "(concept 201820 and descendants), chronic obstructive pulmonary disease (concept ",
-      "255573 and descendants), congestive heart failure within 30 days prior to the index ",
+      "and assigns one point for each of: dependent functional status (activities-of-daily-living ",
+      "dependence, bed-ridden, confined to chair, or severe frailty), diabetes mellitus of any type ",
+      "(concept 201820 and descendants), chronic obstructive pulmonary disease within 365 days ",
+      "(concept 255573 and descendants) or current pneumonia within 30 days (concept 255848 and ",
+      "descendants), congestive heart failure within 30 days prior to the index ",
       "date (concept 316139 and descendants), and hypertension (concept 316866 and ",
       "descendants). No published NHD probability mapping exists for the mFI-5 in this ",
       "population; the raw integer score is used directly for discrimination analysis."
@@ -3434,7 +3434,9 @@
       "variant — both addressed in the Limitations)"
     ) else "",
     ". Every component was ascertained from clinical documentation on or before the index date ",
-    "using a component-specific lookback window; a patient meeting a component's evidence ",
+    "over a 365-day lookback window (index date excluded) unless the score's own publication ",
+    "defines the item differently (mFI-5 congestive heart failure and current pneumonia, 30 days; ",
+    "Iannuzzi tissue loss, index date included); a patient meeting a component's evidence ",
     "threshold received its full published point value, and an absent record was treated as zero ",
     "evidence.",
     if (has_vqifs) paste0(
@@ -3462,18 +3464,17 @@
     "specification, so the same code executes unmodified at any OMOP CDM v5 site with no ",
     "site-specific SQL editing, credentials, or institution-specific identifiers embedded. ",
     "Predictor ascertainment is likewise cohort-based: every score component resolves to a named, ",
-    "ATLAS-registered cohort definition (", supp_table("concept_set_inventory"), "), reused from the ",
-    "investigators' shared phenotype library where an equivalent definition already existed. Three ",
+    "cohort definition authored from that score's own concept set (", supp_table("concept_set_inventory"), "); ",
+    "one cohort may serve several score items, with the lookback window held in a separate mapping. Three ",
     "elements fall outside what Strategus/Circe can express and are implemented as documented ",
     "extensions: the non-home discharge outcome (Circe has no discharge-disposition criterion), ",
     "application of the three published scoring rules (Strategus's prediction module fits new ",
     "models rather than applying fixed published weights), and arithmetic on measurement values ",
     "(body mass index, laboratory unit normalization). To verify that cohort-based ascertainment ",
     "measures the same thing as a direct CDM query, both routes are retained and an automated ",
-    "regression test compares every predictor's per-patient values between them; differences that ",
-    "are expected (a reused definition that cannot carry a lookback window) are quantified rather ",
-    "than suppressed, and a second automated check confirms each cohort's concept set still matches ",
-    "the concept set recorded for that score component."
+    "regression test requires every predictor's per-patient values to agree exactly between them, ",
+    "and a second automated check confirms each cohort's concept set still matches the concept set ",
+    "recorded for that score component."
   ), style = "Normal")
 
   # ---------------------------------------------------------------------------
@@ -3795,9 +3796,10 @@
       "Table 3a. Subramaniam mFI-5: component definitions and activation summary.",
       paste0(
         "Point value (range 0–5) and observed activation rate for each of the five mFI-5 ",
-        "components. All use a 10-year lookback except congestive heart failure (30 days, per ",
-        "the original publication); absent records count as true negatives. Concept-set ",
-        "definitions are in ", supp_table("concept_set_inventory"), "."
+        "components. All use a 365-day lookback except congestive heart failure and the pneumonia ",
+        "arm of the combined COPD-or-pneumonia item (30 days each, per the original publication); ",
+        "absent records count as true negatives. Concept-set definitions are in ",
+        supp_table("concept_set_inventory"), "."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
@@ -3815,7 +3817,8 @@
     "Table 3b. Iannuzzi 2020 NHD score: component definitions and activation summary.",
     paste0(
       "Point values (range 0–18) and observed activation rates for the nine Iannuzzi 2020 ",
-      "components. Anemia (Hgb < 10 g/dL) treats an absent measurement as unknown ",
+      "components, all with a 365-day lookback (tissue loss includes the index date). Anemia ",
+      "(Hgb < 10 g/dL) treats an absent measurement as unknown ",
       "(missing_is_negative = FALSE); all other components treat it as a true negative. ",
       "Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
     )
@@ -3831,7 +3834,7 @@
       paste0(
         "Point value (range 0–10 as implemented; non-home residence, the paper's eleventh item, ",
         "is omitted — see covariates/covariates_vqifs.csv) and observed activation rate for each ",
-        "of ten sVQI-FS components, all with a 10-year lookback. ",
+        "of ten sVQI-FS components, all with a 365-day lookback. ",
         # Updated to match the 2026-07-26 switch from diagnosis proxies to the paper's
         # own lab thresholds (query_renal_impairment_covariate_counts() and
         # query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R).
@@ -4651,8 +4654,8 @@
         atlas_inventory <- data.frame(
           "ATLAS ID" = c(
             "9100011", "9100001",
-            "1797949", "1797950", "1797951", "1797952",
-            "9100002", "9100003", "9100004", "9100005", "9100006",
+            "9100024", "9100023", "9100022", "9100021",
+            "9100002", "9100003", "9100004", "9100026", "9100027", "9100025",
             "9100007", "9100008", "9100009", "9100010",
             "1797941",
             "N/A", "N/A", "N/A", "N/A"
@@ -4660,15 +4663,16 @@
           "Cohort / Concept Set" = c(
             "[DVI] Major LE Amputation (dysvascular, trauma/cancer excluded) — target",
             "[DVI] Non-Home Discharge — outcome",
-            "[DVI] VA-FI Coronary Artery Disease",
-            "[DVI] VA-FI Heart Failure",
-            "[DVI] VA-FI Hypertension",
-            "[DVI] VA-FI Diabetes Mellitus",
+            "[DVI] Coronary Artery Disease (risk score item)",
+            "[DVI] Heart Failure (risk score item)",
+            "[DVI] Hypertension (risk score item)",
+            "[DVI] Diabetes Mellitus (risk score item)",
             "[DVI] COPD (risk score item)",
             "[DVI] Peripheral Arterial Occlusive Disease",
             "[DVI] Ischemic Tissue Loss",
-            "[DVI] Dependent Functional Status",
-            "[DVI] Ambulatory Deficit",
+            "[DVI] Dependent Functional Status (ADL dependence)",
+            "[DVI] Ambulatory Status (aid use / impaired ambulation)",
+            "[DVI] Pneumonia (mFI-5 current pneumonia)",
             "[DVI] Insulin-Treated Diabetes",
             "[DVI] Anemia (Hgb <10 g/dL)",
             "[DVI] Anemia (sex-specific threshold)",
@@ -4684,13 +4688,14 @@
             "None — dynamic vocabulary lookup",
             "4185932",
             "316139",
-            "316866, 442604, 201313, 195556",
-            "201820, 4034964",
+            "316866",
+            "201820",
             "255573",
             "317309",
             "4029926, 4291464",
-            "4086506, 4306934",
-            "4012645, 437643, 439405, 36714126, 4085915, 4044714, 4240470",
+            "Observation: 4044722 + 22 others; Condition: 45770280",
+            "Observation: 4012645, 4044714, 439405, 4086548, 4058155, 4058154 + 7 others; Device: 4240470, 37165652, 4141765, 4251933",
+            "255848",
             "21600713",
             "3000963",
             "3000963",
@@ -4706,13 +4711,14 @@
             "Discharge disposition resolved dynamically against the local vocabulary; no fixed concept id",
             "Ischemic heart disease diagnosis",
             "Heart failure diagnosis",
-            "Hypertension diagnosis (includes hypertensive heart/renal disease)",
-            "Diabetes mellitus diagnosis (includes a metabolic-complication code)",
+            "Hypertension diagnosis and descendants",
+            "Diabetes mellitus diagnosis and descendants",
             "COPD diagnosis and descendants",
             "Peripheral arterial disease diagnosis and descendants",
             "Ischemic ulcer or ischemic gangrene diagnosis",
-            "Frailty diagnosis or impaired-mobility finding",
-            "Assistive-device use or provision (wheelchair, cane, prosthesis)",
+            "Activities-of-daily-living dependence finding, bed-ridden, confined to chair, or severe frailty",
+            "Walking-aid, wheelchair, walker, walking-frame or crutch use, or a finding of impaired ambulation",
+            "Pneumonia diagnosis and descendants (30-day window; OR'd with COPD for the mFI-5 item)",
             "Insulin exposure",
             "Hemoglobin measurement below a fixed threshold",
             "Hemoglobin measurement below a sex-specific threshold",
@@ -4729,7 +4735,8 @@
             "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
             "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
             "ConditionOccurrence, Observation",
-            "Observation, ProcedureOccurrence, DeviceExposure",
+            "Observation, DeviceExposure",
+            "ConditionOccurrence",
             "DrugExposure", "Measurement", "Measurement",
             "Measurement, ProcedureOccurrence, ConditionOccurrence",
             "ProcedureOccurrence, VisitOccurrence",
@@ -4754,10 +4761,10 @@
         doc <- body_add_flextable(doc, atlas_ft)
         doc <- add_doc_caption(doc,
           paste0(supp_table("concept_set_inventory"), ". ATLAS concept sets and cohorts used in this analysis."),
-          paste0("Every cohort and concept set referenced in the Methods is registered in OHDSI ATLAS ",
-                 "(atlas-demo.ohdsi.org), named with a [DVI] prefix. Cohorts numbered 9100xxx are local ",
-                 "to this study's reserved id block and not yet pushed to the shared ATLAS instance; all ",
-                 "others are shared, previously registered cohorts reused unchanged. The final four rows ",
+          paste0("Every cohort and concept set referenced in the Methods is named with a [DVI] prefix, ",
+                 "following the convention of the shared OHDSI ATLAS instance (atlas-demo.ohdsi.org). Cohorts numbered 9100xxx are local ",
+                 "to this study's reserved id block and not yet pushed to the shared ATLAS instance; ",
+                 "1797941 is a shared, previously registered cohort. The final four rows ",
                  "are predictors resolved by a direct concept or demographic query rather than a cohort ",
                  "definition (ATLAS ID: N/A). Concept ID(s) lists each definition's primary standard ",
                  "concept(s); a set with more than a few members is given as an anchor concept plus a ",
