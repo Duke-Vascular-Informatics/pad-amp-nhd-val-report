@@ -177,12 +177,20 @@
 # Keyed by the component name exactly as it appears in covariate_summary.csv; an
 # unlisted name renders an em dash rather than failing.
 # -----------------------------------------------------------------------------
-.AMBULATORY_PARENTS <- paste0(
-  "Walking aid use*; Using wheelchair; Walking disability; Unable to walk; Bed-ridden; ",
-  "Confined to chair; Needs walking aid in home; Mobile outside with aid; ",
-  "Impaired wheelchair mobility; Does mobilize using walker; Does mobilize using crutch; ",
-  "Needs help with walking; Dependent for walking; Wheelchair*; Wheeled walker*; ",
-  "Walking frame*; Crutch*"
+.AID_PARENTS <- paste0(
+  "Walking aid use*; Using wheelchair; Dependence on wheelchair; Needs walking aid in home; ",
+  "Mobile outside with aid; Impaired wheelchair mobility; Does mobilize using walker, crutch; ",
+  "Wheelchair*; Wheeled walker*; Walking frame*; Crutch*; ",
+  "HCPCS cane, crutch, walker and wheelchair device codes (88)"
+)
+.AMBULATION_BROAD_PARENTS <- paste0(
+  "Walking aid use*; Using wheelchair; Dependence on wheelchair; Needs walking aid in home; ",
+  "Mobile outside with aid; Impaired wheelchair mobility; Does mobilize using walker, crutch; ",
+  "Impaired mobility*; Walking disability; Unable to walk; Needs help with walking; ",
+  "Dependent for walking; Difficulty walking*; Abnormal gait*; ",
+  "Mobility functional-limitation codes (HCPCS PT reporting, deprecated); ",
+  "Wheelchair*; Wheeled walker*; Walking frame*; Crutch*; ",
+  "HCPCS cane, crutch, walker and wheelchair device codes (88)"
 )
 .TBL3_LOOKBACK_PARENTS <- list(
   # ---- Iannuzzi 2020 ----
@@ -191,7 +199,7 @@
   "Age 80 or more years at index" = list(lookback = "At index", parents = "None (derived from year of birth)"),
   "Female sex"                  = list(lookback = "Not applicable", parents = "Gender: Female"),
   "Non-White race"              = list(lookback = "Not applicable", parents = "Race: any recorded race other than White"),
-  "Ambulatory deficit (aid use or impaired ambulation)" = list(lookback = "365 days", parents = .AMBULATORY_PARENTS),
+  "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days", parents = .AID_PARENTS),
   "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days, through index date", parents = "Ischemic ulcer*; Ischemic gangrene*"),
   "Anemia (Hgb less than 10 g/dL)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
   "Insulin-dependent diabetes mellitus" = list(lookback = "365 days", parents = "Insulins and analogues* (ATC)"),
@@ -201,7 +209,8 @@
     "rising to feet, sitting, sitting down, standing, walking; Needs help with dressing, feeding, ",
     "personal grooming, walking, washing self, mouthcare; Needs assistance with shaving; ",
     "Requires assistance with all daily activities, with personal care; Requires continuous ",
-    "supervision for ADLs; Bed-ridden; Confined to chair; Severe frailty")),
+    "supervision for ADLs; Bed-ridden; Confined to chair; Dependence on wheelchair; ",
+    "Self-care functional-limitation codes (HCPCS PT reporting, deprecated); Severe frailty")),
   "Diabetes mellitus (any type)" = list(lookback = "365 days", parents = "Diabetes mellitus*"),
   "COPD or current pneumonia"   = list(lookback = "COPD 365 days; pneumonia 30 days", parents = paste0(
     "Chronic obstructive pulmonary disease*; Pneumonia* (excluding Interstitial pneumonia and ",
@@ -217,7 +226,7 @@
     "Creatinine [Mass/volume] in Serum or Plasma (> 1.8 mg/dL); Renal dialysis*; Dialysis procedure*")),
   "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
   "Underweight (BMI < 18.5)"    = list(lookback = "365 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
-  "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATORY_PARENTS)
+  "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATION_BROAD_PARENTS)
 )
 
 # Footnote shared by Tables 3a-c.
@@ -326,7 +335,18 @@
     r <- rows[g$key == k, , drop = FALSE]
     is_exc <- !is.na(r$concept_role) & r$concept_role == "exclude"
     inc <- r[!is_exc, , drop = FALSE]
-    items <- .compress_prefixes(paste0(inc$concept_name, ifelse(!is.na(inc$include_descendants) & inc$include_descendants, "*", "")))
+    # 88 HCPCS device codes and two families of deprecated PT functional-limitation codes would
+    # make the cell unreadable: each collapses to one phrase. Every other HCPCS row is a device.
+    is_hcpcs <- !is.na(inc$vocabulary_id) & inc$vocabulary_id == "HCPCS"
+    is_mob_g  <- is_hcpcs & grepl("^Mobility: walking & moving around functional limitation", inc$concept_name)
+    is_self_g <- is_hcpcs & grepl("^Self care functional limitation", inc$concept_name)
+    is_hdev   <- is_hcpcs & !is_mob_g & !is_self_g
+    plain <- inc[!is_hcpcs, , drop = FALSE]
+    items <- .compress_prefixes(paste0(plain$concept_name, ifelse(!is.na(plain$include_descendants) & plain$include_descendants, "*", "")))
+    items <- c(items,
+      if (any(is_mob_g))  "Mobility functional-limitation codes (HCPCS PT reporting, deprecated)",
+      if (any(is_self_g)) "Self-care functional-limitation codes (HCPCS PT reporting, deprecated)",
+      if (any(is_hdev))   sprintf("HCPCS cane, crutch, walker and wheelchair device codes (%d)", sum(is_hdev)))
     txt <- paste(items, collapse = "; ")
     if (any(is_exc)) txt <- paste0(txt, " (excluding ", paste(r$concept_name[is_exc], collapse = " and "), ")")
     txt
@@ -406,9 +426,12 @@
   # longer "any ambulatory device"). An export produced before that relabel still carries
   # the old name, so map it forward -- otherwise that row would fall through to the
   # generic placeholder definition and show a label that no longer describes the set.
+  # Relabelled twice: 2026-10-15 to "aid use or impaired ambulation", then the same day to
+  # "ambulatory aid use" when the item was split off from the broad sVQI-FS set. Map both.
   covariate_summary_df$covariate_name[
-    covariate_summary_df$covariate_name == "Ambulatory deficit (use of any ambulatory device)"
-  ] <- "Ambulatory deficit (aid use or impaired ambulation)"
+    covariate_summary_df$covariate_name %in% c("Ambulatory deficit (use of any ambulatory device)",
+                                               "Ambulatory deficit (aid use or impaired ambulation)")
+  ] <- "Ambulatory deficit (ambulatory aid use)"
 
   border_h  <- officer::fp_border(color = "#BFBFBF", width = 0.5)
   border_out <- officer::fp_border(color = "#1F3864", width = 1.5)
@@ -437,9 +460,9 @@
       points = "+2", definition = "Non-White race recorded in OMOP person table",
       derivation = "person.race_concept_id ≠ 8527 and ≠ 0 (unknown)"
     ),
-    "Ambulatory deficit (aid use or impaired ambulation)" = list(
-      points = "+3", definition = "Use of an ambulatory aid (walking aid, wheelchair, walker, walking frame, crutch) or documented impaired ambulation (unable to walk, walking disability, bed-ridden, confined to chair, dependent for walking)",
-      derivation = "observation_occurrence and device_exposure records with ambulatory-status concepts within 365 days before index (day −365 to −1)"
+    "Ambulatory deficit (ambulatory aid use)" = list(
+      points = "+3", definition = "Use of an ambulatory aid: walking aid, wheelchair use or dependence, walker, walking frame, crutch, cane (SNOMED and HCPCS device records)",
+      derivation = "observation_occurrence and device_exposure records of ambulatory-aid concepts within 365 days before index (day −365 to −1)"
     ),
     "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(
       points = "+3", definition = "Critical limb ischaemia indication: wound, ulcer, or gangrene",
@@ -510,7 +533,7 @@
   covariate_defs <- list(
     "Dependent functional status (ADL dependence)" = list(
       points = "+1",
-      definition = "Partial or total dependence for activities of daily living (dependent for, or needs help with, bathing, dressing, feeding, grooming, hygiene, or mobility; requires assistance with daily activities), bed-ridden, confined to chair, or severe frailty",
+      definition = "Partial or total dependence for activities of daily living (dependent for, or needs help with, bathing, dressing, feeding, grooming, hygiene, or mobility; requires assistance with daily activities), bed-ridden, confined to chair, wheelchair dependence, a therapist-reported self-care functional limitation, or severe frailty",
       derivation = "observation_occurrence and condition_occurrence records within 365 days before index (day −365 to −1)"
     ),
     "Diabetes mellitus (any type)" = list(
@@ -639,10 +662,10 @@
     ),
     "Non-ambulatory / impaired ambulation status" = list(
       points = "+1",
-      definition = "Impaired ambulation: walking aid, wheelchair, walker, walking-frame or crutch use, unable to walk, walking disability, bed-ridden, or confined to chair",
+      definition = "Any documented limitation of ambulation, regardless of etiology: ambulatory-aid use or wheelchair dependence, impaired mobility, difficulty walking, abnormal gait, unable to walk, bed-ridden, confined to chair, or a therapist-reported mobility limitation",
       derivation = paste0(
-        "observation_occurrence and device_exposure records with ambulatory-status concepts ",
-        "(the same set as the Iannuzzi ambulatory-deficit component), within 365 days before ",
+        "observation_occurrence, condition_occurrence and device_exposure records of impaired-ambulation ",
+        "concepts (the Iannuzzi aid-use set plus status and gait findings), within 365 days before ",
         "index (day −365 to −1)"
       )
     )
@@ -1449,8 +1472,8 @@
       "Components and point values are: age 60–69 years (+2), age 70–79 years (+4), ",
       "age ≥80 years (+6), female sex (+1; OMOP concept 8532), non-White race (+2; ",
       "concept 8527 [White] as reference), ambulatory deficit — use of an ambulatory ",
-      "aid or documented impaired ambulation (+3; walking-aid, wheelchair, walker, frame and ",
-      "crutch use, and unable-to-walk, bed-ridden and confined-to-chair findings), ",
+      "aid (+3; walking-aid use, wheelchair use or dependence, walkers, frames, crutches and ",
+      "canes, recorded as SNOMED observations or SNOMED/HCPCS device records), ",
       "tissue loss / critical limb ischaemia indication — wound, ulcer, or gangrene (+3; ",
       "concepts 4029926, 4291464 and descendants), anemia (hemoglobin <10 g/dL; +2; ",
       "LOINC 718-7, OMOP concept 3000963), and insulin-dependent diabetes mellitus (+2; ",
@@ -1465,7 +1488,8 @@
       "Subramaniam 2018 modified Frailty Index — 5-item (mFI-5; score range 0–5 points). ",
       "This five-component frailty index was derived in a large surgical registry (ACS NSQIP) ",
       "and assigns one point for each of: dependent functional status (activities-of-daily-living ",
-      "dependence, bed-ridden, confined to chair, or severe frailty), diabetes mellitus of any type ",
+      "dependence, bed-ridden, confined to chair, wheelchair dependence, a therapist-reported ",
+      "self-care functional limitation, or severe frailty), diabetes mellitus of any type ",
       "(concept 201820 and descendants), chronic obstructive pulmonary disease within 365 days ",
       "(concept 255573 and descendants) or current pneumonia within 30 days (concept 255848 and ",
       "descendants), congestive heart failure within 30 days prior to the index ",
@@ -4826,7 +4850,7 @@
           "ATLAS ID" = c(
             "9100011", "9100001",
             "9100024", "9100023", "9100022", "9100021",
-            "9100002", "9100003", "9100004", "9100026", "9100027", "9100025",
+            "9100002", "9100003", "9100004", "9100026", "9100027", "9100028", "9100025",
             "9100007", "9100008", "9100009", "9100010",
             "1797941",
             "N/A", "N/A", "N/A", "N/A"
@@ -4842,7 +4866,8 @@
             "[DVI] Peripheral Arterial Occlusive Disease",
             "[DVI] Ischemic Tissue Loss",
             "[DVI] Dependent Functional Status (ADL dependence)",
-            "[DVI] Ambulatory Status (aid use / impaired ambulation)",
+            "[DVI] Ambulatory Aid Use (Iannuzzi, strict)",
+            "[DVI] Impaired Ambulation (sVQI-FS, broad)",
             "[DVI] Pneumonia (mFI-5 current pneumonia)",
             "[DVI] Insulin-Treated Diabetes",
             "[DVI] Anemia (Hgb <10 g/dL)",
@@ -4864,8 +4889,9 @@
             "255573",
             "317309",
             "4029926, 4291464",
-            "Observation: 4044722 + 22 others; Condition: 45770280",
-            "Observation: 4012645, 4044714, 439405, 4086548, 4058155, 4058154 + 7 others; Device: 4240470, 37165652, 4141765, 4251933",
+            "Observation: 4044722 + 26 others; Condition: 45770280",
+            "Observation: 4012645, 4044714, 4022073 + 5 others; Device: 4240470, 37165652, 4141765, 4251933 + 88 HCPCS codes",
+            "Aid-use set + Observation: 4306934, 36714126, 437643, 439405, 4086548 + 5 others; Condition: 4306934, 36714126, 437643",
             "255848 (excluding 4273378, 1340380)",
             "21600713",
             "3000963",
@@ -4888,7 +4914,8 @@
             "Peripheral arterial disease diagnosis and descendants",
             "Ischemic ulcer or ischemic gangrene diagnosis",
             "Activities-of-daily-living dependence finding, bed-ridden, confined to chair, or severe frailty",
-            "Walking-aid, wheelchair, walker, walking-frame or crutch use, or a finding of impaired ambulation",
+            "Use of a walking aid, wheelchair (including dependence), walker, walking frame, crutch or cane",
+            "Any documented limitation of ambulation, regardless of etiology (aid use plus impaired mobility, difficulty walking, abnormal gait, unable to walk, bed-ridden and PT-reported mobility limitation)",
             "Pneumonia diagnosis and descendants, excluding two non-infectious interstitial-pneumonia concepts (30-day window; OR'd with COPD for the mFI-5 item)",
             "Insulin exposure",
             "Hemoglobin measurement below a fixed threshold",
@@ -4907,6 +4934,7 @@
             "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
             "ConditionOccurrence, Observation",
             "Observation, DeviceExposure",
+            "Observation, DeviceExposure, ConditionOccurrence",
             "ConditionOccurrence",
             "DrugExposure", "Measurement", "Measurement",
             "Measurement, ProcedureOccurrence, ConditionOccurrence",
