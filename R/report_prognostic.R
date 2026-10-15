@@ -227,13 +227,120 @@
   "concepts are also counted. Concept IDs are in the Supplemental concept-set inventory."
 )
 
+# -----------------------------------------------------------------------------
+# Table 3 "Lookback window" / "Parent concepts" text FROM THE EXPORT.
+#
+# When the export carries report_inputs/score_component_definitions.csv
+# (pad-amp-nhd-val's .extract_score_definitions(), added 2026-10-15) the two
+# columns are built from it, so they come from the same covariate CSVs the
+# scoring step used and concept names from the vocabulary the run used -- they
+# cannot drift. An older export lacks the file; .component_flextable() then falls
+# back to the hand-maintained .TBL3_LOOKBACK_PARENTS text above.
+#
+# Input to both functions: the rows of ONE component (all its concepts) for ONE
+# score. A trailing "*" = include_descendants. concept_role "exclude" rows are
+# reported as "(excluding ...)" against the window group they belong to.
+# -----------------------------------------------------------------------------
+.PARENT_PREFIXES <- c("Dependent for ", "Needs help with ", "Needs assistance with ",
+                      "Requires assistance with ", "Does mobilize using ")
+
+# Collapses runs of names sharing a known prefix ("Dependent for bathing",
+# "Dependent for dressing" -> "Dependent for bathing, dressing") so the 24-concept
+# ADL set stays readable. A prefix used by one name is left as is.
+.compress_prefixes <- function(items) {
+  out <- character(0); done <- rep(FALSE, length(items))
+  for (i in seq_along(items)) {
+    if (done[i]) next
+    pre <- .PARENT_PREFIXES[startsWith(items[i], .PARENT_PREFIXES)]
+    if (length(pre) == 1L) {
+      grp <- which(startsWith(items, pre) & !done)
+      if (length(grp) >= 2L) {
+        out <- c(out, paste0(sub(" $", "", pre), " ",
+                             paste(substring(items[grp], nchar(pre) + 1L), collapse = ", ")))
+        done[grp] <- TRUE
+        next
+      }
+    }
+    out <- c(out, items[i]); done[i] <- TRUE
+  }
+  out
+}
+
+.window_label <- function(s, e) {
+  if (s == 0L && e == 0L) "At index"
+  else paste0(abs(s), " days", if (e == 0L) ", through index date" else "")
+}
+
+# Effective window per concept row (its own override, else the component's) and a
+# grouping key, in first-appearance order.
+.defs_window_groups <- function(rows) {
+  s <- ifelse(is.na(rows$concept_lookback_start_day), rows$covariate_lookback_start_day, rows$concept_lookback_start_day)
+  e <- ifelse(is.na(rows$concept_lookback_end_day),   rows$covariate_lookback_end_day,   rows$concept_lookback_end_day)
+  key <- paste(s, e)
+  list(key = key, start = s, end = e, order = unique(key))
+}
+
+.defs_lookback <- function(rows) {
+  id <- rows$covariate_id[1]
+  if (grepl("^age_", id)) return("At index")
+  if (id %in% c("female", "nonwhite")) return("Not applicable")
+  g <- .defs_window_groups(rows)
+  incl <- is.na(rows$concept_role) | rows$concept_role != "exclude"
+  labs <- vapply(g$order, function(k) {
+    i <- which(g$key == k)[1]
+    .window_label(as.integer(g$start[i]), as.integer(g$end[i]))
+  }, character(1))
+  if (length(labs) == 1L) return(labs)
+  # Several windows (mFI-5 COPD/pneumonia): name each arm by its first included concept.
+  paste(vapply(seq_along(g$order), function(j) {
+    first <- rows$concept_name[which(g$key == g$order[j] & incl)[1]]
+    paste0(first, ": ", labs[j])
+  }, character(1)), collapse = "; ")
+}
+
+# ATC concept names are stored in capitals ("INSULINS AND ANALOGUES"); show them in
+# sentence case. Mixed-case names (SNOMED, LOINC) pass through untouched.
+.tidy_concept_name <- function(x) {
+  ifelse(!is.na(x) & x == toupper(x) & grepl("[A-Z]{3}", x),
+         paste0(substr(x, 1, 1), tolower(substring(x, 2))), x)
+}
+
+.defs_parents <- function(rows) {
+  rows$concept_name <- .tidy_concept_name(rows$concept_name)
+  id <- rows$covariate_id[1]
+  if (grepl("^age_", id)) return("None (derived from year of birth)")
+  if (id == "female")  return(paste0("Gender: ", tools::toTitleCase(tolower(rows$concept_name[1]))))
+  if (id == "nonwhite") return(paste0("Race: any recorded race other than ", rows$concept_name[1]))
+  if (id == "underweight") return("Body mass index (direct); else body weight and body height (computed)")
+  g <- .defs_window_groups(rows)
+  parts <- vapply(g$order, function(k) {
+    r <- rows[g$key == k, , drop = FALSE]
+    is_exc <- !is.na(r$concept_role) & r$concept_role == "exclude"
+    inc <- r[!is_exc, , drop = FALSE]
+    items <- .compress_prefixes(paste0(inc$concept_name, ifelse(!is.na(inc$include_descendants) & inc$include_descendants, "*", "")))
+    txt <- paste(items, collapse = "; ")
+    if (any(is_exc)) txt <- paste0(txt, " (excluding ", paste(r$concept_name[is_exc], collapse = " and "), ")")
+    txt
+  }, character(1))
+  paste(parts, collapse = "; ")
+}
+
 # Adds the Lookback and Parent-concepts columns (after Definition) and styles the
 # Table 3 flextable. Shared by the three component-table builders.
-.component_flextable <- function(combined_data) {
+.component_flextable <- function(combined_data, score_defs = NULL) {
   border_h   <- officer::fp_border(color = "#BFBFBF", width = 0.5)
   border_out <- officer::fp_border(color = "#1F3864", width = 1.5)
 
+  # Prefer the export's score_component_definitions rows for this score; fall back
+  # to the static text when the export predates that artifact or lacks a component.
+  have_defs <- !is.null(score_defs) && nrow(score_defs) > 0L
+  if (!have_defs) message("[report] score_component_definitions.csv not in this export -- ",
+                          "Table 3 lookback/parent columns use the built-in static text")
   lp <- function(name, field) {
+    if (have_defs) {
+      rows <- score_defs[score_defs$covariate_name == name, , drop = FALSE]
+      if (nrow(rows) > 0L) return(if (field == "lookback") .defs_lookback(rows) else .defs_parents(rows))
+    }
     v <- .TBL3_LOOKBACK_PARENTS[[name]][[field]]
     if (is.null(v)) "—" else v
   }
@@ -260,8 +367,8 @@
     width(j = "Component",  width = 1.15) |>
     width(j = "Points",     width = 0.4) |>
     width(j = "Definition", width = 1.55) |>
-    width(j = "Lookback",   width = 0.7) |>
-    width(j = "Parents",    width = 2.2) |>
+    width(j = "Lookback",   width = 0.9) |>
+    width(j = "Parents",    width = 2.0) |>
     width(j = "Count",      width = 0.4) |>
     width(j = "Total",      width = 0.4) |>
     width(j = "Prevalence", width = 0.6) |>
@@ -282,7 +389,7 @@
 # Table 3 in the Word report (integer score_type).
 # Renamed from .build_combined_covariate_table() in the original monolith.
 # -----------------------------------------------------------------------------
-.build_combined_component_table <- function(covariate_summary_df) {
+.build_combined_component_table <- function(covariate_summary_df, score_defs = NULL) {
   # Build combined covariate table with definitions and prevalence
   # Input: covariate_summary dataframe with columns: covariate_name, n_positive, n_total
 
@@ -372,7 +479,7 @@
     ))
   }
   
-  ft <- .component_flextable(combined_data)
+  ft <- .component_flextable(combined_data, score_defs)
 
   ft
 }
@@ -386,7 +493,7 @@
 # Input: covariate_summary dataframe (covariate_name, n_positive, n_total)
 #        from the mFI-5 pipeline run.
 # -----------------------------------------------------------------------------
-.build_mfi5_component_table <- function(covariate_summary_df) {
+.build_mfi5_component_table <- function(covariate_summary_df, score_defs = NULL) {
 
   border_h   <- officer::fp_border(color = "#BFBFBF", width = 0.5)
   border_out <- officer::fp_border(color = "#1F3864", width = 1.5)
@@ -450,7 +557,7 @@
     ))
   }
 
-  ft <- .component_flextable(combined_data)
+  ft <- .component_flextable(combined_data, score_defs)
 
   ft
 }
@@ -463,7 +570,7 @@
 # Input: covariate_summary dataframe (covariate_name, n_positive, n_total)
 #        from the sVQI-FS pipeline run.
 # -----------------------------------------------------------------------------
-.build_vqifs_component_table <- function(covariate_summary_df) {
+.build_vqifs_component_table <- function(covariate_summary_df, score_defs = NULL) {
 
   border_h   <- officer::fp_border(color = "#BFBFBF", width = 0.5)
   border_out <- officer::fp_border(color = "#1F3864", width = 1.5)
@@ -565,7 +672,7 @@
     ))
   }
 
-  ft <- .component_flextable(combined_data)
+  ft <- .component_flextable(combined_data, score_defs)
 
   ft
 }
@@ -3837,11 +3944,17 @@
     message("[report] Figure 2 (NHD rate by year) added.")
   }
 
+  # score_component_definitions.csv (pad-amp-nhd-val extract step): lookback window and
+  # parent concepts per component. NULL for an export that predates it -- the table
+  # builders then fall back to their built-in static text.
+  score_defs_all <- read_report_input("score_component_definitions")
+  defs_for <- function(id) if (is.null(score_defs_all)) NULL else score_defs_all[score_defs_all$score_id == id, , drop = FALSE]
+
   # ---- Table 3a: mFI-5 component activation --------------------------------
   doc <- add_doc_page_break(doc)
   doc <- body_add_par(doc, section_num("Predictor activation"), style = "heading 3")
   if (!is.null(covariate_summary_mfi5) && nrow(covariate_summary_mfi5) > 0) {
-    doc <- body_add_flextable(doc, .build_mfi5_component_table(covariate_summary_mfi5))
+    doc <- body_add_flextable(doc, .build_mfi5_component_table(covariate_summary_mfi5, defs_for("mfi5")))
     doc <- add_doc_caption(doc,
       "Table 3a. Subramaniam mFI-5: component definitions and activation summary.",
       paste0(
@@ -3860,7 +3973,7 @@
   tbl3b_data <- if (identical(config$score_type, "lasso")) {
     .build_combined_covariate_table(covariate_summary)
   } else {
-    .build_combined_component_table(covariate_summary)
+    .build_combined_component_table(covariate_summary, defs_for("iannuzzi"))
   }
   doc <- body_add_flextable(doc, tbl3b_data)
   doc <- add_doc_caption(doc,
@@ -3878,7 +3991,7 @@
 
   # ---- Table 3c: sVQI-FS component activation --------------------------------
   if (!is.null(covariate_summary_vqifs) && nrow(covariate_summary_vqifs) > 0) {
-    doc <- body_add_flextable(doc, .build_vqifs_component_table(covariate_summary_vqifs))
+    doc <- body_add_flextable(doc, .build_vqifs_component_table(covariate_summary_vqifs, defs_for("vqifs")))
     doc <- add_doc_caption(doc,
       "Table 3c. Kraiss 2022 sVQI-FS: component definitions and activation summary.",
       paste0(

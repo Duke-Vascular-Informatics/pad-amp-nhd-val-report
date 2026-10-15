@@ -23,12 +23,14 @@ Shared baseline (applies first):
 - No `study_params.yaml` here — see `config.R`'s header. Report parameters
   come from `_report_config.yaml`, written by `pad-amp-nhd-val`'s extract
   step, not duplicated in this repo.
-- **Tables 3a-c carry hand-maintained "Lookback window" and "Parent concepts" columns**
-  (`.TBL3_LOOKBACK_PARENTS` in `R/report_prognostic.R`; `*` = descendants included). They
-  mirror `pad-amp-nhd-val/covariates/covariates*.csv` and `covariate_concepts*.csv` and are
-  NOT read from the export, because this repo cannot query the vocabulary. Change a window,
-  concept or `include_descendants` flag in the study repo and you must update that table by
-  hand; keys are the component names exactly as they appear in `covariate_summary.csv`.
+- **Tables 3a-c carry "Lookback window" and "Parent concepts" columns** (`*` = descendants
+  included), built from `report_inputs/score_component_definitions.csv`, which
+  `pad-amp-nhd-val`'s extract step writes from the same covariate CSVs the scoring step used,
+  with concept names from the run's own vocabulary — so they cannot drift. An export that
+  predates that file falls back to a hand-maintained copy (`.TBL3_LOOKBACK_PARENTS` in
+  `R/report_prognostic.R`), logged as a message; that fallback is only for old exports, so
+  update it only if you must keep rendering them. Components are matched by name exactly as
+  in `covariate_summary.csv`.
 - Repo is **public** (made public 2026-10-02 ahead of publication; GPL-2.0, see `LICENSE`). Nothing patient-level or site-credentialed may ever be committed here.
 
 ### Pipeline
