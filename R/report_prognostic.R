@@ -481,9 +481,7 @@
       Definition = cov_def$definition,
       Count = covariate_summary_df$n_positive[i],
       Total = covariate_summary_df$n_total[i],
-      Prevalence = paste0(
-        round(100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i], 1), "%"
-      ),
+      Prevalence = sprintf("%.1f%%", 100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i]),
       stringsAsFactors = FALSE
     ))
   }
@@ -559,9 +557,7 @@
       Definition   = cov_def$definition,
       Count        = covariate_summary_df$n_positive[i],
       Total        = covariate_summary_df$n_total[i],
-      Prevalence   = paste0(
-        round(100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i], 1), "%"
-      ),
+      Prevalence   = sprintf("%.1f%%", 100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i]),
       stringsAsFactors = FALSE
     ))
   }
@@ -674,9 +670,7 @@
       Definition   = cov_def$definition,
       Count        = covariate_summary_df$n_positive[i],
       Total        = covariate_summary_df$n_total[i],
-      Prevalence   = paste0(
-        round(100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i], 1), "%"
-      ),
+      Prevalence   = sprintf("%.1f%%", 100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i]),
       stringsAsFactors = FALSE
     ))
   }
@@ -1174,9 +1168,7 @@
       OMOP_Concept = cov_def$omop_concept,
       Count = covariate_summary_df$n_positive[i],
       Total = covariate_summary_df$n_total[i],
-      Prevalence = paste0(
-        round(100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i], 1), "%"
-      ),
+      Prevalence = sprintf("%.1f%%", 100 * covariate_summary_df$n_positive[i] / covariate_summary_df$n_total[i]),
       stringsAsFactors = FALSE
     ))
   }
