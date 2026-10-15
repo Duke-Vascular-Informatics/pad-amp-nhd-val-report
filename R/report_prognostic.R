@@ -221,14 +221,18 @@
 )
 
 # Footnote shared by Tables 3a-c.
-.tbl3_note <- function(n_total = NULL) {
+.tbl3_note <- function(n_total = NULL, measurement_components = NULL) {
   paste0(
     "Lookback runs back from the index date and ends the day before it unless noted. Parent concepts ",
     "are the OMOP standard concepts that define each component; * marks a concept whose descendant ",
     "concepts are also counted. Concept IDs are in the Supplemental concept-set inventory. ",
     "n (%) is the number of patients meeting the component; the percentage is of the full cohort",
     if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
-    ", so a patient with no recorded evidence is counted as not meeting it."
+    ", so a patient with no recorded evidence is counted as not meeting it",
+    if (!is.null(measurement_components)) paste0(
+      " (for ", measurement_components, ", this includes patients with no measurement: absent values are ",
+      "imputed as not meeting the component)") else "",
+    "."
   )
 }
 
@@ -630,12 +634,12 @@
     "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(
       points = "+1",
       definition = "Hgb < 13 g/dL (male) / < 12 g/dL (female), the paper's own sex-specific lab threshold (no longer a diagnosis proxy — CORRECTED 2026-07-26 after the prior anemia-diagnosis proxy activated in only 3/225 patients, 1.3%, under-capturing relative to the lab threshold)",
-      derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 365 days before index; missing_is_negative = FALSE (unmeasured Hgb is unknown, not \"not anaemic\")"
+      derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 365 days before index; an absent measurement is null-imputed (scored as not anaemic)"
     ),
     "Underweight (BMI < 18.5)" = list(
       points = "+1",
       definition = "BMI < 18.5, the paper's own cut-point (direct measurement preferred; weight/height fallback)",
-      derivation = "measurement within 365 days before index; missing_is_negative = FALSE (unmeasured BMI is unknown, not \"not underweight\")"
+      derivation = "measurement within 365 days before index; an absent measurement is null-imputed (scored as not underweight)"
     ),
     "Non-ambulatory / impaired ambulation status" = list(
       points = "+1",
@@ -1440,7 +1444,8 @@
       "lookback windows relative to the index date. A patient meeting the minimum event ",
       "threshold for a given component received the full integer point value; those below ",
       "threshold received zero. Missing data were treated as zero evidence (absence of ",
-      "component). The total score is the arithmetic sum of all component values."
+      "component), including an absent hemoglobin or BMI measurement for the anemia and ",
+      "underweight components. The total score is the arithmetic sum of all component values."
     ),
     style = "Normal"
   )
@@ -3600,7 +3605,16 @@
     "defines the item differently (mFI-5 congestive heart failure and current pneumonia, 30 days; ",
     "Iannuzzi tissue loss, index date included); a patient meeting a component's evidence ",
     "threshold received its full published point value, and an absent record was treated as zero ",
-    "evidence.",
+    "evidence. This null imputation applies without exception, including to the measurement-based ",
+    "components: anemia (hemoglobin below the score's threshold)",
+    if (has_vqifs) " and underweight (body mass index < 18.5)" else "",
+    ". A patient with no ",
+    if (has_vqifs) "hemoglobin or BMI measurement" else "hemoglobin measurement",
+    " in the lookback window could not be distinguished from one whose measurement was normal, and ",
+    "both were scored as not meeting the component (imputed as absent, zero points). Ascertainment of ",
+    if (has_vqifs) "these components" else "this component",
+    " is therefore conditional on a qualifying measurement having been recorded, and prevalence is ",
+    "reported against the full cohort.",
     if (has_vqifs) paste0(
       " The source publication's rule suppressing sVQI-FS when fewer than five frailty domains ",
       "have data was not applied, since ascertainment here is presence/absence of coded records ",
@@ -3985,10 +3999,8 @@
     "Table 3b. Iannuzzi 2020 NHD score: component definitions and activation summary.",
     paste0(
       "Point values (range 0–18) and observed activation rates for the nine Iannuzzi 2020 ",
-      "components, all with a 365-day lookback (tissue loss includes the index date). Anemia ",
-      "(Hgb < 10 g/dL) treats an absent measurement as unknown ",
-      "(missing_is_negative = FALSE); all other components treat it as a true negative. ",
-      .tbl3_note(covariate_summary$n_total[1]), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+      "components, all with a 365-day lookback (tissue loss includes the index date). ",
+      .tbl3_note(covariate_summary$n_total[1], "anemia"), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -4009,9 +4021,8 @@
         # This footnote previously still claimed diagnosis proxies, understating fidelity.
         "Renal impairment and anemia use the source publication's own laboratory thresholds ",
         "rather than diagnosis proxies; peripheral vascular disease remains a diagnosis-based ",
-        "proxy rather than the paper's ankle-brachial index definition. Absent records count as ",
-        "true negatives except for underweight and anemia, where an unmeasured value is treated ",
-        "as unknown. ", .tbl3_note(covariate_summary_vqifs$n_total[1]), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+        "proxy rather than the paper's ankle-brachial index definition. ",
+        .tbl3_note(covariate_summary_vqifs$n_total[1], "anemia and underweight"), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
