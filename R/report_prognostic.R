@@ -172,6 +172,14 @@
   # Build combined covariate table with definitions and prevalence
   # Input: covariate_summary dataframe with columns: covariate_name, n_positive, n_total
 
+  # The Iannuzzi ambulatory component was relabelled 2026-10-15 (its concept set is no
+  # longer "any ambulatory device"). An export produced before that relabel still carries
+  # the old name, so map it forward -- otherwise that row would fall through to the
+  # generic placeholder definition and show a label that no longer describes the set.
+  covariate_summary_df$covariate_name[
+    covariate_summary_df$covariate_name == "Ambulatory deficit (use of any ambulatory device)"
+  ] <- "Ambulatory deficit (aid use or impaired ambulation)"
+
   border_h  <- officer::fp_border(color = "#BFBFBF", width = 0.5)
   border_out <- officer::fp_border(color = "#1F3864", width = 1.5)
 
@@ -199,7 +207,7 @@
       points = "+2", definition = "Non-White race recorded in OMOP person table",
       derivation = "person.race_concept_id ≠ 8527 and ≠ 0 (unknown)"
     ),
-    "Ambulatory deficit (use of any ambulatory device)" = list(
+    "Ambulatory deficit (aid use or impaired ambulation)" = list(
       points = "+3", definition = "Use of an ambulatory aid (walking aid, wheelchair, walker, walking frame, crutch) or documented impaired ambulation (unable to walk, walking disability, bed-ridden, confined to chair, dependent for walking)",
       derivation = "observation_occurrence and device_exposure records with ambulatory-status concepts within 365 days before index (day −365 to −1)"
     ),
