@@ -221,11 +221,16 @@
 )
 
 # Footnote shared by Tables 3a-c.
-.TBL3_NOTE <- paste0(
-  "Lookback runs back from the index date and ends the day before it unless noted. Parent concepts ",
-  "are the OMOP standard concepts that define each component; * marks a concept whose descendant ",
-  "concepts are also counted. Concept IDs are in the Supplemental concept-set inventory."
-)
+.tbl3_note <- function(n_total = NULL) {
+  paste0(
+    "Lookback runs back from the index date and ends the day before it unless noted. Parent concepts ",
+    "are the OMOP standard concepts that define each component; * marks a concept whose descendant ",
+    "concepts are also counted. Concept IDs are in the Supplemental concept-set inventory. ",
+    "n (%) is the number of patients meeting the component; the percentage is of the full cohort",
+    if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
+    ", so a patient with no recorded evidence is counted as not meeting it."
+  )
+}
 
 # -----------------------------------------------------------------------------
 # Table 3 "Lookback window" / "Parent concepts" text FROM THE EXPORT.
@@ -346,10 +351,14 @@
   }
   combined_data$Lookback <- vapply(combined_data$Component, lp, character(1), field = "lookback")
   combined_data$Parents  <- vapply(combined_data$Component, lp, character(1), field = "parents")
+  # One "n (%)" column replaces Count / Total / Prevalence. Total was the full-cohort size on
+  # every row (absent evidence is imputed as "no", so it never varies), which the caption
+  # states once instead.
+  combined_data[["n (%)"]] <- paste0(combined_data$Count, " (", combined_data$Prevalence, ")")
   combined_data <- combined_data[, c("Component", "Points", "Definition", "Lookback",
-                                     "Parents", "Count", "Total", "Prevalence")]
+                                     "Parents", "n (%)")]
 
-  # Widths sum to 7.5in = letter page minus the 0.5in margins set for this document.
+  # Widths sum to 7.35in; the text area is 7.5in (letter page minus the 0.5in margins set for this document).
   flextable(combined_data) |>
     set_header_labels(
       Component  = "Component",
@@ -357,22 +366,18 @@
       Definition = "Definition",
       Lookback   = "Lookback window",
       Parents    = "Parent concepts (* = incl. descendants)",
-      Count      = "Count",
-      Total      = "Total",
-      Prevalence = "Prevalence %"
+      `n (%)`    = "n (%)"
     ) |>
     bold(part = "header") |>
     fontsize(size = 8, part = "all") |>
     font(fontname = "Calibri", part = "all") |>
     width(j = "Component",  width = 1.15) |>
     width(j = "Points",     width = 0.4) |>
-    width(j = "Definition", width = 1.55) |>
+    width(j = "Definition", width = 1.7) |>
     width(j = "Lookback",   width = 0.9) |>
-    width(j = "Parents",    width = 2.0) |>
-    width(j = "Count",      width = 0.4) |>
-    width(j = "Total",      width = 0.4) |>
-    width(j = "Prevalence", width = 0.6) |>
-    align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
+    width(j = "Parents",    width = 2.4) |>
+    width(j = "n (%)",      width = 0.8) |>
+    align(j = c("Points", "n (%)"), align = "center", part = "all") |>
     bg(part = "header", bg = "#1F3864") |>
     color(part = "header", color = "white") |>
     hline(border = border_h, part = "body") |>
@@ -3961,7 +3966,7 @@
         "Point value (range 0–5) and observed activation rate for each of the five mFI-5 ",
         "components. All use a 365-day lookback except congestive heart failure and the pneumonia ",
         "arm of the combined COPD-or-pneumonia item (30 days each, per the original publication); ",
-        "absent records count as true negatives. ", .TBL3_NOTE, " Concept-set definitions are in ",
+        "absent records count as true negatives. ", .tbl3_note(covariate_summary_mfi5$n_total[1]), " Concept-set definitions are in ",
         supp_table("concept_set_inventory"), "."
       )
     )
@@ -3983,7 +3988,7 @@
       "components, all with a 365-day lookback (tissue loss includes the index date). Anemia ",
       "(Hgb < 10 g/dL) treats an absent measurement as unknown ",
       "(missing_is_negative = FALSE); all other components treat it as a true negative. ",
-      .TBL3_NOTE, " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+      .tbl3_note(covariate_summary$n_total[1]), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -4006,7 +4011,7 @@
         "rather than diagnosis proxies; peripheral vascular disease remains a diagnosis-based ",
         "proxy rather than the paper's ankle-brachial index definition. Absent records count as ",
         "true negatives except for underweight and anemia, where an unmeasured value is treated ",
-        "as unknown. ", .TBL3_NOTE, " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+        "as unknown. ", .tbl3_note(covariate_summary_vqifs$n_total[1]), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
