@@ -161,6 +161,120 @@
 }
 
 # -----------------------------------------------------------------------------
+# .TBL3_LOOKBACK_PARENTS / .component_flextable()
+#
+# Static design text for Tables 3a-c: each component's LOOKBACK WINDOW and its
+# PARENT CONCEPTS (the OMOP standard concepts that define it). A trailing "*" on
+# a parent concept means include_descendants = TRUE, i.e. its descendant
+# concepts are counted too. Concept IDs are not repeated here; they are in the
+# Supplemental concept-set inventory.
+#
+# WHY STATIC: this repo must never query the CDM (see CLAUDE.md), and these are
+# design facts of the study, like the cohort inventory table below. The values
+# mirror pad-amp-nhd-val/covariates/covariates*.csv (window) and
+# covariate_concepts*.csv (concepts, include_descendants), with concept names
+# verified against the vocabulary on 2026-10-15. KEEP IN SYNC with those CSVs.
+# Keyed by the component name exactly as it appears in covariate_summary.csv; an
+# unlisted name renders an em dash rather than failing.
+# -----------------------------------------------------------------------------
+.AMBULATORY_PARENTS <- paste0(
+  "Walking aid use*; Using wheelchair; Walking disability; Unable to walk; Bed-ridden; ",
+  "Confined to chair; Needs walking aid in home; Mobile outside with aid; ",
+  "Impaired wheelchair mobility; Does mobilize using walker; Does mobilize using crutch; ",
+  "Needs help with walking; Dependent for walking; Wheelchair*; Wheeled walker*; ",
+  "Walking frame*; Crutch*"
+)
+.TBL3_LOOKBACK_PARENTS <- list(
+  # ---- Iannuzzi 2020 ----
+  "Age 60-69 years at index"    = list(lookback = "At index", parents = "None (derived from year of birth)"),
+  "Age 70-79 years at index"    = list(lookback = "At index", parents = "None (derived from year of birth)"),
+  "Age 80 or more years at index" = list(lookback = "At index", parents = "None (derived from year of birth)"),
+  "Female sex"                  = list(lookback = "Not applicable", parents = "Gender: Female"),
+  "Non-White race"              = list(lookback = "Not applicable", parents = "Race: any recorded race other than White"),
+  "Ambulatory deficit (aid use or impaired ambulation)" = list(lookback = "365 days", parents = .AMBULATORY_PARENTS),
+  "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days, through index date", parents = "Ischemic ulcer*; Ischemic gangrene*"),
+  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
+  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days", parents = "Insulins and analogues* (ATC)"),
+  # ---- Subramaniam 2018 mFI-5 ----
+  "Dependent functional status (ADL dependence)" = list(lookback = "365 days", parents = paste0(
+    "Dependent for bathing, dressing, feeding, drinking, personal grooming, personal hygiene, ",
+    "rising to feet, sitting, sitting down, standing, walking; Needs help with dressing, feeding, ",
+    "personal grooming, walking, washing self, mouthcare; Needs assistance with shaving; ",
+    "Requires assistance with all daily activities, with personal care; Requires continuous ",
+    "supervision for ADLs; Bed-ridden; Confined to chair; Severe frailty")),
+  "Diabetes mellitus (any type)" = list(lookback = "365 days", parents = "Diabetes mellitus*"),
+  "COPD or current pneumonia"   = list(lookback = "COPD 365 days; pneumonia 30 days", parents = paste0(
+    "Chronic obstructive pulmonary disease*; Pneumonia* (excluding Interstitial pneumonia and ",
+    "Exacerbation of interstitial pneumonia)")),
+  "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days", parents = "Heart failure*"),
+  "Hypertension"                = list(lookback = "365 days", parents = "Hypertensive disorder*"),
+  # ---- Kraiss 2022 sVQI-FS (Hypertension shares the mFI-5 name above) ----
+  "Congestive heart failure"    = list(lookback = "365 days", parents = "Heart failure*"),
+  "Coronary artery disease"     = list(lookback = "365 days", parents = "Ischemic heart disease*"),
+  "Peripheral vascular disease" = list(lookback = "365 days", parents = "Peripheral arterial occlusive disease*"),
+  "Chronic obstructive pulmonary disease" = list(lookback = "365 days", parents = "Chronic obstructive pulmonary disease*"),
+  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days", parents = paste0(
+    "Creatinine [Mass/volume] in Serum or Plasma (> 1.8 mg/dL); Renal dialysis*; Dialysis procedure*")),
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
+  "Underweight (BMI < 18.5)"    = list(lookback = "365 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
+  "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATORY_PARENTS)
+)
+
+# Footnote shared by Tables 3a-c.
+.TBL3_NOTE <- paste0(
+  "Lookback runs back from the index date and ends the day before it unless noted. Parent concepts ",
+  "are the OMOP standard concepts that define each component; * marks a concept whose descendant ",
+  "concepts are also counted. Concept IDs are in the Supplemental concept-set inventory."
+)
+
+# Adds the Lookback and Parent-concepts columns (after Definition) and styles the
+# Table 3 flextable. Shared by the three component-table builders.
+.component_flextable <- function(combined_data) {
+  border_h   <- officer::fp_border(color = "#BFBFBF", width = 0.5)
+  border_out <- officer::fp_border(color = "#1F3864", width = 1.5)
+
+  lp <- function(name, field) {
+    v <- .TBL3_LOOKBACK_PARENTS[[name]][[field]]
+    if (is.null(v)) "—" else v
+  }
+  combined_data$Lookback <- vapply(combined_data$Component, lp, character(1), field = "lookback")
+  combined_data$Parents  <- vapply(combined_data$Component, lp, character(1), field = "parents")
+  combined_data <- combined_data[, c("Component", "Points", "Definition", "Lookback",
+                                     "Parents", "Count", "Total", "Prevalence")]
+
+  # Widths sum to 7.5in = letter page minus the 0.5in margins set for this document.
+  flextable(combined_data) |>
+    set_header_labels(
+      Component  = "Component",
+      Points     = "Points",
+      Definition = "Definition",
+      Lookback   = "Lookback window",
+      Parents    = "Parent concepts (* = incl. descendants)",
+      Count      = "Count",
+      Total      = "Total",
+      Prevalence = "Prevalence %"
+    ) |>
+    bold(part = "header") |>
+    fontsize(size = 8, part = "all") |>
+    font(fontname = "Calibri", part = "all") |>
+    width(j = "Component",  width = 1.15) |>
+    width(j = "Points",     width = 0.4) |>
+    width(j = "Definition", width = 1.55) |>
+    width(j = "Lookback",   width = 0.7) |>
+    width(j = "Parents",    width = 2.2) |>
+    width(j = "Count",      width = 0.4) |>
+    width(j = "Total",      width = 0.4) |>
+    width(j = "Prevalence", width = 0.6) |>
+    align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
+    bg(part = "header", bg = "#1F3864") |>
+    color(part = "header", color = "white") |>
+    hline(border = border_h, part = "body") |>
+    border_outer(border = border_out, part = "all") |>
+    set_table_properties(layout = "fixed") |>
+    padding(padding = 3, part = "all")
+}
+
+# -----------------------------------------------------------------------------
 # .build_combined_component_table()
 #
 # Merges the static covariate definitions with observed prevalence counts from
@@ -258,31 +372,7 @@
     ))
   }
   
-  ft <- flextable(combined_data) |>
-    set_header_labels(
-      Component = "Component",
-      Points = "Points",
-      Definition = "Definition",
-      Count = "Count",
-      Total = "Total",
-      Prevalence = "Prevalence %"
-    ) |>
-    bold(part = "header") |>
-    fontsize(size = 9, part = "all") |>
-    font(fontname = "Calibri", part = "all") |>
-    width(j = "Component", width = 2.4) |>
-    width(j = "Points", width = 0.6) |>
-    width(j = "Definition", width = 3.0) |>
-    width(j = "Count", width = 0.7) |>
-    width(j = "Total", width = 0.7) |>
-    width(j = "Prevalence", width = 0.9) |>
-    align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
-    bg(part = "header", bg = "#1F3864") |>
-    color(part = "header", color = "white") |>
-    hline(border = border_h, part = "body") |>
-    border_outer(border = border_out, part = "all") |>
-    set_table_properties(layout = "fixed") |>
-    padding(padding = 3, part = "all")
+  ft <- .component_flextable(combined_data)
 
   ft
 }
@@ -360,31 +450,7 @@
     ))
   }
 
-  ft <- flextable(combined_data) |>
-    set_header_labels(
-      Component    = "Component",
-      Points       = "Points",
-      Definition   = "Definition",
-      Count        = "Count",
-      Total        = "Total",
-      Prevalence   = "Prevalence %"
-    ) |>
-    bold(part = "header") |>
-    fontsize(size = 9, part = "all") |>
-    font(fontname = "Calibri", part = "all") |>
-    width(j = "Component",    width = 2.4) |>
-    width(j = "Points",       width = 0.6) |>
-    width(j = "Definition",   width = 3.0) |>
-    width(j = "Count",        width = 0.7) |>
-    width(j = "Total",        width = 0.7) |>
-    width(j = "Prevalence",   width = 0.9) |>
-    align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
-    bg(part = "header", bg = "#1F3864") |>
-    color(part = "header", color = "white") |>
-    hline(border = border_h, part = "body") |>
-    border_outer(border = border_out, part = "all") |>
-    set_table_properties(layout = "fixed") |>
-    padding(padding = 3, part = "all")
+  ft <- .component_flextable(combined_data)
 
   ft
 }
@@ -499,31 +565,7 @@
     ))
   }
 
-  ft <- flextable(combined_data) |>
-    set_header_labels(
-      Component    = "Component",
-      Points       = "Points",
-      Definition   = "Definition",
-      Count        = "Count",
-      Total        = "Total",
-      Prevalence   = "Prevalence %"
-    ) |>
-    bold(part = "header") |>
-    fontsize(size = 9, part = "all") |>
-    font(fontname = "Calibri", part = "all") |>
-    width(j = "Component",    width = 2.4) |>
-    width(j = "Points",       width = 0.6) |>
-    width(j = "Definition",   width = 3.0) |>
-    width(j = "Count",        width = 0.7) |>
-    width(j = "Total",        width = 0.7) |>
-    width(j = "Prevalence",   width = 0.9) |>
-    align(j = c("Points", "Count", "Total", "Prevalence"), align = "center", part = "all") |>
-    bg(part = "header", bg = "#1F3864") |>
-    color(part = "header", color = "white") |>
-    hline(border = border_h, part = "body") |>
-    border_outer(border = border_out, part = "all") |>
-    set_table_properties(layout = "fixed") |>
-    padding(padding = 3, part = "all")
+  ft <- .component_flextable(combined_data)
 
   ft
 }
@@ -3806,7 +3848,7 @@
         "Point value (range 0–5) and observed activation rate for each of the five mFI-5 ",
         "components. All use a 365-day lookback except congestive heart failure and the pneumonia ",
         "arm of the combined COPD-or-pneumonia item (30 days each, per the original publication); ",
-        "absent records count as true negatives. Concept-set definitions are in ",
+        "absent records count as true negatives. ", .TBL3_NOTE, " Concept-set definitions are in ",
         supp_table("concept_set_inventory"), "."
       )
     )
@@ -3828,7 +3870,7 @@
       "components, all with a 365-day lookback (tissue loss includes the index date). Anemia ",
       "(Hgb < 10 g/dL) treats an absent measurement as unknown ",
       "(missing_is_negative = FALSE); all other components treat it as a true negative. ",
-      "Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+      .TBL3_NOTE, " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -3851,7 +3893,7 @@
         "rather than diagnosis proxies; peripheral vascular disease remains a diagnosis-based ",
         "proxy rather than the paper's ankle-brachial index definition. Absent records count as ",
         "true negatives except for underweight and anemia, where an unmeasured value is treated ",
-        "as unknown. Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+        "as unknown. ", .TBL3_NOTE, " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
