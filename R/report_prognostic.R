@@ -161,6 +161,41 @@
 }
 
 # -----------------------------------------------------------------------------
+# mFI-5 source-code supplemental table (ICD / CPT / HCPCS)
+#
+# Built from report_inputs/score_component_source_codes.csv, which the study repo's extract step
+# derives from the same concept sets the scoring step uses (descendants and exclusions applied
+# identically) by following the vocabulary's "Maps to" relationships from source codes to the
+# standard concepts. Nothing here is typed in by hand.
+# -----------------------------------------------------------------------------
+
+# One table cell for one vocabulary. A component with few codes lists them; one with many (the
+# diabetes family runs to ~500 ICD-10-CM codes) is shown by 3-character category with the number
+# of codes in parentheses, so the table stays readable. The complete list is written alongside the
+# report as a CSV.
+.compress_source_codes <- function(codes, max_listed = 12L) {
+  codes <- sort(unique(codes[!is.na(codes) & nzchar(codes)]))
+  if (length(codes) == 0L) return("None")
+  if (length(codes) <= max_listed) return(paste(codes, collapse = ", "))
+  cat3 <- sub("\\..*$", "", codes)                       # category = text before the decimal point
+  n <- table(cat3)[unique(cat3)]
+  paste0(names(n), ".* (", as.integer(n), ")", collapse = ", ")
+}
+
+# Rows of the table: one per component, in the order the components first appear in the file.
+.build_source_code_rows <- function(codes_df, score = "mfi5") {
+  d <- codes_df[codes_df$score_id == score, , drop = FALSE]
+  comps <- unique(d$covariate_id)
+  data.frame(
+    Component = vapply(comps, function(cid) d$covariate_name[d$covariate_id == cid][1], character(1)),
+    `ICD-10-CM` = vapply(comps, function(cid) .compress_source_codes(d$concept_code[d$covariate_id == cid & d$vocabulary_id == "ICD10CM"]), character(1)),
+    `ICD-9-CM`  = vapply(comps, function(cid) .compress_source_codes(d$concept_code[d$covariate_id == cid & d$vocabulary_id == "ICD9CM"]), character(1)),
+    `CPT / HCPCS` = vapply(comps, function(cid) .compress_source_codes(d$concept_code[d$covariate_id == cid & d$vocabulary_id %in% c("CPT4", "HCPCS")]), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE, row.names = NULL
+  )
+}
+
+# -----------------------------------------------------------------------------
 # .TBL3_LOOKBACK_PARENTS / .component_flextable()
 #
 # Static design text for Tables 3a-c: each component's LOOKBACK WINDOW and its
@@ -1963,7 +1998,10 @@
       "cdm_metadata", "concept_set_inventory", "model_descriptions", "cpt_codes", "discharge_codes",
       "nhd_rate_by_month", "score_dist_iannuzzi",
       if (has_mfi5)  "score_dist_mfi5",
-      if (has_vqifs) "score_dist_vqifs"
+      if (has_vqifs) "score_dist_vqifs",
+      # Added 2026-10-22 at the END of the supplement on purpose: every earlier label
+      # (S1 ... S9) is already cited by number and must not shift. Rendered last.
+      if (has_mfi5)  "mfi5_source_codes"
     )
     .supp_labels <<- stats::setNames(paste0("S", seq_along(keys)), keys)
   }
@@ -5329,6 +5367,59 @@
       doc <- body_add_par(doc, "", style = "Normal")
       message("[report] ", fig_label, " (", dist_info$label, " score distribution) added.")
     }
+  }
+
+  # ---- mFI-5 source codes (ICD / CPT / HCPCS) ---------------------------------
+  # Appended LAST in the supplement so no earlier S-number moves. Skipped quietly when the export
+  # has no score_component_source_codes.csv (an older run), like the other optional artifacts.
+  if (has_mfi5) {
+    tryCatch({
+      src_codes <- read_report_input("score_component_source_codes",
+                                     col_classes = c(concept_code = "character"))
+      if (!is.null(src_codes) && nrow(src_codes[src_codes$score_id == "mfi5", ]) > 0L) {
+        sc_rows <- .build_source_code_rows(src_codes, "mfi5")
+        sc_ft <- flextable::flextable(sc_rows) |>
+          flextable::bold(part = "header") |>
+          flextable::fontsize(size = 8, part = "all") |>
+          flextable::font(fontname = "Calibri", part = "all") |>
+          flextable::bg(part = "header", bg = "#1F3864") |>
+          flextable::color(part = "header", color = "white") |>
+          flextable::padding(padding = 3, part = "all") |>
+          flextable::width(j = "Component", width = 1.3) |>
+          flextable::width(j = "ICD-10-CM", width = 2.6) |>
+          flextable::width(j = "ICD-9-CM", width = 1.7) |>
+          flextable::width(j = "CPT / HCPCS", width = 1.9) |>
+          flextable::set_table_properties(layout = "fixed")
+        doc <- body_add_par(doc, "mFI-5 source codes", style = "heading 3")
+        doc <- body_add_flextable(doc, sc_ft)
+        full_csv <- file.path(dirname(report_file), "mfi5_source_codes_full_list.csv")
+        utils::write.csv(src_codes[src_codes$score_id == "mfi5",
+                                   c("covariate_name", "vocabulary_id", "concept_code", "source_name",
+                                     "standard_concept_id", "standard_concept_name")],
+                         full_csv, row.names = FALSE)
+        doc <- add_doc_caption(doc,
+          paste0(supp_table("mfi5_source_codes"), ". ICD-10-CM, ICD-9-CM, CPT and HCPCS codes behind each mFI-5 component."),
+          paste0("Source codes whose OMOP vocabulary mapping (\"Maps to\") lands on the component's standard concept set, ",
+                 "with descendant concepts included and any excluded concepts removed exactly as in the scoring step (",
+                 supp_table("concept_set_inventory"), "). Lists of more than 12 codes are shown by 3-character category, ",
+                 "e.g. E11.* (n) = n ICD-10-CM codes in category E11; the complete list is in the accompanying file ",
+                 basename(full_csv), ". ",
+                 if (!any(src_codes$vocabulary_id == "CPT4", na.rm = TRUE))
+                   paste0("No CPT procedure code is used by any mFI-5 component; the last column holds only HCPCS entries ",
+                          "(where present: retired physical-therapy functional-limitation reporting codes for self-care, ",
+                          "and a quality-reporting code). ") else "",
+                 "Because descendant concepts are included, a category can contain codes broader than the component's ",
+                 "common meaning (for example pregnancy-related hypertension or organism-specific pneumonia). ",
+                 "Codes of an older edition that have since been retired are retained, because historical records still carry them.")
+        )
+        doc <- body_add_par(doc, "", style = "Normal")
+        message("[report] ", supp_table("mfi5_source_codes"), " (mFI-5 source codes) added; full list -> ", full_csv)
+      } else {
+        message("[report] mFI-5 source-code table skipped: score_component_source_codes.csv not in this export.")
+      }
+    }, error = function(e) {
+      message("[report] mFI-5 source-code table skipped: ", conditionMessage(e))
+    })
   }
 
   # ---- Edge cases — CSV export --------------------------------------------
