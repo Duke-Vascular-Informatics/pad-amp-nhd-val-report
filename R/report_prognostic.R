@@ -3691,7 +3691,17 @@
     "covariate definition used in this analysis is registered on the public OHDSI ATLAS demonstration ",
     "instance, except the non-home discharge outcome, which is defined by hand-written SQL that ATLAS ",
     "cannot express; all are listed, with ATLAS id, standard-concept logic and source OMOP table(s), in ",
-    supp_table("concept_set_inventory"), "."
+    supp_table("concept_set_inventory"), ". Where the OHDSI Phenotype Library (github.com/OHDSI/",
+    "PhenotypeLibrary) holds a comparable phenotype, its identifier and the relationship between the two ",
+    "definitions are given in the same table. We compared concept sets after expanding descendants: ",
+    "the COPD (library entry 1271) and heart failure (934) sets were identical to the library's apart from ",
+    "two concepts each; the pneumonia set (1261) overlapped substantially; the coronary artery disease set (197) ",
+    "was contained within, and the amputation procedure set (999) largely contained within (50 of 54 concepts), the library's broader definitions; and the ",
+    "diabetes (40) and hypertension (770) sets differ in scope (all-type diabetes and any hypertensive ",
+    "disorder here, versus type 2 diabetes and essential hypertension in the library). The remaining ",
+    "functional-status, anemia, peripheral-artery, tissue-loss and insulin definitions have no ",
+    "counterpart in the library. Library entries were listed as pending peer review when compared (October 30, 2026), and the ",
+    "comparison covers concept sets, not entry logic or lookback windows."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
@@ -4987,6 +4997,20 @@
             "1797941",
             "N/A", "N/A", "N/A", "N/A"
           ),
+          # Closest OHDSI Phenotype Library entry and how the two definitions compare (concept sets after
+          # descendant expansion; checked 2026-10-30). Static; mirrors ohdsi_pl_links in the workspace's
+          # phenotype_library/catalog.yaml and the evidence in its notes. KEEP IN SYNC with that file.
+          "OHDSI PL ID" = c(
+            "999 (largely contained in library set)", "None",
+            "197 (contained in library set)", "934 (equivalent)", "770 (related: library is essential hypertension only)",
+            "40 (related: library is type 2 or history of diabetes)",
+            "1271 (equivalent)", "None", "None", "None",
+            "None", "None", "1261 (near-equivalent)",
+            "None", "None (library entry 901 is diagnosis-based)", "None (library entry 901 is diagnosis-based)",
+            "964 (partial: dialysis criterion only)",
+            "Not assessed (superseded)",
+            "N/A", "N/A", "N/A", "N/A"
+          ),
           "Cohort / Concept Set" = c(
             "[DVI] Major Lower Extremity Amputation (dysvascular, trauma and cancer excluded)",
             "[DVI] Non-Home Discharge",
@@ -5147,7 +5171,7 @@
           check.names = FALSE, stringsAsFactors = FALSE
         )
         # Column order: identity, role, definition, then the supporting detail.
-        atlas_inventory <- atlas_inventory[, c("ATLAS ID", "Cohort / Concept Set", "Use in this study",
+        atlas_inventory <- atlas_inventory[, c("ATLAS ID", "OHDSI PL ID", "Cohort / Concept Set", "Use in this study",
                                                "Parent concepts (* = incl. descendants)", "Concept ID(s)",
                                                "Standard-Concept Logic", "OMOP Table(s)")]
         atlas_ft <- flextable::flextable(atlas_inventory) |>
@@ -5157,13 +5181,14 @@
           flextable::bg(part = "header", bg = "#1F3864") |>
           flextable::color(part = "header", color = "white") |>
           flextable::padding(padding = 2, part = "all") |>
-          flextable::width(j = "ATLAS ID", width = 0.75) |>
-          flextable::width(j = "Cohort / Concept Set", width = 1.2) |>
-          flextable::width(j = "Use in this study", width = 1.25) |>
-          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.65) |>
-          flextable::width(j = "Concept ID(s)", width = 1.0) |>
-          flextable::width(j = "Standard-Concept Logic", width = 1.0) |>
-          flextable::width(j = "OMOP Table(s)", width = 0.7) |>
+          flextable::width(j = "ATLAS ID", width = 0.65) |>
+          flextable::width(j = "OHDSI PL ID", width = 0.8) |>
+          flextable::width(j = "Cohort / Concept Set", width = 1.1) |>
+          flextable::width(j = "Use in this study", width = 1.15) |>
+          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.4) |>
+          flextable::width(j = "Concept ID(s)", width = 0.95) |>
+          flextable::width(j = "Standard-Concept Logic", width = 0.85) |>
+          flextable::width(j = "OMOP Table(s)", width = 0.65) |>
           flextable::set_table_properties(layout = "fixed")
         doc <- body_add_par(doc, "ATLAS concept sets and cohorts", style = "heading 3")
         doc <- body_add_flextable(doc, atlas_ft)
@@ -5175,7 +5200,14 @@
                  "https://atlas-demo.ohdsi.org/#/cohortdefinition/<id>. ",
                  "The one exception is the non-home discharge outcome, which is defined by hand-written ",
                  "SQL in the study repository because ATLAS cannot express a discharge-destination criterion, so it has no ",
-                 "ATLAS id. Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
+                 "ATLAS id. OHDSI PL ID gives the closest entry in the OHDSI Phenotype Library ",
+                 "(github.com/OHDSI/PhenotypeLibrary) and how the two definitions compare by concept set after descendant ",
+                 "expansion: equivalent (identical apart from a few concepts), near-equivalent (substantial overlap, each ",
+                 "adds concepts), contained in library set (all, or nearly all, concepts here are in the library's broader set), or ",
+                 "related (same clinical area, deliberately different scope); None means no matching library entry was ",
+                 "found. Library entries were pending peer review when compared (October 30, 2026), and the comparison ",
+                 "covers concept sets only, not entry logic or lookback windows. ",
+                 "Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
                  "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",
                  "(Iannuzzi, mFI-5, sVQI-FS) with its lookback window. Parent concepts are the standard concepts ",
                  "that define each definition (* = descendant concepts also counted); the component tables (Tables ",
