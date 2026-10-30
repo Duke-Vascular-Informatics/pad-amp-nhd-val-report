@@ -35,6 +35,13 @@ Shared baseline (applies first):
   target is 1798563; the non-home discharge outcome is hand-written SQL and has none), and the ATLAS
   table's "ATLAS ID" (official id only; local 9100xxx ids are not shown in the report) and "Use in this study" columns are static text. All three mirror
   `pad-amp-nhd-val/covariates/cohort_map.csv` and `inst/Cohorts.csv` (KEEP IN SYNC). Components are matched by name exactly as in `covariate_summary.csv`.
+- **Supplemental ATLAS table's "OHDSI PL ID" column** (added 2026-10-30) is static text, like the ATLAS ID and
+  "Use in this study" columns: the closest OHDSI Phenotype Library entry and how it compares (equivalent /
+  near-equivalent / contained / related / None). It mirrors `ohdsi_pl_links` in the workspace's
+  `phenotype_library/catalog.yaml` (KEEP IN SYNC; the overlap evidence is in that file's notes), and the Methods
+  "Data source" paragraph summarises it. The comparison is concept sets only (descendants expanded, dev
+  vocabulary); the library entries were "Pending"/"Pending peer review" on 2026-10-30, so the report says
+  "pending peer review" and must not call them peer reviewed.
 - **Decision-curve figure:** the mFI-5 curve is drawn as a fine dotted line (linetype `"11"`),
   overriding the toolkit palette for that one series, because its jagged step-function curve made
   the palette's dash pattern hard to read.
