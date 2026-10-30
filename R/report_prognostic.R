@@ -264,12 +264,47 @@
   "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATION_BROAD_PARENTS)
 )
 
+# Cohort behind each Table 3 component, shown in the "Cohort" column so the table says explicitly
+# which cohort each variable maps to. Ids are the ones in the supplemental ATLAS cohort table's
+# "ATLAS ID" column (9100xxx = local to this study, not yet in ATLAS). Static design facts mirroring
+# pad-amp-nhd-val/covariates/cohort_map.csv (score_id, score_item_id -> cohort_id) -- KEEP IN SYNC.
+# Components computed directly from the CDM rather than from a cohort say so.
+.COMPONENT_COHORTS <- list(
+  # ---- Iannuzzi 2020 ----
+  "Age 60-69 years at index"      = "None (computed)",
+  "Age 70-79 years at index"      = "None (computed)",
+  "Age 80 or more years at index" = "None (computed)",
+  "Female sex"                    = "None (computed)",
+  "Non-White race"                = "None (computed)",
+  "Ambulatory deficit (ambulatory aid use)" = "9100027",
+  "Tissue loss (CLI indication — wound ulcer or gangrene)" = "9100004",
+  "Anemia (Hgb less than 10 g/dL)" = "9100008",
+  "Insulin-dependent diabetes mellitus" = "9100007",
+  # ---- Subramaniam 2018 mFI-5 ----
+  "Dependent functional status (ADL dependence)" = "9100026",
+  "Diabetes mellitus (any type)"  = "9100021",
+  "COPD or current pneumonia"     = "9100002 (COPD); 9100025 (pneumonia)",
+  "Congestive heart failure (within 30 days prior)" = "9100023",
+  "Hypertension"                  = "9100022",
+  # ---- Kraiss 2022 sVQI-FS ----
+  "Congestive heart failure"      = "9100023",
+  "Coronary artery disease"       = "9100024",
+  "Peripheral vascular disease"   = "9100003",
+  "Chronic obstructive pulmonary disease" = "9100002",
+  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = "9100010",
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = "9100009",
+  "Underweight (BMI < 18.5)"      = "None (computed)",
+  "Non-ambulatory / impaired ambulation status" = "9100028"
+)
+
 # Footnote shared by Tables 3a-c.
 .tbl3_note <- function(n_total = NULL, measurement_components = NULL) {
   paste0(
     "Lookback runs back from the index date and ends the day before it unless noted. The parent ",
-    "concepts that define each component (descendants marked *), their concept IDs, and the cohort ",
-    "behind each component are listed in the supplemental ATLAS cohort table. ",
+    "concepts that define each component (descendants marked *) and their concept IDs are listed in ",
+    "the supplemental ATLAS cohort table. Cohort ID is the cohort each component is read from (ids as ",
+    "in that table; 9100xxx cohorts are local to this study and not yet in ATLAS; \"None (computed)\" ",
+    "components are calculated directly from the CDM). ",
     "n (%) is the number of patients meeting the component; the percentage is of the full cohort",
     if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
     ", so a patient with no recorded evidence is counted as not meeting it",
@@ -432,7 +467,11 @@
   # every row (absent evidence is imputed as "no", so it never varies), which the caption
   # states once instead.
   combined_data[["n (%)"]] <- paste0(combined_data$Count, " (", combined_data$Prevalence, ")")
-  combined_data <- combined_data[, c("Component", "Points", "Definition", "Lookback", "n (%)")]
+  combined_data$Cohort <- vapply(combined_data$Component, function(nm) {
+    v <- .COMPONENT_COHORTS[[nm]]
+    if (is.null(v)) "—" else v
+  }, character(1))
+  combined_data <- combined_data[, c("Component", "Points", "Definition", "Lookback", "Cohort", "n (%)")]
 
   # Widths sum to 7.3in; the text area is 7.5in (letter page minus the 0.5in margins set for this document).
   flextable(combined_data) |>
@@ -441,17 +480,19 @@
       Points     = "Points",
       Definition = "Definition",
       Lookback   = "Lookback window",
+      Cohort     = "Cohort ID",
       `n (%)`    = "n (%)"
     ) |>
     bold(part = "header") |>
     fontsize(size = 8, part = "all") |>
     font(fontname = "Calibri", part = "all") |>
-    width(j = "Component",  width = 1.35) |>
-    width(j = "Points",     width = 0.45) |>
-    width(j = "Definition", width = 3.2) |>
-    width(j = "Lookback",   width = 1.35) |>
-    width(j = "n (%)",      width = 0.95) |>
-    align(j = c("Points", "n (%)"), align = "center", part = "all") |>
+    width(j = "Component",  width = 1.2) |>
+    width(j = "Points",     width = 0.4) |>
+    width(j = "Definition", width = 2.65) |>
+    width(j = "Lookback",   width = 1.2) |>
+    width(j = "Cohort",     width = 0.95) |>
+    width(j = "n (%)",      width = 0.9) |>
+    align(j = c("Points", "Cohort", "n (%)"), align = "center", part = "all") |>
     bg(part = "header", bg = "#1F3864") |>
     color(part = "header", color = "white") |>
     hline(border = border_h, part = "body") |>
