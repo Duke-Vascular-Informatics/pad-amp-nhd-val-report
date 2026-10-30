@@ -265,9 +265,11 @@
 )
 
 # Cohort behind each Table 3 component, shown in the "Cohort" column so the table says explicitly
-# which cohort each variable maps to. Ids are the ones in the supplemental ATLAS cohort table's
-# "ATLAS ID" column (9100xxx = local to this study, not yet in ATLAS). Static design facts mirroring
-# pad-amp-nhd-val/covariates/cohort_map.csv (score_id, score_item_id -> cohort_id) -- KEEP IN SYNC.
+# which cohort each variable maps to. Ids are the OFFICIAL ATLAS ids on the public demo instance
+# (atlas-demo.ohdsi.org; published 2026-10-30), the same ones in the supplemental ATLAS cohort table's
+# "ATLAS ID" column, which also gives each cohort's local id. Static design facts mirroring
+# pad-amp-nhd-val/covariates/cohort_map.csv (score_id, score_item_id -> cohort_id) and
+# inst/Cohorts.csv (cohort_id -> atlas_id) -- KEEP IN SYNC.
 # Components computed directly from the CDM rather than from a cohort say so.
 .COMPONENT_COHORTS <- list(
   # ---- Iannuzzi 2020 ----
@@ -276,25 +278,25 @@
   "Age 80 or more years at index" = "None (computed)",
   "Female sex"                    = "None (computed)",
   "Non-White race"                = "None (computed)",
-  "Ambulatory deficit (ambulatory aid use)" = "9100027",
-  "Tissue loss (CLI indication — wound ulcer or gangrene)" = "9100004",
-  "Anemia (Hgb less than 10 g/dL)" = "9100008",
-  "Insulin-dependent diabetes mellitus" = "9100007",
+  "Ambulatory deficit (ambulatory aid use)" = "1798604",
+  "Tissue loss (CLI indication — wound ulcer or gangrene)" = "1798593",
+  "Anemia (Hgb less than 10 g/dL)" = "1798595",
+  "Insulin-dependent diabetes mellitus" = "1798594",
   # ---- Subramaniam 2018 mFI-5 ----
-  "Dependent functional status (ADL dependence)" = "9100026",
-  "Diabetes mellitus (any type)"  = "9100021",
-  "COPD or current pneumonia"     = "9100002 (COPD); 9100025 (pneumonia)",
-  "Congestive heart failure (within 30 days prior)" = "9100023",
-  "Hypertension"                  = "9100022",
+  "Dependent functional status (ADL dependence)" = "1798603",
+  "Diabetes mellitus (any type)"  = "1798598",
+  "COPD or current pneumonia"     = "1798591 (COPD); 1798602 (pneumonia)",
+  "Congestive heart failure (within 30 days prior)" = "1798600",
+  "Hypertension"                  = "1798599",
   # ---- Kraiss 2022 sVQI-FS ----
-  "Congestive heart failure"      = "9100023",
-  "Coronary artery disease"       = "9100024",
-  "Peripheral vascular disease"   = "9100003",
-  "Chronic obstructive pulmonary disease" = "9100002",
-  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = "9100010",
-  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = "9100009",
+  "Congestive heart failure"      = "1798600",
+  "Coronary artery disease"       = "1798601",
+  "Peripheral vascular disease"   = "1798592",
+  "Chronic obstructive pulmonary disease" = "1798591",
+  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = "1798597",
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = "1798596",
   "Underweight (BMI < 18.5)"      = "None (computed)",
-  "Non-ambulatory / impaired ambulation status" = "9100028"
+  "Non-ambulatory / impaired ambulation status" = "1798605"
 )
 
 # Footnote shared by Tables 3a-c.
@@ -302,9 +304,9 @@
   paste0(
     "Lookback runs back from the index date and ends the day before it unless noted. The parent ",
     "concepts that define each component (descendants marked *) and their concept IDs are listed in ",
-    "the supplemental ATLAS cohort table. Cohort ID is the cohort each component is read from (ids as ",
-    "in that table; 9100xxx cohorts are local to this study and not yet in ATLAS; \"None (computed)\" ",
-    "components are calculated directly from the CDM). ",
+    "the supplemental ATLAS cohort table. Cohort ID is the official ATLAS id of the cohort each ",
+    "component is read from, which can be opened on the public ATLAS demonstration instance ",
+    "(atlas-demo.ohdsi.org); \"None (computed)\" components are calculated directly from the CDM. ",
     "n (%) is the number of patients meeting the component; the percentage is of the full cohort",
     if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
     ", so a patient with no recorded evidence is counted as not meeting it",
@@ -3685,9 +3687,11 @@
     if (!is.null(config$study_start_date)) format(as.Date(config$study_start_date), "%B %d, %Y") else "N/A",
     " to ",
     if (!is.null(config$study_end_date))   format(as.Date(config$study_end_date),   "%B %d, %Y") else "N/A",
-    ". Full data source metadata are reported in ", supp_table("cdm_metadata"), ". Every cohort, ",
-    "outcome, and covariate definition used in this analysis is registered in OHDSI ATLAS and listed, ",
-    "with its standard-concept logic and source OMOP table(s), in ", supp_table("concept_set_inventory"), "."
+    ". Full data source metadata are reported in ", supp_table("cdm_metadata"), ". Every cohort and ",
+    "covariate definition used in this analysis is registered on the public OHDSI ATLAS demonstration ",
+    "instance, except the non-home discharge outcome, which is defined by hand-written SQL that ATLAS ",
+    "cannot express; all are listed, with ATLAS id, standard-concept logic and source OMOP table(s), in ",
+    supp_table("concept_set_inventory"), "."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
@@ -4971,33 +4975,36 @@
         sd_all <- if (exists("score_defs_all", inherits = TRUE)) score_defs_all else NULL
         ip <- function(score, name, window_start = NULL) .inventory_parents(sd_all, score, name, window_start)
         atlas_inventory <- data.frame(
+          # Official ATLAS ids (public demo instance, published 2026-10-30) with this study's local cohort
+          # id in parentheses. The outcome is hand-written SQL that ATLAS cannot express, so it has none.
           "ATLAS ID" = c(
-            "1798563 (local 9100011)", "9100001",
-            "9100024", "9100023", "9100022", "9100021",
-            "9100002", "9100003", "9100004", "9100026", "9100027", "9100028", "9100025",
-            "9100007", "9100008", "9100009", "9100010",
+            "1798563 (local 9100011)", "None (local 9100001)",
+            "1798601 (local 9100024)", "1798600 (local 9100023)", "1798599 (local 9100022)", "1798598 (local 9100021)",
+            "1798591 (local 9100002)", "1798592 (local 9100003)", "1798593 (local 9100004)", "1798603 (local 9100026)",
+            "1798604 (local 9100027)", "1798605 (local 9100028)", "1798602 (local 9100025)",
+            "1798594 (local 9100007)", "1798595 (local 9100008)", "1798596 (local 9100009)", "1798597 (local 9100010)",
             "1797941",
             "N/A", "N/A", "N/A", "N/A"
           ),
           "Cohort / Concept Set" = c(
-            "[DVI] Major LE Amputation (dysvascular, trauma and cancer excluded) — target",
-            "[DVI] Non-Home Discharge — outcome",
-            "[DVI] Coronary Artery Disease (risk score item)",
-            "[DVI] Heart Failure (risk score item)",
+            "[DVI] Major Lower Extremity Amputation (dysvascular, trauma and cancer excluded)",
+            "[DVI] Non-Home Discharge",
+            "[DVI] Coronary artery disease (risk score item)",
+            "[DVI] Heart failure (risk score item)",
             "[DVI] Hypertension (risk score item)",
-            "[DVI] Diabetes Mellitus (risk score item)",
+            "[DVI] Diabetes mellitus (risk score item)",
             "[DVI] COPD (risk score item)",
-            "[DVI] Peripheral Arterial Occlusive Disease",
+            "[DVI] Peripheral Arterial Occlusive Disease (risk score item)",
             "[DVI] Ischemic Tissue Loss",
             "[DVI] Dependent Functional Status (ADL dependence)",
-            "[DVI] Ambulatory Aid Use (Iannuzzi, strict)",
-            "[DVI] Impaired Ambulation (sVQI-FS, broad)",
+            "[DVI] Ambulatory Aid Use (Iannuzzi ambu_deficit, strict)",
+            "[DVI] Impaired Ambulation (sVQI-FS nonambulatory, broad)",
             "[DVI] Pneumonia (mFI-5 current pneumonia)",
             "[DVI] Insulin-Treated Diabetes",
-            "[DVI] Anemia (Hgb <10 g/dL)",
-            "[DVI] Anemia (sex-specific threshold)",
-            "[DVI] Renal Impairment",
-            "[DVI] Major LE Amputation — superseded target, kept for lineage",
+            "[DVI] Anemia (Hemoglobin Below 10 g per dL)",
+            "[DVI] Anemia (Sex-Specific Hemoglobin Threshold)",
+            "[DVI] Renal Impairment (Creatinine Above 1.8 mg per dL or Dialysis)",
+            "[DVI] Major Lower Extremity Amputation",
             "Age bands (60–69, 70–79, ≥80)",
             "Female sex",
             "Non-White race",
@@ -5090,7 +5097,7 @@
             "Covariate: Iannuzzi (anemia, hemoglobin < 10 g/dL, 365 d).",
             "Covariate: sVQI-FS (anemia, sex-specific hemoglobin threshold, 365 d).",
             "Covariate: sVQI-FS (renal impairment, 365 d).",
-            "Not used in any model or criterion. Generated only so each run reports old-versus-new target counts.",
+            "Superseded target (shared with pad-amp-ed-desc), not used in any model or criterion. Generated only so each run reports old-versus-new target counts.",
             "Covariate: Iannuzzi (age 60-69, 70-79 and 80 or more years, at index).",
             "Covariate: Iannuzzi (female sex).",
             "Covariate: Iannuzzi (non-White race).",
@@ -5149,11 +5156,11 @@
           flextable::bg(part = "header", bg = "#1F3864") |>
           flextable::color(part = "header", color = "white") |>
           flextable::padding(padding = 2, part = "all") |>
-          flextable::width(j = "ATLAS ID", width = 0.55) |>
-          flextable::width(j = "Cohort / Concept Set", width = 1.15) |>
-          flextable::width(j = "Use in this study", width = 1.3) |>
-          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.9) |>
-          flextable::width(j = "Concept ID(s)", width = 1.1) |>
+          flextable::width(j = "ATLAS ID", width = 0.75) |>
+          flextable::width(j = "Cohort / Concept Set", width = 1.2) |>
+          flextable::width(j = "Use in this study", width = 1.25) |>
+          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.65) |>
+          flextable::width(j = "Concept ID(s)", width = 1.0) |>
           flextable::width(j = "Standard-Concept Logic", width = 1.0) |>
           flextable::width(j = "OMOP Table(s)", width = 0.7) |>
           flextable::set_table_properties(layout = "fixed")
@@ -5161,11 +5168,13 @@
         doc <- body_add_flextable(doc, atlas_ft)
         doc <- add_doc_caption(doc,
           paste0(supp_table("concept_set_inventory"), ". ATLAS concept sets and cohorts used in this analysis."),
-          paste0("Every cohort and concept set referenced in the Methods is named with a [DVI] prefix, ",
-                 "following the convention of the shared OHDSI ATLAS instance (atlas-demo.ohdsi.org). The target ",
-                 "cohort is registered there as 1798563 (local id 9100011); other cohorts numbered 9100xxx are local ",
-                 "to this study's reserved id block and not yet pushed to the shared ATLAS instance; ",
-                 "1797941 is a shared, previously registered cohort. Use in this study gives each definition's role: ",
+          paste0("Every cohort and covariate definition used in the analysis is registered on the public OHDSI ATLAS ",
+                 "demonstration instance (https://atlas-demo.ohdsi.org) and named with a [DVI] prefix. The ATLAS ID column ",
+                 "gives the official ATLAS cohort id, which can be opened at ",
+                 "https://atlas-demo.ohdsi.org/#/cohortdefinition/<id>, with this study's local cohort id in parentheses. ",
+                 "The one exception is the non-home discharge outcome (local id 9100001), which is defined by hand-written ",
+                 "SQL in the study repository because ATLAS cannot express a discharge-destination criterion, so it has no ",
+                 "ATLAS id. Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
                  "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",
                  "(Iannuzzi, mFI-5, sVQI-FS) with its lookback window. Parent concepts are the standard concepts ",
                  "that define each definition (* = descendant concepts also counted); the component tables (Tables ",

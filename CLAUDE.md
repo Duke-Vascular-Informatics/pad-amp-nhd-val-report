@@ -30,9 +30,11 @@ Shared baseline (applies first):
   cannot drift; the ATLAS cohort table's parent-concept column uses the same rows through
   `.inventory_parents()`. An export that predates that file falls back to a hand-maintained copy
   (`.TBL3_LOOKBACK_PARENTS` in `R/report_prognostic.R`), logged as a message; update it only if you
-  must keep rendering old exports. **Cohort ID** (`.COMPONENT_COHORTS`) and the ATLAS table's
-  "Use in this study" column are static text mirroring `pad-amp-nhd-val/covariates/cohort_map.csv`
-  (KEEP IN SYNC). Components are matched by name exactly as in `covariate_summary.csv`.
+  must keep rendering old exports. **Cohort ID** (`.COMPONENT_COHORTS`) shows the cohort's OFFICIAL
+  ATLAS id on the public demo instance (atlas-demo.ohdsi.org; 15 cohorts published 2026-10-30, the
+  target is 1798563; the non-home discharge outcome is hand-written SQL and has none), and the ATLAS
+  table's "ATLAS ID" and "Use in this study" columns are static text. All three mirror
+  `pad-amp-nhd-val/covariates/cohort_map.csv` and `inst/Cohorts.csv` (KEEP IN SYNC). Components are matched by name exactly as in `covariate_summary.csv`.
 - **Decision-curve figure:** the mFI-5 curve is drawn as a fine dotted line (linetype `"11"`),
   overriding the toolkit palette for that one series, because its jagged step-function curve made
   the palette's dash pattern hard to read.
