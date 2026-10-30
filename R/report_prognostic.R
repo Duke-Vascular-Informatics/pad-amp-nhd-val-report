@@ -267,9 +267,9 @@
 # Footnote shared by Tables 3a-c.
 .tbl3_note <- function(n_total = NULL, measurement_components = NULL) {
   paste0(
-    "Lookback runs back from the index date and ends the day before it unless noted. Parent concepts ",
-    "are the OMOP standard concepts that define each component; * marks a concept whose descendant ",
-    "concepts are also counted. Concept IDs are in the Supplemental concept-set inventory. ",
+    "Lookback runs back from the index date and ends the day before it unless noted. The parent ",
+    "concepts that define each component (descendants marked *), their concept IDs, and the cohort ",
+    "behind each component are listed in the supplemental ATLAS cohort table. ",
     "n (%) is the number of patients meeting the component; the percentage is of the full cohort",
     if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
     ", so a patient with no recorded evidence is counted as not meeting it",
@@ -389,8 +389,24 @@
   paste(parts, collapse = "; ")
 }
 
-# Adds the Lookback and Parent-concepts columns (after Definition) and styles the
-# Table 3 flextable. Shared by the three component-table builders.
+# Parent-concept text for one component, for the supplemental ATLAS cohort table (it used to be a
+# Table 3 column). Built from the export's score_component_definitions rows exactly as Table 3's
+# column was; `window_start` picks one arm of a multi-window item (mFI-5 pneumonia = -30). Falls back
+# to the static .TBL3_LOOKBACK_PARENTS text when the export predates that artifact.
+.inventory_parents <- function(score_defs, score_id, covariate_name, window_start = NULL) {
+  if (!is.null(score_defs) && nrow(score_defs) > 0L) {
+    rows <- score_defs[score_defs$score_id == score_id & score_defs$covariate_name == covariate_name, , drop = FALSE]
+    if (!is.null(window_start) && nrow(rows) > 0L) {
+      rows <- rows[.defs_window_groups(rows)$start == window_start, , drop = FALSE]
+    }
+    if (nrow(rows) > 0L) return(.defs_parents(rows))
+  }
+  v <- .TBL3_LOOKBACK_PARENTS[[covariate_name]][["parents"]]
+  if (is.null(v)) "—" else v
+}
+
+# Adds the Lookback column (after Definition) and styles the Table 3 flextable.
+# Shared by the three component-table builders.
 .component_flextable <- function(combined_data, score_defs = NULL) {
   border_h   <- officer::fp_border(color = "#BFBFBF", width = 0.5)
   border_out <- officer::fp_border(color = "#1F3864", width = 1.5)
@@ -409,33 +425,32 @@
     if (is.null(v)) "—" else v
   }
   combined_data$Lookback <- vapply(combined_data$Component, lp, character(1), field = "lookback")
-  combined_data$Parents  <- vapply(combined_data$Component, lp, character(1), field = "parents")
+  # The parent concepts that define each component are NOT a Table 3 column any more (removed
+  # 2026-10-30): they moved to the supplemental ATLAS cohort table, which builds them from the same
+  # export rows through .inventory_parents() below, next to each cohort's concept IDs and its role.
   # One "n (%)" column replaces Count / Total / Prevalence. Total was the full-cohort size on
   # every row (absent evidence is imputed as "no", so it never varies), which the caption
   # states once instead.
   combined_data[["n (%)"]] <- paste0(combined_data$Count, " (", combined_data$Prevalence, ")")
-  combined_data <- combined_data[, c("Component", "Points", "Definition", "Lookback",
-                                     "Parents", "n (%)")]
+  combined_data <- combined_data[, c("Component", "Points", "Definition", "Lookback", "n (%)")]
 
-  # Widths sum to 7.35in; the text area is 7.5in (letter page minus the 0.5in margins set for this document).
+  # Widths sum to 7.3in; the text area is 7.5in (letter page minus the 0.5in margins set for this document).
   flextable(combined_data) |>
     set_header_labels(
       Component  = "Component",
       Points     = "Points",
       Definition = "Definition",
       Lookback   = "Lookback window",
-      Parents    = "Parent concepts (* = incl. descendants)",
       `n (%)`    = "n (%)"
     ) |>
     bold(part = "header") |>
     fontsize(size = 8, part = "all") |>
     font(fontname = "Calibri", part = "all") |>
-    width(j = "Component",  width = 1.15) |>
-    width(j = "Points",     width = 0.4) |>
-    width(j = "Definition", width = 1.7) |>
-    width(j = "Lookback",   width = 0.9) |>
-    width(j = "Parents",    width = 2.4) |>
-    width(j = "n (%)",      width = 0.8) |>
+    width(j = "Component",  width = 1.35) |>
+    width(j = "Points",     width = 0.45) |>
+    width(j = "Definition", width = 3.2) |>
+    width(j = "Lookback",   width = 1.35) |>
+    width(j = "n (%)",      width = 0.95) |>
     align(j = c("Points", "n (%)"), align = "center", part = "all") |>
     bg(part = "header", bg = "#1F3864") |>
     color(part = "header", color = "white") |>
@@ -4900,6 +4915,9 @@
         # the two would have been a real transcription error). Large concept
         # sets are given as "anchor + N others" rather than enumerated in full
         # -- the full expansion is in the source repo's inst/cohorts/*.json.
+        # Export rows behind the parent-concept column (NULL for an export that predates the artifact).
+        sd_all <- if (exists("score_defs_all", inherits = TRUE)) score_defs_all else NULL
+        ip <- function(score, name, window_start = NULL) .inventory_parents(sd_all, score, name, window_start)
         atlas_inventory <- data.frame(
           "ATLAS ID" = c(
             "1798563 (local 9100011)", "9100001",
@@ -4951,7 +4969,7 @@
             "3000963",
             "3000963",
             "3016723, 4146536, 4032243",
-            "Same procedure concepts as 9100011 above",
+            "Procedure: 4195136 + 5 other included concepts (incl. ankle amputation 4264289, no revision concepts), excluding 4169822, 2006242, 2105451",
             "None — computed from person.year_of_birth",
             "8532",
             "Excludes 8527 (White)",
@@ -4972,9 +4990,9 @@
             "Any documented limitation of ambulation, regardless of etiology (aid use plus impaired mobility, difficulty walking, abnormal gait, unable to walk, bed-ridden and PT-reported mobility limitation)",
             "Pneumonia diagnosis and descendants, excluding two non-infectious interstitial-pneumonia concepts (30-day window; OR'd with COPD for the mFI-5 item)",
             "Insulin exposure",
-            "Hemoglobin measurement below a fixed threshold",
-            "Hemoglobin measurement below a sex-specific threshold",
-            "Elevated creatinine, or dialysis (procedure or diagnosis)",
+            "Hemoglobin measurement below a fixed threshold (< 10 g/dL; equivalently < 100 g/L)",
+            "Hemoglobin measurement below a sex-specific threshold (< 13 g/dL male, < 12 g/dL female; equivalently < 130 / < 120 g/L)",
+            "Creatinine > 1.8 mg/dL, or dialysis (procedure or diagnosis)",
             "Inpatient visit containing a major LE amputation procedure",
             "Computed from year of birth relative to the index date",
             "Gender concept",
@@ -4995,29 +5013,111 @@
             "ProcedureOccurrence, VisitOccurrence",
             "Person", "Person", "Person", "Measurement"
           ),
+          # How each definition is used in the study: study-population inclusion/exclusion, outcome,
+          # or covariate in which score model(s). Static design facts; they mirror
+          # pad-amp-nhd-val/covariates/cohort_map.csv (which cohort feeds which score item, and over
+          # what window) and inst/Cohorts.csv. KEEP IN SYNC with those files.
+          "Use in this study" = c(
+            paste0("Study population (target; all three score models). Inclusion: qualifying amputation procedure, ",
+                   "age > 18, PAD, diabetes or lower-extremity wound. Exclusion: limb-trauma mechanism or lower-limb ",
+                   "malignancy on the index visit; after generation, index outside 2017-2025 and admission from ",
+                   "another hospital or a skilled nursing facility."),
+            "Outcome (non-home discharge; all three score models).",
+            "Covariate: sVQI-FS (coronary artery disease, 365 d).",
+            "Covariate: mFI-5 (congestive heart failure, 30 d); sVQI-FS (congestive heart failure, 365 d).",
+            "Covariate: mFI-5 (hypertension, 365 d); sVQI-FS (hypertension, 365 d).",
+            "Covariate: mFI-5 (diabetes mellitus, 365 d); sVQI-FS (diabetes mellitus, 365 d).",
+            "Covariate: mFI-5 (COPD arm of the COPD-or-pneumonia item, 365 d); sVQI-FS (COPD, 365 d).",
+            "Covariate: sVQI-FS (peripheral vascular disease, 365 d).",
+            "Covariate: Iannuzzi (tissue loss, 365 d through the index date).",
+            "Covariate: mFI-5 (dependent functional status, 365 d).",
+            "Covariate: Iannuzzi (ambulatory deficit, i.e. ambulatory aid use, 365 d).",
+            "Covariate: sVQI-FS (non-ambulatory / impaired ambulation, 365 d).",
+            "Covariate: mFI-5 (pneumonia arm of the COPD-or-pneumonia item, 30 d).",
+            "Covariate: Iannuzzi (insulin-dependent diabetes mellitus, 365 d).",
+            "Covariate: Iannuzzi (anemia, hemoglobin < 10 g/dL, 365 d).",
+            "Covariate: sVQI-FS (anemia, sex-specific hemoglobin threshold, 365 d).",
+            "Covariate: sVQI-FS (renal impairment, 365 d).",
+            "Not used in any model or criterion. Generated only so each run reports old-versus-new target counts.",
+            "Covariate: Iannuzzi (age 60-69, 70-79 and 80 or more years, at index).",
+            "Covariate: Iannuzzi (female sex).",
+            "Covariate: Iannuzzi (non-White race).",
+            "Covariate: sVQI-FS (underweight, BMI < 18.5, 365 d)."
+          ),
+          # Parent concepts: the standard concepts that define each definition (* = descendants also
+          # counted). These used to be a column of Tables 3a-c. Covariate rows are built from the export's
+          # score_component_definitions.csv, so they cannot drift from what the scoring step used.
+          "Parent concepts (* = incl. descendants)" = c(
+            paste0("Procedure: Amputation above-knee*; Amputation of leg through tibia and fibula*; Through knee ",
+                   "amputation*; Disarticulation of hip*; Amputation of ankle* (the exact concept and Ankle ",
+                   "disarticulation*, Syme-type amputation*, ICD-9-Procedure 84.14 and CPT 27888 excluded; ",
+                   "supramalleolar amputation kept); Amputation of entire lower limb and ipsilateral hemipelvis*; ",
+                   "Revision of above knee amputation*; Revision of transtibial amputation*; Revision of below ",
+                   "knee amputation stump*. Indication: Peripheral arterial disease*; Arteriosclerosis of artery of ",
+                   "extremity*; Peripheral ischemia*; Peripheral vascular disease associated with another disorder* ",
+                   "(excluding upper-limb, embolic and renal/intestinal/thoracic vascular disorders); Diabetes ",
+                   "mellitus*; Complication due to diabetes mellitus*; lower-extremity wound (24 ancestors*: ulcer, ",
+                   "open wound, gangrene, cellulitis, necrotizing fasciitis, osteomyelitis, diabetic foot). ",
+                   "Index-visit exclusions: Crushing injury of lower limb*; Crushing injury of foot*; Burn of lower ",
+                   "limb*; Degloving injury*; Fracture of lower limb*; Malignant tumor of lower limb*."),
+            "None (resolved at run time from visit discharge disposition)",
+            ip("vqifs",    "Coronary artery disease"),
+            ip("vqifs",    "Congestive heart failure"),
+            ip("vqifs",    "Hypertension"),
+            ip("vqifs",    "Diabetes mellitus (any type)"),
+            ip("vqifs",    "Chronic obstructive pulmonary disease"),
+            ip("vqifs",    "Peripheral vascular disease"),
+            ip("iannuzzi", "Tissue loss (CLI indication — wound ulcer or gangrene)"),
+            ip("mfi5",     "Dependent functional status (ADL dependence)"),
+            ip("iannuzzi", "Ambulatory deficit (ambulatory aid use)"),
+            ip("vqifs",    "Non-ambulatory / impaired ambulation status"),
+            ip("mfi5",     "COPD or current pneumonia", window_start = -30),
+            ip("iannuzzi", "Insulin-dependent diabetes mellitus"),
+            ip("iannuzzi", "Anemia (Hgb less than 10 g/dL)"),
+            ip("vqifs",    "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)"),
+            ip("vqifs",    "Renal impairment (creatinine > 1.8 mg/dL or dialysis)"),
+            paste0("Procedure: Amputation above-knee*; Amputation of leg through tibia and fibula*; Through knee ",
+                   "amputation*; Disarticulation of hip*; Amputation of ankle*; Amputation of entire lower limb and ",
+                   "ipsilateral hemipelvis* (Syme-type amputation* excluded)"),
+            ip("iannuzzi", "Age 60-69 years at index"),
+            ip("iannuzzi", "Female sex"),
+            ip("iannuzzi", "Non-White race"),
+            ip("vqifs",    "Underweight (BMI < 18.5)")
+          ),
           check.names = FALSE, stringsAsFactors = FALSE
         )
+        # Column order: identity, role, definition, then the supporting detail.
+        atlas_inventory <- atlas_inventory[, c("ATLAS ID", "Cohort / Concept Set", "Use in this study",
+                                               "Parent concepts (* = incl. descendants)", "Concept ID(s)",
+                                               "Standard-Concept Logic", "OMOP Table(s)")]
         atlas_ft <- flextable::flextable(atlas_inventory) |>
           flextable::bold(part = "header") |>
-          flextable::fontsize(size = 8, part = "all") |>
+          flextable::fontsize(size = 7, part = "all") |>
           flextable::font(fontname = "Calibri", part = "all") |>
           flextable::bg(part = "header", bg = "#1F3864") |>
           flextable::color(part = "header", color = "white") |>
-          flextable::padding(padding = 3, part = "all") |>
-          flextable::width(j = "ATLAS ID", width = 0.6) |>
-          flextable::width(j = "Cohort / Concept Set", width = 1.6) |>
-          flextable::width(j = "Concept ID(s)", width = 2.4) |>
-          flextable::width(j = "Standard-Concept Logic", width = 2.0) |>
-          flextable::width(j = "OMOP Table(s)", width = 1.2) |>
+          flextable::padding(padding = 2, part = "all") |>
+          flextable::width(j = "ATLAS ID", width = 0.55) |>
+          flextable::width(j = "Cohort / Concept Set", width = 1.15) |>
+          flextable::width(j = "Use in this study", width = 1.3) |>
+          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.9) |>
+          flextable::width(j = "Concept ID(s)", width = 1.1) |>
+          flextable::width(j = "Standard-Concept Logic", width = 1.0) |>
+          flextable::width(j = "OMOP Table(s)", width = 0.7) |>
           flextable::set_table_properties(layout = "fixed")
         doc <- body_add_par(doc, "ATLAS concept sets and cohorts", style = "heading 3")
         doc <- body_add_flextable(doc, atlas_ft)
         doc <- add_doc_caption(doc,
           paste0(supp_table("concept_set_inventory"), ". ATLAS concept sets and cohorts used in this analysis."),
           paste0("Every cohort and concept set referenced in the Methods is named with a [DVI] prefix, ",
-                 "following the convention of the shared OHDSI ATLAS instance (atlas-demo.ohdsi.org). Cohorts numbered 9100xxx are local ",
+                 "following the convention of the shared OHDSI ATLAS instance (atlas-demo.ohdsi.org). The target ",
+                 "cohort is registered there as 1798563 (local id 9100011); other cohorts numbered 9100xxx are local ",
                  "to this study's reserved id block and not yet pushed to the shared ATLAS instance; ",
-                 "1797941 is a shared, previously registered cohort. The final four rows ",
+                 "1797941 is a shared, previously registered cohort. Use in this study gives each definition's role: ",
+                 "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",
+                 "(Iannuzzi, mFI-5, sVQI-FS) with its lookback window. Parent concepts are the standard concepts ",
+                 "that define each definition (* = descendant concepts also counted); the component tables (Tables ",
+                 "3a-c) show only each component's definition, lookback and activation. The final four rows ",
                  "are predictors resolved by a direct concept or demographic query rather than a cohort ",
                  "definition (ATLAS ID: N/A). Concept ID(s) lists each definition's primary standard ",
                  "concept(s); a set with more than a few members is given as an anchor concept plus a ",
