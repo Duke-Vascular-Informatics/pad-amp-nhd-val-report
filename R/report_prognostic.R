@@ -267,7 +267,7 @@
 # Cohort behind each Table 3 component, shown in the "Cohort" column so the table says explicitly
 # which cohort each variable maps to. Ids are the OFFICIAL ATLAS ids on the public demo instance
 # (atlas-demo.ohdsi.org; published 2026-10-30), the same ones in the supplemental ATLAS cohort table's
-# "ATLAS ID" column, which also gives each cohort's local id. Static design facts mirroring
+# "ATLAS ID" column (the report does not show the study's local cohort ids). Static design facts mirroring
 # pad-amp-nhd-val/covariates/cohort_map.csv (score_id, score_item_id -> cohort_id) and
 # inst/Cohorts.csv (cohort_id -> atlas_id) -- KEEP IN SYNC.
 # Components computed directly from the CDM rather than from a cohort say so.
@@ -4975,14 +4975,15 @@
         sd_all <- if (exists("score_defs_all", inherits = TRUE)) score_defs_all else NULL
         ip <- function(score, name, window_start = NULL) .inventory_parents(sd_all, score, name, window_start)
         atlas_inventory <- data.frame(
-          # Official ATLAS ids (public demo instance, published 2026-10-30) with this study's local cohort
-          # id in parentheses. The outcome is hand-written SQL that ATLAS cannot express, so it has none.
+          # Official ATLAS ids (public demo instance, published 2026-10-30); the study's own local cohort
+          # ids are deliberately not shown in the report. The outcome is hand-written SQL that ATLAS
+          # cannot express, so it has none.
           "ATLAS ID" = c(
-            "1798563 (local 9100011)", "None (local 9100001)",
-            "1798601 (local 9100024)", "1798600 (local 9100023)", "1798599 (local 9100022)", "1798598 (local 9100021)",
-            "1798591 (local 9100002)", "1798592 (local 9100003)", "1798593 (local 9100004)", "1798603 (local 9100026)",
-            "1798604 (local 9100027)", "1798605 (local 9100028)", "1798602 (local 9100025)",
-            "1798594 (local 9100007)", "1798595 (local 9100008)", "1798596 (local 9100009)", "1798597 (local 9100010)",
+            "1798563", "Not in ATLAS",
+            "1798601", "1798600", "1798599", "1798598",
+            "1798591", "1798592", "1798593", "1798603",
+            "1798604", "1798605", "1798602",
+            "1798594", "1798595", "1798596", "1798597",
             "1797941",
             "N/A", "N/A", "N/A", "N/A"
           ),
@@ -5171,8 +5172,8 @@
           paste0("Every cohort and covariate definition used in the analysis is registered on the public OHDSI ATLAS ",
                  "demonstration instance (https://atlas-demo.ohdsi.org) and named with a [DVI] prefix. The ATLAS ID column ",
                  "gives the official ATLAS cohort id, which can be opened at ",
-                 "https://atlas-demo.ohdsi.org/#/cohortdefinition/<id>, with this study's local cohort id in parentheses. ",
-                 "The one exception is the non-home discharge outcome (local id 9100001), which is defined by hand-written ",
+                 "https://atlas-demo.ohdsi.org/#/cohortdefinition/<id>. ",
+                 "The one exception is the non-home discharge outcome, which is defined by hand-written ",
                  "SQL in the study repository because ATLAS cannot express a discharge-destination criterion, so it has no ",
                  "ATLAS id. Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
                  "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",

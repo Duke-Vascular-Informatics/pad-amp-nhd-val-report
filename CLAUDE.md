@@ -33,7 +33,7 @@ Shared baseline (applies first):
   must keep rendering old exports. **Cohort ID** (`.COMPONENT_COHORTS`) shows the cohort's OFFICIAL
   ATLAS id on the public demo instance (atlas-demo.ohdsi.org; 15 cohorts published 2026-10-30, the
   target is 1798563; the non-home discharge outcome is hand-written SQL and has none), and the ATLAS
-  table's "ATLAS ID" and "Use in this study" columns are static text. All three mirror
+  table's "ATLAS ID" (official id only; local 9100xxx ids are not shown in the report) and "Use in this study" columns are static text. All three mirror
   `pad-amp-nhd-val/covariates/cohort_map.csv` and `inst/Cohorts.csv` (KEEP IN SYNC). Components are matched by name exactly as in `covariate_summary.csv`.
 - **Decision-curve figure:** the mFI-5 curve is drawn as a fine dotted line (linetype `"11"`),
   overriding the toolkit palette for that one series, because its jagged step-function curve made
