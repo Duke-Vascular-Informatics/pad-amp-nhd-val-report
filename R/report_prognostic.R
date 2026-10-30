@@ -1457,13 +1457,24 @@
       "concept ancestors and all descendants via the concept_ancestor table: above-knee ",
       "amputation (concept 4195136), amputation through tibia and fibula / below-knee ",
       "(concept 4338257), through-knee amputation (concept 4143795), hip disarticulation ",
-      "(concept 4242396), ankle disarticulation (concept 4264289), and hemipelvectomy ",
-      "(concept 36675618). At least one of the following indications was required to be ",
-      "documented on or before the index date: peripheral arterial disease (SNOMED 399957001 ",
-      "and descendants), diabetes mellitus (SNOMED 73211009 and descendants), or a ",
-      "lower-extremity wound (ulcers, open wounds, gangrene, soft-tissue infection, ",
-      "osteomyelitis, or diabetic foot — 25 SNOMED ancestor concept IDs). These eligibility ",
-      "criteria exclude traumatic, burn, and oncologic amputations. Patients were required to ",
+      "(concept 4242396), amputation of ankle (concept 4264289, retained only for its ",
+      "supramalleolar descendant, concept 4119910), and hemipelvectomy (concept 36675618), ",
+      "plus three SNOMED revision concepts: revision of above knee amputation (4225223), ",
+      "revision of transtibial amputation (4234960) and revision of below knee amputation ",
+      "stump (43531499). Ankle disarticulation (concept 37168057 and descendants, and the ",
+      "exact concept 4264289, to which the CPT and ICD-9-Procedure ankle disarticulation ",
+      "codes map) and Syme-type ankle amputation (concept 4169822 and descendants; ",
+      "ICD-9-Procedure 84.14; CPT 27888) were explicitly excluded as qualifying procedures. ",
+      "At least one of the following indications was required: peripheral arterial disease ",
+      "(lower-extremity peripheral arterial occlusive disease, anchored on SNOMED concept ",
+      "3654996 with upper-limb, embolic and visceral/renal vascular disorders excluded) or ",
+      "diabetes mellitus (concepts 201820 and 442793 and descendants), documented at any ",
+      "time before the index date or up to 365 days after it; or a lower-extremity wound ",
+      "(ulcers, open wounds, gangrene, soft-tissue infection, osteomyelitis, or diabetic ",
+      "foot — 24 SNOMED ancestor concept IDs) documented from 365 days before to 365 days ",
+      "after the index date. Admissions with a limb-trauma mechanism (crush, burn, ",
+      "degloving, or lower-limb fracture) or a malignant tumor of the lower limb recorded on ",
+      "the index visit were excluded. Patients were required to ",
       "have at least ", config$min_prior_observation_days %||% 365,
       " days of prior observation before the index date. ",
       "All patients were enrolled from inpatient visits (OMOP visit_concept_id 9201) only."
@@ -3614,13 +3625,18 @@
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
     "\tThe target cohort comprised adults aged 18 years or older undergoing an inpatient major ",
-    "lower-extremity amputation, with peripheral arterial disease, diabetes mellitus, or a ",
-    "lower-extremity wound documented on or before the index date, and at least ",
+    "lower-extremity amputation (above-knee, through-knee, below-knee, supramalleolar, hip ",
+    "disarticulation, or hemipelvectomy, including re-amputation and revision of an above- or ",
+    "below-knee amputation; ankle disarticulation and Syme-type ankle procedures did not qualify), ",
+    "with peripheral arterial disease or diabetes mellitus documented at any time before the index ",
+    "date or up to 365 days after it, or a lower-extremity wound documented from 365 days before to ",
+    "365 days after it, and at least ",
     config$min_prior_observation_days %||% 1,
     " day(s) of prior observation (a minimal requirement accommodating emergency presentations). ",
-    "Traumatic, burn, and oncologic amputations were excluded, as were patients admitted from ",
-    "another hospital or a skilled nursing facility, restricting the cohort to patients admitted ",
-    "from home (including elective admissions coordinated through an outpatient clinic referral). ",
+    "Admissions with a limb-trauma mechanism (crush, burn, degloving, or lower-limb fracture) or a ",
+    "malignant tumor of the lower limb recorded on the index visit were excluded, as were patients ",
+    "admitted from another hospital or a skilled nursing facility, restricting the cohort to patients ",
+    "admitted from home (including elective admissions coordinated through an outpatient clinic referral). ",
     "The outcome, non-home discharge ",
     "(NHD), was ascertained from each patient's discharge disposition at the end of the index ",
     "hospitalization and classified as non-home for any unambiguous institutional destination ",
@@ -4886,7 +4902,7 @@
         # -- the full expansion is in the source repo's inst/cohorts/*.json.
         atlas_inventory <- data.frame(
           "ATLAS ID" = c(
-            "9100011", "9100001",
+            "1798563 (local 9100011)", "9100001",
             "9100024", "9100023", "9100022", "9100021",
             "9100002", "9100003", "9100004", "9100026", "9100027", "9100028", "9100025",
             "9100007", "9100008", "9100009", "9100010",
@@ -4894,7 +4910,7 @@
             "N/A", "N/A", "N/A", "N/A"
           ),
           "Cohort / Concept Set" = c(
-            "[DVI] Major LE Amputation (dysvascular, trauma/cancer excluded) — target",
+            "[DVI] Major LE Amputation (dysvascular, trauma and cancer excluded) — target",
             "[DVI] Non-Home Discharge — outcome",
             "[DVI] Coronary Artery Disease (risk score item)",
             "[DVI] Heart Failure (risk score item)",
@@ -4918,7 +4934,7 @@
             "Underweight (BMI, sVQI-FS)"
           ),
           "Concept ID(s)" = c(
-            "Procedure: 4195136 + 8 others; PAD: 3654996 + 13 others; DM: 201820, 442793; Wound: 197304 + 23 others; Trauma excl.: 194229, 72487, 197751, 4095264, 4187096; Malignancy excl.: 4177242",
+            "Procedure: 4195136 + 8 other included concepts (incl. revisions 4225223, 4234960, 43531499), excluding 4169822, 37168057, 4264289 (exact), 2006242, 2105451; PAD: 3654996 + 13 others; DM: 201820, 442793; Wound: 197304 + 23 others; Trauma excl.: 194229, 72487, 197751, 4095264, 4187096; Malignancy excl.: 4177242",
             "None — dynamic vocabulary lookup",
             "4185932",
             "316139",
@@ -5208,7 +5224,13 @@
           doc <- body_add_par(doc, "", style = "Normal")
         } else if (nrow(cpt_raw) > 0) {
           cpt_display <- data.frame(
-            "Procedure Group" = cpt_raw$proc_group,
+            # The extract names this group "Ankle disarticulation" (it is the 4264289 subtree). Ankle
+            # disarticulation and Syme-type procedures were excluded as qualifying procedures
+            # (2026-10-23), so the label is changed at render time to avoid implying that they
+            # define cohort membership; the CSV the analysis repo wrote is left untouched.
+            "Procedure Group" = ifelse(cpt_raw$proc_group == "Ankle disarticulation",
+                                       "Ankle-level (excluded as qualifying procedures)",
+                                       cpt_raw$proc_group),
             "CPT Code"        = cpt_raw$cpt_code,
             "Description"     = cpt_raw$cpt_description,
             "Cases (n)"       = cpt_raw$case_count,
@@ -5233,7 +5255,10 @@
             paste0(supp_table("cpt_codes"), ". CPT codes for index amputation subgroups."),
             paste0("CPT-4 codes mapped from each amputation subgroup's standard concept (see ",
                    supp_table("concept_set_inventory"), "). Cases (n) = number of distinct patients ",
-                   "with that source concept. A code may appear in more than one group.")
+                   "with that source concept. A code may appear in more than one group. ",
+                   "Ankle-level codes (ankle disarticulation, Syme-type) are listed for completeness only: ",
+                   "they do not qualify a patient for the cohort (concept-set exclusions), so a patient with ",
+                   "one of these codes is in the cohort through another qualifying amputation procedure.")
           )
           doc <- body_add_par(doc, "", style = "Normal")
           message("[report] Supplemental Table S3 (CPT codes) added.")
