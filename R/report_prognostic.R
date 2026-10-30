@@ -3252,6 +3252,17 @@
     gs              <- .gs_scales(all_strategies,
                                   slots = c(seq_along(model_names), 5L, 6L))
 
+    # mFI-5 is drawn as very narrowly spaced dots (2026-10-30). The mFI-5 curve is a jagged step
+    # function (its score only takes the values 0-5), and the palette's dash pattern for its slot
+    # is hard to tell apart from the neighbouring dashed curves along such a line. The linetype
+    # string "11" is one dot-length on, one off (hex digits, scaled by the line width), i.e. a
+    # fine dotted line; the other curves keep their palette linetypes. Re-building the manual
+    # scale here also covers the clinical-impact strip below, which reuses gs$linetype.
+    lt_values <- stats::setNames(
+      .gs_series_palette$linetype[c(seq_along(model_names), 5L, 6L)], all_strategies)
+    lt_values[grepl("^mFI", names(lt_values))] <- "11"
+    gs$linetype <- ggplot2::scale_linetype_manual(values = lt_values)
+
     # geom_line() alone is too dense along these smooth curves for point
     # shapes to read cleanly; subsample ~12 points per strategy so the shape
     # channel is visible without cluttering the curve (same approach as the

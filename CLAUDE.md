@@ -23,14 +23,19 @@ Shared baseline (applies first):
 - No `study_params.yaml` here — see `config.R`'s header. Report parameters
   come from `_report_config.yaml`, written by `pad-amp-nhd-val`'s extract
   step, not duplicated in this repo.
-- **Tables 3a-c carry "Lookback window" and "Parent concepts" columns** (`*` = descendants
-  included), built from `report_inputs/score_component_definitions.csv`, which
-  `pad-amp-nhd-val`'s extract step writes from the same covariate CSVs the scoring step used,
-  with concept names from the run's own vocabulary — so they cannot drift. An export that
-  predates that file falls back to a hand-maintained copy (`.TBL3_LOOKBACK_PARENTS` in
-  `R/report_prognostic.R`), logged as a message; that fallback is only for old exports, so
-  update it only if you must keep rendering them. Components are matched by name exactly as
-  in `covariate_summary.csv`.
+- **Tables 3a-c carry "Lookback window" and "Cohort ID" columns** (the "Parent concepts" column moved
+  to the supplemental ATLAS cohort table on 2026-10-30, next to each cohort's role in the study).
+  The lookback text is built from `report_inputs/score_component_definitions.csv`, which
+  `pad-amp-nhd-val`'s extract step writes from the same covariate CSVs the scoring step used, so it
+  cannot drift; the ATLAS cohort table's parent-concept column uses the same rows through
+  `.inventory_parents()`. An export that predates that file falls back to a hand-maintained copy
+  (`.TBL3_LOOKBACK_PARENTS` in `R/report_prognostic.R`), logged as a message; update it only if you
+  must keep rendering old exports. **Cohort ID** (`.COMPONENT_COHORTS`) and the ATLAS table's
+  "Use in this study" column are static text mirroring `pad-amp-nhd-val/covariates/cohort_map.csv`
+  (KEEP IN SYNC). Components are matched by name exactly as in `covariate_summary.csv`.
+- **Decision-curve figure:** the mFI-5 curve is drawn as a fine dotted line (linetype `"11"`),
+  overriding the toolkit palette for that one series, because its jagged step-function curve made
+  the palette's dash pattern hard to read.
 - Repo is **public** (made public 2026-10-02 ahead of publication; GPL-2.0, see `LICENSE`). Nothing patient-level or site-credentialed may ever be committed here.
 
 ### Pipeline
