@@ -42,6 +42,11 @@ Shared baseline (applies first):
   "Data source" paragraph summarises it. The comparison is concept sets only (descendants expanded, dev
   vocabulary); the library entries were "Pending"/"Pending peer review" on 2026-10-30, so the report says
   "pending peer review" and must not call them peer reviewed.
+  **Held for the PRCC rerun:** from 2026-11-01 the column and Methods text describe the *aligned* COPD
+  (PL 1271) and CAD (PL 197) definitions in `pad-amp-nhd-val`, but any Duke export made before that
+  study's rerun was computed with the old definitions (COPD without 258780; CAD = 4185932 only, 21%
+  prevalence). Do not circulate a report rendered from such an export; the Tables 3a-c parent-concept
+  text also comes from the export, so it keeps showing the old CAD/COPD concepts until the rerun.
 - **Decision-curve figure:** the mFI-5 curve is drawn as a fine dotted line (linetype `"11"`),
   overriding the toolkit palette for that one series, because its jagged step-function curve made
   the palette's dash pattern hard to read.
