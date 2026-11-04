@@ -3701,10 +3701,15 @@
     "and five deprecated or non-standard library roots were dropped. We kept our own scope where the score item ",
     "differs from the library phenotype: heart failure of any etiology, including rheumatic (934); any current ",
     "pneumonia rather than acute typical pneumonia (1261); any hypertensive disorder rather than essential ",
-    "hypertension (770); diabetes of any type rather than type 2 (40); and major, not minor, lower-extremity ",
-    "amputation (999). The functional-status, anemia, peripheral-artery, tissue-loss and insulin definitions ",
-    "have no library counterpart. Concept sets were compared after expanding descendants; library entries were ",
-    "listed as pending peer review on October 30, 2026, and entry logic and lookback windows were not compared."
+    "hypertension (770); diabetes of any type rather than type 2 (40); major, not minor, lower-extremity ",
+    "amputation (999); a peripheral artery disease diagnosis rather than the library's claudication-pain ",
+    "phenotype (371); and the score's own serum creatinine threshold of 1.8 mg/dL rather than the library's ",
+    "3 mg/dL (946), the library's dialysis definitions (923, 930, 964) not being adopted. The tissue-loss, ",
+    "functional-status, ambulation, insulin and underweight definitions have no library counterpart, and the ",
+    "library's anemia entry (901) is diagnosis-based whereas our anemia items use hemoglobin thresholds, so it ",
+    "was not adopted. Concept sets were compared after expanding descendants; library entries were listed as ",
+    "pending peer review when compared (October 30 and November 4, 2026), and entry logic and lookback windows ",
+    "were not compared."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
@@ -3900,9 +3905,8 @@
     "populations where the recalibrated scores may be miscalibrated or discriminate less reliably. ",
     "Expected calibration error (ECE) and AUROC were computed within each subgroup using the same ",
     "recalibrated predicted probabilities and temporal test partition as the overall figures in ",
-    "Table 4, with 95% CIs from 200 bootstrap resamples. Within subgroups ECE is computed over ten ",
-    "equal-width probability bins (the overall ECE in Table 4 uses ten quantile bins), so subgroup and ",
-    "overall ECE values are not directly comparable with each other. Subgroup levels with fewer than 10 observed ",
+    "Table 4 (the same ten-quantile-bin ECE), with 95% CIs from 200 bootstrap resamples. Subgroup levels ",
+    "with fewer than 10 observed ",
     "NHD events were suppressed; AUROC was additionally suppressed where the outcome was constant ",
     "within that subgroup. ",
     # Gated on has_mfi5_bias, not has_mfi5 — see .init_supp_labels(). When the
@@ -5007,16 +5011,16 @@
             "N/A", "N/A", "N/A", "N/A"
           ),
           # Closest OHDSI Phenotype Library entry and how the two definitions compare (concept sets after
-          # descendant expansion; checked 2026-10-30). Static; mirrors ohdsi_pl_links in the workspace's
+          # descendant expansion; checked 2026-10-30 and re-checked 2026-11-04). Static; mirrors ohdsi_pl_links in the workspace's
           # phenotype_library/catalog.yaml and the evidence in its notes. KEEP IN SYNC with that file.
           "OHDSI PL ID" = c(
             "999 (deviates: major amputation only)", "None",
             "197 (aligned, minus all-vessel root)", "934 (deviates: includes rheumatic HF)", "770 (deviates: any hypertensive disorder)",
             "40 (deviates: any-type diabetes)",
-            "1271 (aligned)", "None", "None", "None",
+            "1271 (aligned)", "371 (deviates: claudication-pain phenotype; PAD diagnosis kept)", "None", "None",
             "None", "None", "1261 (deviates: any pneumonia)",
             "None", "None (library entry 901 is diagnosis-based)", "None (library entry 901 is diagnosis-based)",
-            "964 (dialysis criterion only; not adopted)",
+            "946 (deviates: creatinine > 1.8 vs > 3 mg/dL; library dialysis entries not adopted)",
             "Not assessed (superseded)",
             "N/A", "N/A", "N/A", "N/A"
           ),
@@ -5213,7 +5217,7 @@
                  "(github.com/OHDSI/PhenotypeLibrary) and our decision: aligned (our concept set was brought into line ",
                  "with the library's, with any stated exception) or deviates (we kept our own scope because the study's ",
                  "score item differs from the library phenotype; reason given). None means no matching library entry ",
-                 "was found. Library entries were pending peer review when compared (October 30, 2026), and the comparison ",
+                 "was found. Library entries were pending peer review when compared (October 30 and November 4, 2026), and the comparison ",
                  "covers concept sets only, not entry logic or lookback windows. ",
                  "Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
                  "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",
