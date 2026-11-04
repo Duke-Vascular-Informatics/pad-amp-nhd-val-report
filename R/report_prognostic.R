@@ -2110,7 +2110,9 @@
       if (has_vqifs) "score_dist_vqifs",
       # Added 2026-10-22 at the END of the supplement on purpose: every earlier label
       # (S1 ... S9) is already cited by number and must not shift. Rendered last.
-      if (has_mfi5)  "mfi5_source_codes"
+      if (has_mfi5)  "mfi5_source_codes",
+      # Repositories and archived software: appended after everything else for the same reason.
+      "repositories"
     )
     .supp_labels <<- stats::setNames(paste0("S", seq_along(keys)), keys)
   }
@@ -3853,6 +3855,17 @@
     "regression test requires every predictor's per-patient values to agree exactly between them, ",
     "and a second automated check confirms each cohort's concept set still matches the concept set ",
     "recorded for that score component."
+  ), style = "Normal")
+  doc <- body_add_par(doc, paste0(
+    "\tThe analysis code was developed and tested with the assistance of Claude (Anthropic), in an ",
+    "institution-specific configuration of the Charon development container (v1.2.1), against a fully ",
+    "synthetic OMOP CDM generated for that purpose; none of the results reported here come from synthetic ",
+    "data. The code was then deployed against our institutional OMOP instance. The analysis code is ",
+    "available at https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val, the generator of the ",
+    "synthetic development data and the dataset itself at ",
+    "https://github.com/Duke-Vascular-Informatics/pad-amp-synth, and the code that renders this report at ",
+    "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report. Each release is archived on ",
+    "Zenodo; all repositories, versions and DOIs are listed in ", supp_table("repositories"), "."
   ), style = "Normal")
 
   # ---------------------------------------------------------------------------
@@ -5693,6 +5706,59 @@
       message("[report] mFI-5 source-code table skipped: ", conditionMessage(e))
     })
   }
+
+  # ---- Repositories and archived software ----------------------------------------
+  # One row per repository / release the study rests on, read from covariates/study_repositories.csv.
+  # A blank doi means the repository has not been released yet; the table then says so and the render
+  # warns loudly, so a report with unassigned DOIs cannot be circulated unnoticed.
+  tryCatch({
+    repo_path <- "covariates/study_repositories.csv"
+    if (file.exists(repo_path)) {
+      repos <- utils::read.csv(repo_path, stringsAsFactors = FALSE, check.names = FALSE, na.strings = "")
+      n_pending <- sum(is.na(repos$doi))
+      repo_display <- data.frame(
+        "Role"                 = repos$role,
+        "Repository"           = repos$repository,
+        "Version"              = repos$version,
+        "DOI"                  = ifelse(is.na(repos$doi), "To be assigned at release", repos$doi),
+        "License"              = repos$license,
+        check.names = FALSE, stringsAsFactors = FALSE
+      )
+      repo_ft <- flextable::flextable(repo_display) |>
+        flextable::bold(part = "header") |>
+        flextable::fontsize(size = 8, part = "all") |>
+        flextable::font(fontname = "Calibri", part = "all") |>
+        flextable::bg(part = "header", bg = "#1F3864") |>
+        flextable::color(part = "header", color = "white") |>
+        flextable::padding(padding = 3, part = "all") |>
+        flextable::width(j = "Role",       width = 1.2) |>
+        flextable::width(j = "Repository", width = 2.5) |>
+        flextable::width(j = "Version",    width = 0.9) |>
+        flextable::width(j = "DOI",        width = 1.6) |>
+        flextable::width(j = "License",    width = 0.8) |>
+        flextable::set_table_properties(layout = "fixed")
+      doc <- body_add_par(doc, "Repositories and archived software", style = "heading 3")
+      doc <- body_add_flextable(doc, repo_ft)
+      doc <- add_doc_caption(doc,
+        paste0(supp_table("repositories"), ". Repositories, releases and archived software used in this study."),
+        paste0("Code and the synthetic development data are public; each release is archived on Zenodo, and a DOI resolves at ",
+               "https://doi.org/<DOI>. The synthetic dataset (pad_amp v3) was used only to develop and test the code; no result ",
+               "in this report comes from it, and it is verified by its SHA-256 digest ",
+               "(9c402386f251a24d79da6251b89b121890c900141cd502d4191ccf82a937254f). \"All versions\" DOIs resolve to the latest ",
+               "release of a template, which was used only as a starting scaffold. Vocabulary files are not distributed with any repository.")
+      )
+      doc <- body_add_par(doc, "", style = "Normal")
+      if (n_pending > 0L) {
+        message("[report] WARNING: ", n_pending, " repository DOI(s) still to be assigned in covariates/study_repositories.csv ",
+                "-- fill them in after the releases and re-render before circulating this report.")
+      }
+      message("[report] ", supp_table("repositories"), " (repositories) added.")
+    } else {
+      message("[report] Repositories table skipped: covariates/study_repositories.csv not found.")
+    }
+  }, error = function(e) {
+    message("[report] Repositories table skipped: ", conditionMessage(e))
+  })
 
   # ---- Edge cases — CSV export --------------------------------------------
   # MOVED TO THE EXTRACT SIDE (Phase 0). This block used to open its own
