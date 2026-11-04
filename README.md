@@ -66,6 +66,27 @@ Verified by running the full report end-to-end from this repo against
 against the last report generated before the split: 31,901 paragraphs,
 identical except the generation date.
 
+## Citing
+
+If you use this code, please cite it: see [`CITATION.cff`](CITATION.cff) (GitHub's
+**Cite this repository** button reads it). Each release is archived on Zenodo, which
+provides the DOI. The analysis that produces the report's inputs is
+[`pad-amp-nhd-val`](https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val).
+
+Developed in an institution-specific configuration of the
+[Charon](https://github.com/Duke-Vascular-Informatics/charon) container
+(*Containerized HADES Analytics for Research in OHDSI Networks*, v1.2.1,
+DOI [10.5281/zenodo.23874907](https://doi.org/10.5281/zenodo.23874907)); please cite it too:
+Johnson AP. Charon [software]. Zenodo; 2026.
+
+## Funding
+
+Research reported in this publication was supported by the National Center For Advancing
+Translational Sciences of the National Institutes of Health under Award Number K12TR005435.
+The content is solely the responsibility of the authors and does not necessarily represent
+the official views of the National Institutes of Health.
+
 ## License
 
-Copyright 2026 Duke University. All Rights Reserved. The software is hereby licensed under the GNU GPL License v2 (see [LICENSE](LICENSE)).
+Copyright 2026 Duke University. All Rights Reserved. The software is hereby licensed under the GNU GPL License v2 (see [LICENSE](LICENSE)). OMOP vocabulary files are subject to the
+[Athena license terms](https://www.ohdsi.org/analytic-tools/athena-standardized-vocabularies/). No vocabulary data is distributed with this repo.

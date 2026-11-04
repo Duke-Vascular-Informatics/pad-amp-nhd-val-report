@@ -3691,7 +3691,20 @@
     "covariate definition used in this analysis is registered on the public OHDSI ATLAS demonstration ",
     "instance, except the non-home discharge outcome, which is defined by hand-written SQL that ATLAS ",
     "cannot express; all are listed, with ATLAS id, standard-concept logic and source OMOP table(s), in ",
-    supp_table("concept_set_inventory"), "."
+    supp_table("concept_set_inventory"), ". Where the OHDSI Phenotype Library (github.com/OHDSI/",
+    "PhenotypeLibrary) holds a comparable phenotype, we used its concept set in preference to our own and ",
+    "deviated only for a stated analytic reason; each library identifier and our decision are given in the same ",
+    "table. The COPD cohort (library entry 1271) and the coronary artery disease cohort (197) were aligned ",
+    "to the library. The coronary set omits one library root, the generic arteriosclerotic vascular disease concept, ",
+    "which spans aortic, carotid, renal and limb vessels and would label nearly every patient with peripheral ",
+    "artery disease as having coronary disease; it is replaced by its coronary branch, coronary arteriosclerosis, ",
+    "and five deprecated or non-standard library roots were dropped. We kept our own scope where the score item ",
+    "differs from the library phenotype: heart failure of any etiology, including rheumatic (934); any current ",
+    "pneumonia rather than acute typical pneumonia (1261); any hypertensive disorder rather than essential ",
+    "hypertension (770); diabetes of any type rather than type 2 (40); and major, not minor, lower-extremity ",
+    "amputation (999). The functional-status, anemia, peripheral-artery, tissue-loss and insulin definitions ",
+    "have no library counterpart. Concept sets were compared after expanding descendants; library entries were ",
+    "listed as pending peer review on October 30, 2026, and entry logic and lookback windows were not compared."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
@@ -4987,6 +5000,20 @@
             "1797941",
             "N/A", "N/A", "N/A", "N/A"
           ),
+          # Closest OHDSI Phenotype Library entry and how the two definitions compare (concept sets after
+          # descendant expansion; checked 2026-10-30). Static; mirrors ohdsi_pl_links in the workspace's
+          # phenotype_library/catalog.yaml and the evidence in its notes. KEEP IN SYNC with that file.
+          "OHDSI PL ID" = c(
+            "999 (deviates: major amputation only)", "None",
+            "197 (aligned, minus all-vessel root)", "934 (deviates: includes rheumatic HF)", "770 (deviates: any hypertensive disorder)",
+            "40 (deviates: any-type diabetes)",
+            "1271 (aligned)", "None", "None", "None",
+            "None", "None", "1261 (deviates: any pneumonia)",
+            "None", "None (library entry 901 is diagnosis-based)", "None (library entry 901 is diagnosis-based)",
+            "964 (dialysis criterion only; not adopted)",
+            "Not assessed (superseded)",
+            "N/A", "N/A", "N/A", "N/A"
+          ),
           "Cohort / Concept Set" = c(
             "[DVI] Major Lower Extremity Amputation (dysvascular, trauma and cancer excluded)",
             "[DVI] Non-Home Discharge",
@@ -5014,11 +5041,11 @@
           "Concept ID(s)" = c(
             "Procedure: 4195136 + 8 other included concepts (incl. revisions 4225223, 4234960, 43531499), excluding 4169822, 37168057, 4264289 (exact), 2006242, 2105451; PAD: 3654996 + 13 others; DM: 201820, 442793; Wound: 197304 + 23 others; Trauma excl.: 194229, 72487, 197751, 4095264, 4187096; Malignancy excl.: 4177242",
             "None — dynamic vocabulary lookup",
-            "4185932",
+            "4185932 + 18 other roots (OHDSI PL 197; excludes the all-vessel root 318443)",
             "316139",
             "316866",
             "201820",
-            "255573",
+            "255573, 258780",
             "317309",
             "4029926, 4291464",
             "Observation: 4044722 + 26 others; Condition: 45770280",
@@ -5038,11 +5065,11 @@
           "Standard-Concept Logic" = c(
             "Major LE amputation procedure with a qualifying PAD, diabetes, or lower-extremity wound indication; excludes limb-trauma or lower-limb-malignancy codes on the index visit",
             "Discharge disposition resolved dynamically against the local vocabulary; no fixed concept id",
-            "Ischemic heart disease diagnosis",
+            "Ischemic heart disease, coronary arteriosclerosis, coronary occlusion and myocardial-infarction complication diagnoses, and emergency admission for ischemic heart disease; non-coronary arteriosclerosis (aortic, carotid, renal, limb) is not counted",
             "Heart failure diagnosis",
             "Hypertension diagnosis and descendants",
             "Diabetes mellitus diagnosis and descendants",
-            "COPD diagnosis and descendants",
+            "COPD and emphysematous bronchitis diagnoses and descendants (OHDSI PL 1271)",
             "Peripheral arterial disease diagnosis and descendants",
             "Ischemic ulcer or ischemic gangrene diagnosis",
             "Activities-of-daily-living dependence finding, bed-ridden, confined to chair, or severe frailty",
@@ -5062,7 +5089,7 @@
           "OMOP Table(s)" = c(
             "ProcedureOccurrence, ConditionOccurrence, VisitOccurrence",
             "VisitOccurrence",
-            "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
+            "ConditionOccurrence, Observation", "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
             "ConditionOccurrence", "ConditionOccurrence", "ConditionOccurrence",
             "ConditionOccurrence, Observation",
             "Observation, DeviceExposure",
@@ -5147,7 +5174,7 @@
           check.names = FALSE, stringsAsFactors = FALSE
         )
         # Column order: identity, role, definition, then the supporting detail.
-        atlas_inventory <- atlas_inventory[, c("ATLAS ID", "Cohort / Concept Set", "Use in this study",
+        atlas_inventory <- atlas_inventory[, c("ATLAS ID", "OHDSI PL ID", "Cohort / Concept Set", "Use in this study",
                                                "Parent concepts (* = incl. descendants)", "Concept ID(s)",
                                                "Standard-Concept Logic", "OMOP Table(s)")]
         atlas_ft <- flextable::flextable(atlas_inventory) |>
@@ -5157,13 +5184,14 @@
           flextable::bg(part = "header", bg = "#1F3864") |>
           flextable::color(part = "header", color = "white") |>
           flextable::padding(padding = 2, part = "all") |>
-          flextable::width(j = "ATLAS ID", width = 0.75) |>
-          flextable::width(j = "Cohort / Concept Set", width = 1.2) |>
-          flextable::width(j = "Use in this study", width = 1.25) |>
-          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.65) |>
-          flextable::width(j = "Concept ID(s)", width = 1.0) |>
-          flextable::width(j = "Standard-Concept Logic", width = 1.0) |>
-          flextable::width(j = "OMOP Table(s)", width = 0.7) |>
+          flextable::width(j = "ATLAS ID", width = 0.65) |>
+          flextable::width(j = "OHDSI PL ID", width = 0.8) |>
+          flextable::width(j = "Cohort / Concept Set", width = 1.1) |>
+          flextable::width(j = "Use in this study", width = 1.15) |>
+          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.4) |>
+          flextable::width(j = "Concept ID(s)", width = 0.95) |>
+          flextable::width(j = "Standard-Concept Logic", width = 0.85) |>
+          flextable::width(j = "OMOP Table(s)", width = 0.65) |>
           flextable::set_table_properties(layout = "fixed")
         doc <- body_add_par(doc, "ATLAS concept sets and cohorts", style = "heading 3")
         doc <- body_add_flextable(doc, atlas_ft)
@@ -5175,7 +5203,13 @@
                  "https://atlas-demo.ohdsi.org/#/cohortdefinition/<id>. ",
                  "The one exception is the non-home discharge outcome, which is defined by hand-written ",
                  "SQL in the study repository because ATLAS cannot express a discharge-destination criterion, so it has no ",
-                 "ATLAS id. Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
+                 "ATLAS id. OHDSI PL ID gives the closest entry in the OHDSI Phenotype Library ",
+                 "(github.com/OHDSI/PhenotypeLibrary) and our decision: aligned (our concept set was brought into line ",
+                 "with the library's, with any stated exception) or deviates (we kept our own scope because the study's ",
+                 "score item differs from the library phenotype; reason given). None means no matching library entry ",
+                 "was found. Library entries were pending peer review when compared (October 30, 2026), and the comparison ",
+                 "covers concept sets only, not entry logic or lookback windows. ",
+                 "Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
                  "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",
                  "(Iannuzzi, mFI-5, sVQI-FS) with its lookback window. Parent concepts are the standard concepts ",
                  "that define each definition (* = descendant concepts also counted); the component tables (Tables ",
