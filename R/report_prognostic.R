@@ -4924,14 +4924,13 @@
         names(cdm_src_raw) <- tolower(names(cdm_src_raw))
         if (nrow(cdm_src_raw) > 0) {
           cdm_src_display <- data.frame(
-            Field = c("CDM Source Name", "Source Abbreviation", "CDM Holder",
-                      "Source Release Date", "CDM Release Date",
+            # CDM source name, abbreviation and holder (a named data-steward contact) are
+            # deliberately NOT shown: the source name/abbreviation identify the instance and the
+            # holder field carries a person's name and email. Only dates and versions are reported.
+            Field = c("Source Release Date", "CDM Release Date",
                       "CDM Version", "Vocabulary Version",
                       "Study Start Date", "Study End Date"),
-            Value = c(as.character(cdm_src_raw$cdm_source_name[1]),
-                      as.character(cdm_src_raw$cdm_source_abbreviation[1]),
-                      as.character(cdm_src_raw$cdm_holder[1]),
-                      as.character(cdm_src_raw$source_release_date[1]),
+            Value = c(as.character(cdm_src_raw$source_release_date[1]),
                       as.character(cdm_src_raw$cdm_release_date[1]),
                       as.character(cdm_src_raw$cdm_version[1]),
                       as.character(cdm_src_raw$vocabulary_version[1]),
