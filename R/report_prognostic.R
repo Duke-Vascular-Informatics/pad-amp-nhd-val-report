@@ -299,6 +299,50 @@
   "Non-ambulatory / impaired ambulation status" = "1798605"
 )
 
+# -----------------------------------------------------------------------------
+# .fmt_count_cell()
+#
+# Formats a count column that went through small-cell suppression in the analysis repo
+# (.suppress_counts(): counts of 1 to threshold-1 become NA with suppressed = TRUE; a true
+# 0 and any count >= threshold are kept). A suppressed cell is shown as "<5", never left
+# blank, so a reader can tell "suppressed, small" from "missing"; a true 0 stays "0".
+# Where the export has no `suppressed` column (older export) any NA is treated as suppressed.
+#
+# @param n           numeric counts (NA where suppressed).
+# @param suppressed  logical flags from the export, or NULL.
+# @param threshold   the minimum cell count the run applied (config$min_cell_count_applied).
+# @return            character vector for display.
+# -----------------------------------------------------------------------------
+.fmt_count_cell <- function(n, suppressed = NULL, threshold = 5L) {
+  n <- suppressWarnings(as.numeric(n))
+  sup <- if (is.null(suppressed)) is.na(n) else (as.logical(suppressed) | is.na(n))
+  sup[is.na(sup)] <- TRUE
+  ifelse(sup, paste0("<", threshold), format(n, big.mark = ",", trim = TRUE, scientific = FALSE))
+}
+
+# -----------------------------------------------------------------------------
+# .cdm_holder_org()
+#
+# Reduces cdm_source.cdm_holder to the organisation name only. The raw field carries
+# "<organisation> - <person> - <email>", a named contact that must not appear in the report.
+# Keep the part before the first " - " (or en/em dash), then drop any token containing "@";
+# NA/empty gives "Not recorded".
+#
+# KEEP IN SYNC with .cdm_holder_org() in pad-amp-nhd-val/R/extract_report_inputs.R (which
+# applies the same reduction before the export is written).
+# -----------------------------------------------------------------------------
+.cdm_holder_org <- function(x) {
+  x <- as.character(x)
+  org <- trimws(sub("\\s+[-\u2013\u2014]\\s+.*$", "", x))
+  out <- vapply(org, function(v) {
+    if (is.na(v)) return(NA_character_)
+    toks <- strsplit(v, "\\s+")[[1]]
+    trimws(paste(toks[!grepl("@", toks, fixed = TRUE)], collapse = " "))
+  }, character(1), USE.NAMES = FALSE)
+  out[is.na(out) | !nzchar(out)] <- "Not recorded"
+  out
+}
+
 # Footnote shared by Tables 3a-c.
 .tbl3_note <- function(n_total = NULL, measurement_components = NULL) {
   paste0(
@@ -4924,13 +4968,15 @@
         names(cdm_src_raw) <- tolower(names(cdm_src_raw))
         if (nrow(cdm_src_raw) > 0) {
           cdm_src_display <- data.frame(
-            # CDM source name, abbreviation and holder (a named data-steward contact) are
-            # deliberately NOT shown: the source name/abbreviation identify the instance and the
-            # holder field carries a person's name and email. Only dates and versions are reported.
-            Field = c("Source Release Date", "CDM Release Date",
+            # CDM source name and abbreviation are deliberately NOT shown (they identify the instance).
+            # The holder is shown as the ORGANISATION only: the raw cdm_holder text carries a named
+            # data-steward contact, so it is reduced by .cdm_holder_org() here even though newer
+            # exports are already reduced at the source (pad-amp-nhd-val R/extract_report_inputs.R).
+            Field = c("CDM Holder", "Source Release Date", "CDM Release Date",
                       "CDM Version", "Vocabulary Version",
                       "Study Start Date", "Study End Date"),
-            Value = c(as.character(cdm_src_raw$source_release_date[1]),
+            Value = c(.cdm_holder_org(if ("cdm_holder" %in% names(cdm_src_raw)) cdm_src_raw$cdm_holder[1] else NA_character_),
+                      as.character(cdm_src_raw$source_release_date[1]),
                       as.character(cdm_src_raw$cdm_release_date[1]),
                       as.character(cdm_src_raw$cdm_version[1]),
                       as.character(cdm_src_raw$vocabulary_version[1]),
@@ -5431,7 +5477,7 @@
                                        cpt_raw$proc_group),
             "CPT Code"        = cpt_raw$cpt_code,
             "Description"     = cpt_raw$cpt_description,
-            "Cases (n)"       = cpt_raw$case_count,
+            "Cases (n)"       = .fmt_count_cell(cpt_raw$case_count, cpt_raw$suppressed, config$min_cell_count_applied %||% 5L),
             check.names = FALSE, stringsAsFactors = FALSE
           )
           cpt_ft <- flextable::flextable(cpt_display) |>
@@ -5453,7 +5499,8 @@
             paste0(supp_table("cpt_codes"), ". CPT codes for index amputation subgroups."),
             paste0("CPT-4 codes mapped from each amputation subgroup's standard concept (see ",
                    supp_table("concept_set_inventory"), "). Cases (n) = number of distinct patients ",
-                   "with that source concept. A code may appear in more than one group. ",
+                   "with that source concept; counts below ", config$min_cell_count_applied %||% 5L, " are suppressed and shown as <",
+                   config$min_cell_count_applied %||% 5L, ", and a count of 0 is shown as 0. A code may appear in more than one group. ",
                    "Ankle-level codes (ankle disarticulation, Syme-type) are listed for completeness only: ",
                    "they do not qualify a patient for the cohort (concept-set exclusions), so a patient with ",
                    "one of these codes is in the cohort through another qualifying amputation procedure.")
@@ -5491,6 +5538,7 @@
                                            col_classes = c(nubc_code = "character"))
         names(dest_supp_raw) <- tolower(names(dest_supp_raw))
         if (nrow(dest_supp_raw) > 0) {
+          .min_cell <- config$min_cell_count_applied %||% 5L   # threshold the PRCC run applied
           dest_supp_display <- data.frame(
             "NUBC Code"       = dest_supp_raw$nubc_code,
             # Concept ID is an IDENTIFIER, not a quantity — kept as character
@@ -5501,8 +5549,8 @@
             "OMOP Concept ID" = format(dest_supp_raw$omop_concept_id, big.mark = "", scientific = FALSE, trim = TRUE),
             "Concept Name"    = dest_supp_raw$concept_name,
             "Classification"  = dest_supp_raw$classification,
-            "Visits (n)"      = dest_supp_raw$visit_count,
-            "Persons (n)"     = dest_supp_raw$person_count,
+            "Visits (n)"      = .fmt_count_cell(dest_supp_raw$visit_count,  dest_supp_raw$suppressed, .min_cell),
+            "Persons (n)"     = .fmt_count_cell(dest_supp_raw$person_count, dest_supp_raw$suppressed, .min_cell),
             check.names = FALSE, stringsAsFactors = FALSE
           )
           dest_supp_ft <- flextable::flextable(dest_supp_display) |>
@@ -5535,7 +5583,8 @@
                    "Other / Unknown = destination not classifiable from source code or concept ID, also ",
                    "classified not-NHD (presumed home) — a conservative default, not a removal from the ",
                    "analytic denominator; see Methods 1.2. ",
-                   "Visits (n) = total index hospitalizations; Persons (n) = distinct patients.")
+                   "Visits (n) = total index hospitalizations; Persons (n) = distinct patients. ",
+                   "Counts below ", .min_cell, " are suppressed and shown as <", .min_cell, "; a count of 0 is shown as 0.")
           )
           doc <- body_add_par(doc, "", style = "Normal")
           message("[report] Supplemental Table S4 (discharge destination source codes) added.")
