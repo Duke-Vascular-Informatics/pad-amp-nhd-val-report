@@ -3725,7 +3725,8 @@
     "(NHD), was ascertained from each patient's discharge disposition at the end of the index ",
     "hospitalization and classified as non-home for any unambiguous institutional destination ",
     "(skilled nursing facility, inpatient rehabilitation, long-term acute care, hospice, or other ",
-    "institutional care). NHD is a complete-case classification: every target-cohort patient is ",
+    "institutional care); discharges against medical advice, after which the patient returns home, ",
+    "were classified as home discharges (not-NHD). NHD is a complete-case classification: every target-cohort patient is ",
     "retained, and a discharge is classified as not-NHD by default whenever the destination ",
     "cannot be confirmed non-home — a conservative choice that may under-count true NHD events, ",
     "discussed in the Limitations. Hospice discharges are classified as a single non-home category ",
@@ -3750,7 +3751,9 @@
       # NOT the paper's eleven. Non-home residence is deliberately omitted (near-circular
       # with the NHD outcome; no clean standard concept in this vocabulary build).
       ", and the Kraiss 2022 simple VQI Frailty Score (sVQI-FS, implemented as 0–10 points; the ",
-      "published eleventh item, non-home residence, is omitted as near-circular with the outcome, ",
+      "published eleventh item, non-home residence, is omitted because the cohort excludes patients ",
+      "admitted from a non-home location (the item would be constant) and because it is near-circular ",
+      "with the outcome, ",
       "and the equally weighted form is evaluated rather than the authors' differentially weighted ",
       "variant — both addressed in the Limitations)"
     ) else "",
@@ -3879,7 +3882,8 @@
     "\tDiscrimination was summarised using AUROC and AUPRC, and calibration using the Brier score, ",
     "expected calibration error (ECE), calibration intercept, and calibration slope — each with 95% ",
     "bootstrap percentile confidence intervals (B = 500 resamples). ECE is the probability-weighted ",
-    "mean absolute difference between predicted and observed NHD rates across quantile-based bins, ",
+    "mean absolute difference between predicted and observed NHD rates across ten quantile-based bins ",
+    "(equal numbers of patients per bin), ",
     "which the calibration plots also depict directly (dashed diagonal = perfect calibration)."
   ), style = "Normal")
   doc <- body_add_par(doc, paste0(
@@ -3896,7 +3900,9 @@
     "populations where the recalibrated scores may be miscalibrated or discriminate less reliably. ",
     "Expected calibration error (ECE) and AUROC were computed within each subgroup using the same ",
     "recalibrated predicted probabilities and temporal test partition as the overall figures in ",
-    "Table 4, with 95% CIs from 200 bootstrap resamples. Subgroup levels with fewer than 10 observed ",
+    "Table 4, with 95% CIs from 200 bootstrap resamples. Within subgroups ECE is computed over ten ",
+    "equal-width probability bins (the overall ECE in Table 4 uses ten quantile bins), so subgroup and ",
+    "overall ECE values are not directly comparable with each other. Subgroup levels with fewer than 10 observed ",
     "NHD events were suppressed; AUROC was additionally suppressed where the outcome was constant ",
     "within that subgroup. ",
     # Gated on has_mfi5_bias, not has_mfi5 — see .init_supp_labels(). When the
