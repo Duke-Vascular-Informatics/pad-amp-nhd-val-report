@@ -4987,7 +4987,7 @@
             "Underweight (BMI, sVQI-FS)"
           ),
           "Concept ID(s)" = c(
-            "Procedure: 4195136 + 8 other included concepts (incl. revisions 4225223, 4234960, 43531499), excluding 4169822, 37168057, 4264289 (exact), 2006242, 2105451; PAD: 3654996 + 13 others; DM: 201820, 442793; Wound: 197304 + 23 others; Trauma excl.: 194229, 72487, 197751, 4095264, 4187096; Malignancy excl.: 4177242",
+            "Procedure: 4195136 + 8 other included concepts (incl. revisions 4225223, 4234960, 43531499), excluding 4169822, 37168057, 4264289 (exact), 2006242, 2105451; PAD: 3654996 + 13 others; DM: 201820, 442793; Wound: 197304 + 28 others (incl. 4263116 Gangrene); Trauma excl.: 194229, 72487, 197751, 4095264, 4187096; Malignancy excl.: 4177242",
             "None — dynamic vocabulary lookup",
             "4185932 + 18 other roots (OHDSI PL 197; excludes the all-vessel root 318443)",
             "316139",
@@ -5153,7 +5153,7 @@
                    "Diabetic foot ulcer*"),
             "Amputation above-knee*; Revision of above knee amputation*",
             "Amputation of leg through tibia and fibula*; Revision of transtibial amputation*; Revision of below knee amputation stump*"),
-          "Concept ID(s)" = c("197304 + 23 other roots (the target cohort's wound indication) + 5 gangrene roots: 4263116, 44782426, 35615085, 4141477, 4142822",
+          "Concept ID(s)" = c("197304 + 28 other roots, the same set as the target cohort's wound indication (incl. five gangrene roots: 4263116, 44782426, 35615085, 4141477, 4142822)",
                               "4195136, 4225223", "4338257, 4234960, 43531499"),
           "Standard-Concept Logic" = "", "OMOP Table(s)" = "",
           check.names = FALSE, stringsAsFactors = FALSE)
