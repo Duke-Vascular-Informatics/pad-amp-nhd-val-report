@@ -299,21 +299,61 @@
   "Non-ambulatory / impaired ambulation status" = "1798605"
 )
 
+# -----------------------------------------------------------------------------
+# .fmt_count_cell()
+#
+# Formats a count column that went through small-cell suppression in the analysis repo
+# (.suppress_counts(): counts of 1 to threshold-1 become NA with suppressed = TRUE; a true
+# 0 and any count >= threshold are kept). A suppressed cell is shown as "<5", never left
+# blank, so a reader can tell "suppressed, small" from "missing"; a true 0 stays "0".
+# Where the export has no `suppressed` column (older export) any NA is treated as suppressed.
+#
+# @param n           numeric counts (NA where suppressed).
+# @param suppressed  logical flags from the export, or NULL.
+# @param threshold   the minimum cell count the run applied (config$min_cell_count_applied).
+# @return            character vector for display.
+# -----------------------------------------------------------------------------
+.fmt_count_cell <- function(n, suppressed = NULL, threshold = 5L) {
+  n <- suppressWarnings(as.numeric(n))
+  sup <- if (is.null(suppressed)) is.na(n) else (as.logical(suppressed) | is.na(n))
+  sup[is.na(sup)] <- TRUE
+  ifelse(sup, paste0("<", threshold), format(n, big.mark = ",", trim = TRUE, scientific = FALSE))
+}
+
+# -----------------------------------------------------------------------------
+# .cdm_holder_org()
+#
+# Reduces cdm_source.cdm_holder to the organisation name only. The raw field carries
+# "<organisation> - <person> - <email>", a named contact that must not appear in the report.
+# Keep the part before the first " - " (or en/em dash), then drop any token containing "@";
+# NA/empty gives "Not recorded".
+#
+# KEEP IN SYNC with .cdm_holder_org() in pad-amp-nhd-val/R/extract_report_inputs.R (which
+# applies the same reduction before the export is written).
+# -----------------------------------------------------------------------------
+.cdm_holder_org <- function(x) {
+  x <- as.character(x)
+  org <- trimws(sub("\\s+[-\u2013\u2014]\\s+.*$", "", x))
+  out <- vapply(org, function(v) {
+    if (is.na(v)) return(NA_character_)
+    toks <- strsplit(v, "\\s+")[[1]]
+    trimws(paste(toks[!grepl("@", toks, fixed = TRUE)], collapse = " "))
+  }, character(1), USE.NAMES = FALSE)
+  out[is.na(out) | !nzchar(out)] <- "Not recorded"
+  out
+}
+
 # Footnote shared by Tables 3a-c.
 .tbl3_note <- function(n_total = NULL, measurement_components = NULL) {
   paste0(
-    "Lookback runs back from the index date and ends the day before it unless noted. The parent ",
-    "concepts that define each component (descendants marked *) and their concept IDs are listed in ",
-    "the supplemental ATLAS cohort table. Cohort ID is the official ATLAS id of the cohort each ",
-    "component is read from, which can be opened on the public ATLAS demonstration instance ",
-    "(atlas-demo.ohdsi.org); \"None (computed)\" components are calculated directly from the CDM. ",
-    "n (%) is the number of patients meeting the component; the percentage is of the full cohort",
+    "n (%) is the number of patients meeting the ",
+    "component, as a percentage of the full cohort",
     if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
-    ", so a patient with no recorded evidence is counted as not meeting it",
+    "; a patient with no recorded evidence is counted as not meeting it",
     if (!is.null(measurement_components)) paste0(
-      " (for ", measurement_components, ", this includes patients with no measurement: absent values are ",
-      "imputed as not meeting the component)") else "",
-    "."
+      " (for ", measurement_components, ", this includes patients with no measurement)") else "",
+    ". Cohort ID is the ATLAS cohort each component is read from (\"None (computed)\": calculated ",
+    "directly from the data)."
   )
 }
 
@@ -554,7 +594,7 @@
       derivation = "person.race_concept_id ≠ 8527 and ≠ 0 (unknown)"
     ),
     "Ambulatory deficit (ambulatory aid use)" = list(
-      points = "+3", definition = "Use of an ambulatory aid: walking aid, wheelchair use or dependence, walker, walking frame, crutch, cane (SNOMED and HCPCS device records)",
+      points = "+3", definition = "Use of an ambulatory aid: walking aid, wheelchair use or dependence, walker, walking frame, crutch, or cane",
       derivation = "observation_occurrence and device_exposure records of ambulatory-aid concepts within 365 days before index (day −365 to −1)"
     ),
     "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(
@@ -566,7 +606,7 @@
       derivation = "Most recent Hgb in measurement table within 365 days before index; g/L values converted"
     ),
     "Insulin-dependent diabetes mellitus" = list(
-      points = "+2", definition = "Insulin use as proxy for insulin-dependent diabetes mellitus",
+      points = "+2", definition = "Insulin use (proxy for insulin-dependent diabetes mellitus)",
       derivation = "drug_exposure with qualifying insulin ancestor within 365 days before index"
     )
   )
@@ -626,7 +666,7 @@
   covariate_defs <- list(
     "Dependent functional status (ADL dependence)" = list(
       points = "+1",
-      definition = "Partial or total dependence for activities of daily living (dependent for, or needs help with, bathing, dressing, feeding, grooming, hygiene, or mobility; requires assistance with daily activities), bed-ridden, confined to chair, wheelchair dependence, a therapist-reported self-care functional limitation, or severe frailty",
+      definition = "Partial or total dependence for activities of daily living (bathing, dressing, feeding, grooming, hygiene, or mobility), bed-ridden, confined to chair, wheelchair dependence, a therapist-reported self-care limitation, or severe frailty",
       derivation = "observation_occurrence and condition_occurrence records within 365 days before index (day −365 to −1)"
     ),
     "Diabetes mellitus (any type)" = list(
@@ -636,17 +676,17 @@
     ),
     "COPD or current pneumonia" = list(
       points = "+1",
-      definition = "Chronic obstructive pulmonary disease within 365 days before index, or pneumonia within 30 days before index (current pneumonia); either qualifies",
+      definition = "Chronic obstructive pulmonary disease, or current pneumonia; either qualifies",
       derivation = "condition_occurrence: COPD within 365 days OR pneumonia within 30 days before index"
     ),
     "Congestive heart failure (within 30 days prior)" = list(
       points = "+1",
-      definition = "Congestive heart failure within 30 days before the index amputation date",
+      definition = "Congestive heart failure",
       derivation = "condition_occurrence within 30 days before index (lookback_start_day = −30)"
     ),
     "Hypertension" = list(
       points = "+1",
-      definition = "Hypertensive disorder (medication requirement not enforced — documented limitation)",
+      definition = "Hypertensive disorder of any type (Subramaniam 2018 also requires antihypertensive medication; that requirement is not applied here)",
       derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     )
   )
@@ -717,7 +757,7 @@
     ),
     "Peripheral vascular disease" = list(
       points = "+1",
-      definition = "Peripheral arterial occlusive disease (diagnosis proxy; paper uses ABI <0.7 or prior arterial intervention/amputation)",
+      definition = "Peripheral arterial occlusive disease, from diagnosis codes (Kraiss 2022 uses an ankle-brachial index < 0.7 or prior arterial intervention or amputation)",
       derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Diabetes mellitus (any type)" = list(
@@ -739,18 +779,18 @@
     # returns NULL rather than an error.
     "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(
       points = "+1",
-      definition = "Creatinine > 1.8 mg/dL or dialysis, the paper's own lab-value definition (no longer a diagnosis proxy — CORRECTED 2026-07-26 after the prior CKD-diagnosis proxy activated in 224/225 patients, 99.6%, due to an over-broad concept-ancestor expansion)",
+      definition = "Creatinine > 1.8 mg/dL or dialysis, as defined by Kraiss 2022",
       derivation = "query_renal_impairment_covariate_counts() in R/risk_score_pipeline.R: measurement value threshold OR procedure/condition dialysis presence, within 365 days before index"
     ),
     # ANEMIA — key updated 2026-07-26, same reason as renal impairment above.
     "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(
       points = "+1",
-      definition = "Hgb < 13 g/dL (male) / < 12 g/dL (female), the paper's own sex-specific lab threshold (no longer a diagnosis proxy — CORRECTED 2026-07-26 after the prior anemia-diagnosis proxy activated in only 3/225 patients, 1.3%, under-capturing relative to the lab threshold)",
+      definition = "Hemoglobin < 13 g/dL (male) or < 12 g/dL (female), as defined by Kraiss 2022",
       derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 365 days before index; an absent measurement is null-imputed (scored as not anaemic)"
     ),
     "Underweight (BMI < 18.5)" = list(
       points = "+1",
-      definition = "BMI < 18.5, the paper's own cut-point (direct measurement preferred; weight/height fallback)",
+      definition = "Body mass index < 18.5, as defined by Kraiss 2022",
       derivation = "measurement within 365 days before index; an absent measurement is null-imputed (scored as not underweight)"
     ),
     "Non-ambulatory / impaired ambulation status" = list(
@@ -2070,7 +2110,9 @@
       if (has_vqifs) "score_dist_vqifs",
       # Added 2026-10-22 at the END of the supplement on purpose: every earlier label
       # (S1 ... S9) is already cited by number and must not shift. Rendered last.
-      if (has_mfi5)  "mfi5_source_codes"
+      if (has_mfi5)  "mfi5_source_codes",
+      # Repositories and archived software: appended after everything else for the same reason.
+      "repositories"
     )
     .supp_labels <<- stats::setNames(paste0("S", seq_along(keys)), keys)
   }
@@ -3701,10 +3743,15 @@
     "and five deprecated or non-standard library roots were dropped. We kept our own scope where the score item ",
     "differs from the library phenotype: heart failure of any etiology, including rheumatic (934); any current ",
     "pneumonia rather than acute typical pneumonia (1261); any hypertensive disorder rather than essential ",
-    "hypertension (770); diabetes of any type rather than type 2 (40); and major, not minor, lower-extremity ",
-    "amputation (999). The functional-status, anemia, peripheral-artery, tissue-loss and insulin definitions ",
-    "have no library counterpart. Concept sets were compared after expanding descendants; library entries were ",
-    "listed as pending peer review on October 30, 2026, and entry logic and lookback windows were not compared."
+    "hypertension (770); diabetes of any type rather than type 2 (40); major, not minor, lower-extremity ",
+    "amputation (999); a peripheral artery disease diagnosis rather than the library's claudication-pain ",
+    "phenotype (371); and the score's own serum creatinine threshold of 1.8 mg/dL rather than the library's ",
+    "3 mg/dL (946), the library's dialysis definitions (923, 930, 964) not being adopted. The tissue-loss, ",
+    "functional-status, ambulation, insulin and underweight definitions have no library counterpart, and the ",
+    "library's anemia entry (901) is diagnosis-based whereas our anemia items use hemoglobin thresholds, so it ",
+    "was not adopted. Concept sets were compared after expanding descendants; library entries were listed as ",
+    "pending peer review when compared (October 30 and November 4, 2026), and entry logic and lookback windows ",
+    "were not compared."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
@@ -3725,7 +3772,8 @@
     "(NHD), was ascertained from each patient's discharge disposition at the end of the index ",
     "hospitalization and classified as non-home for any unambiguous institutional destination ",
     "(skilled nursing facility, inpatient rehabilitation, long-term acute care, hospice, or other ",
-    "institutional care). NHD is a complete-case classification: every target-cohort patient is ",
+    "institutional care); discharges against medical advice, after which the patient returns home, ",
+    "were classified as home discharges (not-NHD). NHD is a complete-case classification: every target-cohort patient is ",
     "retained, and a discharge is classified as not-NHD by default whenever the destination ",
     "cannot be confirmed non-home — a conservative choice that may under-count true NHD events, ",
     "discussed in the Limitations. Hospice discharges are classified as a single non-home category ",
@@ -3750,7 +3798,9 @@
       # NOT the paper's eleven. Non-home residence is deliberately omitted (near-circular
       # with the NHD outcome; no clean standard concept in this vocabulary build).
       ", and the Kraiss 2022 simple VQI Frailty Score (sVQI-FS, implemented as 0–10 points; the ",
-      "published eleventh item, non-home residence, is omitted as near-circular with the outcome, ",
+      "published eleventh item, non-home residence, is omitted because the cohort excludes patients ",
+      "admitted from a non-home location (the item would be constant) and because it is near-circular ",
+      "with the outcome, ",
       "and the equally weighted form is evaluated rather than the authors' differentially weighted ",
       "variant — both addressed in the Limitations)"
     ) else "",
@@ -3770,7 +3820,7 @@
     " is therefore conditional on a qualifying measurement having been recorded, and prevalence is ",
     "reported against the full cohort.",
     if (has_vqifs) paste0(
-      " The source publication's rule suppressing sVQI-FS when fewer than five frailty domains ",
+      " Kraiss 2022's rule suppressing the sVQI-FS when fewer than five frailty domains ",
       "have data was not applied, since ascertainment here is presence/absence of coded records ",
       "rather than an explicit missing state."
     ) else "",
@@ -3805,6 +3855,17 @@
     "regression test requires every predictor's per-patient values to agree exactly between them, ",
     "and a second automated check confirms each cohort's concept set still matches the concept set ",
     "recorded for that score component."
+  ), style = "Normal")
+  doc <- body_add_par(doc, paste0(
+    "\tThe analysis code was developed and tested with the assistance of Claude (Anthropic), in an ",
+    "institution-specific configuration of the Charon development container (v1.2.1), against a fully ",
+    "synthetic OMOP CDM generated for that purpose; none of the results reported here come from synthetic ",
+    "data. The code was then deployed against our institutional OMOP instance. The analysis code is ",
+    "available at https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val, the generator of the ",
+    "synthetic development data and the dataset itself at ",
+    "https://github.com/Duke-Vascular-Informatics/pad-amp-synth, and the code that renders this report at ",
+    "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report. Each release is archived on ",
+    "Zenodo; all repositories, versions and DOIs are listed in ", supp_table("repositories"), "."
   ), style = "Normal")
 
   # ---------------------------------------------------------------------------
@@ -3852,8 +3913,8 @@
     "\tFor each score, two kinds of specification were considered: the published mapping, where ",
     "one exists, and a temporal recalibration — a logistic regression of the score's total integer ",
     "value on the observed NHD outcome. Iannuzzi 2020's published score-to-risk lookup required a ",
-    "monotone (isotonic) fit pooling the derivation and validation columns of the source ",
-    "publication's Table III, since the published table's tail is non-monotonic in the sparse ",
+    "monotone (isotonic) fit pooling the derivation and validation columns of ",
+    "Iannuzzi 2020's Table III, since the published table's tail is non-monotonic in the sparse ",
     "high-score cells (both raw columns are retained in covariates/risk_lookup.csv for provenance); ",
     "no equivalent published mapping exists for the mFI-5 or sVQI-FS. Patients were sorted ",
     "chronologically by index amputation date and divided at the midpoint; each recalibration was ",
@@ -3879,7 +3940,8 @@
     "\tDiscrimination was summarised using AUROC and AUPRC, and calibration using the Brier score, ",
     "expected calibration error (ECE), calibration intercept, and calibration slope — each with 95% ",
     "bootstrap percentile confidence intervals (B = 500 resamples). ECE is the probability-weighted ",
-    "mean absolute difference between predicted and observed NHD rates across quantile-based bins, ",
+    "mean absolute difference between predicted and observed NHD rates across ten quantile-based bins ",
+    "(equal numbers of patients per bin), ",
     "which the calibration plots also depict directly (dashed diagonal = perfect calibration)."
   ), style = "Normal")
   doc <- body_add_par(doc, paste0(
@@ -3896,7 +3958,8 @@
     "populations where the recalibrated scores may be miscalibrated or discriminate less reliably. ",
     "Expected calibration error (ECE) and AUROC were computed within each subgroup using the same ",
     "recalibrated predicted probabilities and temporal test partition as the overall figures in ",
-    "Table 4, with 95% CIs from 200 bootstrap resamples. Subgroup levels with fewer than 10 observed ",
+    "Table 4 (the same ten-quantile-bin ECE), with 95% CIs from 200 bootstrap resamples. Subgroup levels ",
+    "with fewer than 10 observed ",
     "NHD events were suppressed; AUROC was additionally suppressed where the outcome was constant ",
     "within that subgroup. ",
     # Gated on has_mfi5_bias, not has_mfi5 — see .init_supp_labels(). When the
@@ -4129,12 +4192,12 @@
   if (!is.null(covariate_summary_mfi5) && nrow(covariate_summary_mfi5) > 0) {
     doc <- body_add_flextable(doc, .build_mfi5_component_table(covariate_summary_mfi5, defs_for("mfi5")))
     doc <- add_doc_caption(doc,
-      "Table 3a. Subramaniam mFI-5: component definitions and activation summary.",
+      "Table 3a. Subramaniam 2018 mFI-5: component definitions and activation summary.",
       paste0(
-        "Point value (range 0–5) and observed activation rate for each of the five mFI-5 ",
-        "components. All use a 365-day lookback except congestive heart failure and the pneumonia ",
-        "arm of the combined COPD-or-pneumonia item (30 days each, per the original publication); ",
-        "absent records count as true negatives. ", .tbl3_note(covariate_summary_mfi5$n_total[1]), " Concept-set definitions are in ",
+        "Point value (range 0–5) and observed activation for each of the five components of the ",
+        "Subramaniam 2018 modified Frailty Index-5 (mFI-5). Lookback, counted back from the index date, is 365 days except congestive heart ",
+        "failure and current pneumonia (30 days, as in Subramaniam 2018). ",
+        .tbl3_note(covariate_summary_mfi5$n_total[1]), " Concept definitions are in ",
         supp_table("concept_set_inventory"), "."
       )
     )
@@ -4152,9 +4215,9 @@
   doc <- add_doc_caption(doc,
     "Table 3b. Iannuzzi 2020 NHD score: component definitions and activation summary.",
     paste0(
-      "Point values (range 0–18) and observed activation rates for the nine Iannuzzi 2020 ",
-      "components, all with a 365-day lookback (tissue loss includes the index date). ",
-      .tbl3_note(covariate_summary$n_total[1], "anemia"), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+      "Point values (range 0–18) and observed activation for the nine components of the Iannuzzi 2020 ",
+      "NHD score. Lookback, counted back from the index date, is 365 days (tissue loss includes the index date). ",
+      .tbl3_note(covariate_summary$n_total[1], "anemia"), " Concept definitions are in ", supp_table("concept_set_inventory"), "."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -4166,17 +4229,14 @@
     doc <- add_doc_caption(doc,
       "Table 3c. Kraiss 2022 sVQI-FS: component definitions and activation summary.",
       paste0(
-        "Point value (range 0–10 as implemented; non-home residence, the paper's eleventh item, ",
-        "is omitted — see covariates/covariates_vqifs.csv) and observed activation rate for each ",
-        "of ten sVQI-FS components, all with a 365-day lookback. ",
-        # Updated to match the 2026-07-26 switch from diagnosis proxies to the paper's
-        # own lab thresholds (query_renal_impairment_covariate_counts() and
-        # query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R).
-        # This footnote previously still claimed diagnosis proxies, understating fidelity.
-        "Renal impairment and anemia use the source publication's own laboratory thresholds ",
-        "rather than diagnosis proxies; peripheral vascular disease remains a diagnosis-based ",
-        "proxy rather than the paper's ankle-brachial index definition. ",
-        .tbl3_note(covariate_summary_vqifs$n_total[1], "anemia and underweight"), " Concept-set definitions are in ", supp_table("concept_set_inventory"), "."
+        "Point value (range 0–10 as implemented) and observed activation for each of the ten components of the ",
+        "Kraiss 2022 simple VQI Frailty Score (sVQI-FS). Kraiss 2022's eleventh item, non-home residence, is ",
+        "omitted because every patient in this cohort was admitted from home. Lookback, counted back from the index date, is 365 days. Renal ",
+        "impairment, anemia and underweight use the laboratory and measurement thresholds of Kraiss 2022; ",
+        "peripheral vascular disease is identified from diagnosis codes rather than the ankle-brachial index ",
+        "used by Kraiss 2022. ",
+        .tbl3_note(covariate_summary_vqifs$n_total[1], "anemia and underweight"), " Concept definitions are in ",
+        supp_table("concept_set_inventory"), "."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
@@ -4921,13 +4981,14 @@
         names(cdm_src_raw) <- tolower(names(cdm_src_raw))
         if (nrow(cdm_src_raw) > 0) {
           cdm_src_display <- data.frame(
-            Field = c("CDM Source Name", "Source Abbreviation", "CDM Holder",
-                      "Source Release Date", "CDM Release Date",
+            # CDM source name and abbreviation are deliberately NOT shown (they identify the instance).
+            # The holder is shown as the ORGANISATION only: the raw cdm_holder text carries a named
+            # data-steward contact, so it is reduced by .cdm_holder_org() here even though newer
+            # exports are already reduced at the source (pad-amp-nhd-val R/extract_report_inputs.R).
+            Field = c("CDM Holder", "Source Release Date", "CDM Release Date",
                       "CDM Version", "Vocabulary Version",
                       "Study Start Date", "Study End Date"),
-            Value = c(as.character(cdm_src_raw$cdm_source_name[1]),
-                      as.character(cdm_src_raw$cdm_source_abbreviation[1]),
-                      as.character(cdm_src_raw$cdm_holder[1]),
+            Value = c(.cdm_holder_org(if ("cdm_holder" %in% names(cdm_src_raw)) cdm_src_raw$cdm_holder[1] else NA_character_),
                       as.character(cdm_src_raw$source_release_date[1]),
                       as.character(cdm_src_raw$cdm_release_date[1]),
                       as.character(cdm_src_raw$cdm_version[1]),
@@ -5001,16 +5062,16 @@
             "N/A", "N/A", "N/A", "N/A"
           ),
           # Closest OHDSI Phenotype Library entry and how the two definitions compare (concept sets after
-          # descendant expansion; checked 2026-10-30). Static; mirrors ohdsi_pl_links in the workspace's
+          # descendant expansion; checked 2026-10-30 and re-checked 2026-11-04). Static; mirrors ohdsi_pl_links in the workspace's
           # phenotype_library/catalog.yaml and the evidence in its notes. KEEP IN SYNC with that file.
           "OHDSI PL ID" = c(
             "999 (deviates: major amputation only)", "None",
             "197 (aligned, minus all-vessel root)", "934 (deviates: includes rheumatic HF)", "770 (deviates: any hypertensive disorder)",
             "40 (deviates: any-type diabetes)",
-            "1271 (aligned)", "None", "None", "None",
+            "1271 (aligned)", "371 (deviates: claudication-pain phenotype; PAD diagnosis kept)", "None", "None",
             "None", "None", "1261 (deviates: any pneumonia)",
             "None", "None (library entry 901 is diagnosis-based)", "None (library entry 901 is diagnosis-based)",
-            "964 (dialysis criterion only; not adopted)",
+            "946 (deviates: creatinine > 1.8 vs > 3 mg/dL; library dialysis entries not adopted)",
             "Not assessed (superseded)",
             "N/A", "N/A", "N/A", "N/A"
           ),
@@ -5207,7 +5268,7 @@
                  "(github.com/OHDSI/PhenotypeLibrary) and our decision: aligned (our concept set was brought into line ",
                  "with the library's, with any stated exception) or deviates (we kept our own scope because the study's ",
                  "score item differs from the library phenotype; reason given). None means no matching library entry ",
-                 "was found. Library entries were pending peer review when compared (October 30, 2026), and the comparison ",
+                 "was found. Library entries were pending peer review when compared (October 30 and November 4, 2026), and the comparison ",
                  "covers concept sets only, not entry logic or lookback windows. ",
                  "Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
                  "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",
@@ -5429,7 +5490,7 @@
                                        cpt_raw$proc_group),
             "CPT Code"        = cpt_raw$cpt_code,
             "Description"     = cpt_raw$cpt_description,
-            "Cases (n)"       = cpt_raw$case_count,
+            "Cases (n)"       = .fmt_count_cell(cpt_raw$case_count, cpt_raw$suppressed, config$min_cell_count_applied %||% 5L),
             check.names = FALSE, stringsAsFactors = FALSE
           )
           cpt_ft <- flextable::flextable(cpt_display) |>
@@ -5451,7 +5512,8 @@
             paste0(supp_table("cpt_codes"), ". CPT codes for index amputation subgroups."),
             paste0("CPT-4 codes mapped from each amputation subgroup's standard concept (see ",
                    supp_table("concept_set_inventory"), "). Cases (n) = number of distinct patients ",
-                   "with that source concept. A code may appear in more than one group. ",
+                   "with that source concept; counts below ", config$min_cell_count_applied %||% 5L, " are suppressed and shown as <",
+                   config$min_cell_count_applied %||% 5L, ", and a count of 0 is shown as 0. A code may appear in more than one group. ",
                    "Ankle-level codes (ankle disarticulation, Syme-type) are listed for completeness only: ",
                    "they do not qualify a patient for the cohort (concept-set exclusions), so a patient with ",
                    "one of these codes is in the cohort through another qualifying amputation procedure.")
@@ -5489,6 +5551,7 @@
                                            col_classes = c(nubc_code = "character"))
         names(dest_supp_raw) <- tolower(names(dest_supp_raw))
         if (nrow(dest_supp_raw) > 0) {
+          .min_cell <- config$min_cell_count_applied %||% 5L   # threshold the PRCC run applied
           dest_supp_display <- data.frame(
             "NUBC Code"       = dest_supp_raw$nubc_code,
             # Concept ID is an IDENTIFIER, not a quantity — kept as character
@@ -5499,8 +5562,8 @@
             "OMOP Concept ID" = format(dest_supp_raw$omop_concept_id, big.mark = "", scientific = FALSE, trim = TRUE),
             "Concept Name"    = dest_supp_raw$concept_name,
             "Classification"  = dest_supp_raw$classification,
-            "Visits (n)"      = dest_supp_raw$visit_count,
-            "Persons (n)"     = dest_supp_raw$person_count,
+            "Visits (n)"      = .fmt_count_cell(dest_supp_raw$visit_count,  dest_supp_raw$suppressed, .min_cell),
+            "Persons (n)"     = .fmt_count_cell(dest_supp_raw$person_count, dest_supp_raw$suppressed, .min_cell),
             check.names = FALSE, stringsAsFactors = FALSE
           )
           dest_supp_ft <- flextable::flextable(dest_supp_display) |>
@@ -5533,7 +5596,8 @@
                    "Other / Unknown = destination not classifiable from source code or concept ID, also ",
                    "classified not-NHD (presumed home) — a conservative default, not a removal from the ",
                    "analytic denominator; see Methods 1.2. ",
-                   "Visits (n) = total index hospitalizations; Persons (n) = distinct patients.")
+                   "Visits (n) = total index hospitalizations; Persons (n) = distinct patients. ",
+                   "Counts below ", .min_cell, " are suppressed and shown as <", .min_cell, "; a count of 0 is shown as 0.")
           )
           doc <- body_add_par(doc, "", style = "Normal")
           message("[report] Supplemental Table S4 (discharge destination source codes) added.")
@@ -5642,6 +5706,59 @@
       message("[report] mFI-5 source-code table skipped: ", conditionMessage(e))
     })
   }
+
+  # ---- Repositories and archived software ----------------------------------------
+  # One row per repository / release the study rests on, read from covariates/study_repositories.csv.
+  # A blank doi means the repository has not been released yet; the table then says so and the render
+  # warns loudly, so a report with unassigned DOIs cannot be circulated unnoticed.
+  tryCatch({
+    repo_path <- "covariates/study_repositories.csv"
+    if (file.exists(repo_path)) {
+      repos <- utils::read.csv(repo_path, stringsAsFactors = FALSE, check.names = FALSE, na.strings = "")
+      n_pending <- sum(is.na(repos$doi))
+      repo_display <- data.frame(
+        "Role"                 = repos$role,
+        "Repository"           = repos$repository,
+        "Version"              = repos$version,
+        "DOI"                  = ifelse(is.na(repos$doi), "To be assigned at release", repos$doi),
+        "License"              = repos$license,
+        check.names = FALSE, stringsAsFactors = FALSE
+      )
+      repo_ft <- flextable::flextable(repo_display) |>
+        flextable::bold(part = "header") |>
+        flextable::fontsize(size = 8, part = "all") |>
+        flextable::font(fontname = "Calibri", part = "all") |>
+        flextable::bg(part = "header", bg = "#1F3864") |>
+        flextable::color(part = "header", color = "white") |>
+        flextable::padding(padding = 3, part = "all") |>
+        flextable::width(j = "Role",       width = 1.2) |>
+        flextable::width(j = "Repository", width = 2.5) |>
+        flextable::width(j = "Version",    width = 0.9) |>
+        flextable::width(j = "DOI",        width = 1.6) |>
+        flextable::width(j = "License",    width = 0.8) |>
+        flextable::set_table_properties(layout = "fixed")
+      doc <- body_add_par(doc, "Repositories and archived software", style = "heading 3")
+      doc <- body_add_flextable(doc, repo_ft)
+      doc <- add_doc_caption(doc,
+        paste0(supp_table("repositories"), ". Repositories, releases and archived software used in this study."),
+        paste0("Code and the synthetic development data are public; each release is archived on Zenodo, and a DOI resolves at ",
+               "https://doi.org/<DOI>. The synthetic dataset (pad_amp v3) was used only to develop and test the code; no result ",
+               "in this report comes from it, and it is verified by its SHA-256 digest ",
+               "(9c402386f251a24d79da6251b89b121890c900141cd502d4191ccf82a937254f). \"All versions\" DOIs resolve to the latest ",
+               "release of a template, which was used only as a starting scaffold. Vocabulary files are not distributed with any repository.")
+      )
+      doc <- body_add_par(doc, "", style = "Normal")
+      if (n_pending > 0L) {
+        message("[report] WARNING: ", n_pending, " repository DOI(s) still to be assigned in covariates/study_repositories.csv ",
+                "-- fill them in after the releases and re-render before circulating this report.")
+      }
+      message("[report] ", supp_table("repositories"), " (repositories) added.")
+    } else {
+      message("[report] Repositories table skipped: covariates/study_repositories.csv not found.")
+    }
+  }, error = function(e) {
+    message("[report] Repositories table skipped: ", conditionMessage(e))
+  })
 
   # ---- Edge cases — CSV export --------------------------------------------
   # MOVED TO THE EXTRACT SIDE (Phase 0). This block used to open its own

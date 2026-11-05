@@ -107,9 +107,9 @@ vqifs:
     items, and is not computed at all when fewer than five domains have data.
     This study recasts it as an integer point sum (1 point per positive item)
     so it is directly comparable with the Iannuzzi and mFI-5 integer scores in
-    this repo, and scores every patient rather than suppressing sparse records.
+    this study, and scores every patient rather than suppressing sparse records.
     Implemented here as 0-10; the published instrument's 11th item, non-home
-    residence, is omitted — see covariates/covariates_vqifs.csv header.
+    residence, is omitted because every patient in this cohort was admitted from home.
     1 point each for hypertension, congestive heart failure,
     coronary artery disease, peripheral vascular disease, diabetes mellitus,
     COPD, renal impairment (creatinine >1.8 mg/dL or dialysis), anemia

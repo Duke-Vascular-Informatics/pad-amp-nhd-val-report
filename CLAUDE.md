@@ -46,6 +46,16 @@ Shared baseline (applies first):
   Duke export `..._20261104-163229.zip` onward (checked 2026-11-04: its cohort concept sets for
   9100002 and 9100024 equal `pad-amp-nhd-val/inst/cohorts/*.json`). Any earlier export used the old
   definitions (COPD without 258780; CAD = 4185932 only), so do not circulate a report rendered from one.
+  **Second export gate (ECE):** from 2026-11-04 the subgroup ECE in `pad-amp-nhd-val` / `-prog` uses the same
+  ten-quantile-bin `compute_ece()` as the overall ECE (it was equal-width bins), and the Methods say so. An export
+  made before that change (including `..._20261104-163229.zip`) has equal-width subgroup ECE, so the sentence would
+  be wrong for it: render the circulated report only from an export made after the PRCC rerun on the new code.
+- **Repositories table (Supplemental Table S11, last supplemental item):** rendered from
+  `covariates/study_repositories.csv` (role, repository, version, doi, license, note); Methods 1.3 cites it and gives
+  the three repository URLs. A blank `doi` renders "To be assigned at release" and the render prints a WARNING. After
+  tagging `pad-amp-nhd-val` and this repo, put their Zenodo version DOIs in the CSV (the generator's v3 DOI, Charon
+  v1.2.1, the toolkit v0.1.0 and the three template concept DOIs were checked against Zenodo on 2026-11-04) and re-render
+  before circulating. New supplemental items go AFTER this one only if S11 may move; otherwise insert before it.
 - **Decision-curve figure:** the mFI-5 curve is drawn as a fine dotted line (linetype `"11"`),
   overriding the toolkit palette for that one series, because its jagged step-function curve made
   the palette's dash pattern hard to read.
