@@ -51,7 +51,7 @@ Shared baseline (applies first):
   made before that change (including `..._20261104-163229.zip`) has equal-width subgroup ECE, so the sentence would
   be wrong for it: render the circulated report only from an export made after the PRCC rerun on the new code.
   **Third export gate (lookback windows + PAD set, 2026-11-05):** from this date `pad-amp-nhd-val` uses any-time-before-index
-  lookback for diabetes, hypertension, COPD, PAD and insulin-treated diabetes, 90 days for anemia and underweight, and one
+  lookback for diabetes, hypertension, COPD, CAD, PAD and insulin-treated diabetes, 90 days for anemia and underweight, and one
   PAD concept set for both Table 1 and the sVQI-FS item, and the Methods say so. An export made before the PRCC rerun on
   that code (including `..._20261104-213138.zip`) used 365 days and the old PVD set, so Table 3 and the Methods would
   disagree for it: circulate the report only from an export made after the rerun.
