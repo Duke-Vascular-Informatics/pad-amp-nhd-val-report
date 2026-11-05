@@ -50,7 +50,8 @@ iannuzzi:
     binary components, female +1 and non-White +2, which reproduces the
     published point totals exactly because the interaction's integer weights
     are exactly additive]; ambulation deficit (+3); tissue loss (+3); anemia
-    (+2); insulin-dependent diabetes (+2).
+    (+2); insulin-dependent diabetes, i.e. outpatient insulin in a patient with
+    diabetes (+2).
   score_range: "0-18"
   c_statistic_derivation: 0.77
   c_statistic_validation: 0.78
@@ -111,7 +112,7 @@ vqifs:
     Implemented here as 0-10; the published instrument's 11th item, non-home
     residence, is omitted because every patient in this cohort was admitted from home.
     1 point each for hypertension, congestive heart failure,
-    coronary artery disease, peripheral vascular disease, diabetes mellitus,
+    coronary artery disease, peripheral artery disease, diabetes mellitus,
     COPD, renal impairment (creatinine >1.8 mg/dL or dialysis), anemia
     (sex-specific Hgb threshold), underweight (BMI <18.5), and non-ambulatory
     status. NOTE: this is the EQUALLY weighted form. The paper states "The term
