@@ -463,20 +463,28 @@
          paste0(substr(x, 1, 1), tolower(substring(x, 2))), x)
 }
 
-.defs_parents <- function(rows) {
+.defs_parents <- function(rows, with_ids = FALSE) {
+  # with_ids = TRUE (Supplemental Table S2): each concept is followed by its OMOP concept id in parentheses,
+  # "Heart failure* (316139)". A long list that .compress_prefixes() folds into one phrase cannot carry
+  # per-concept ids, so it is marked "[concept IDs: see the ATLAS cohort]" instead.
   rows$concept_name <- .tidy_concept_name(rows$concept_name)
   id <- rows$covariate_id[1]
+  id_txt <- function(ids) if (with_ids) paste0(" (", ids, ")") else ""
+  ids_unlisted <- FALSE
   # 'diagnosis_required' rows (the Iannuzzi insulin item's diabetes requirement, 2026-11-05) are not insulin
   # concepts: show them as a requirement after the item's own concepts.
   is_req <- !is.na(rows$concept_role) & rows$concept_role == "diagnosis_required"
   req_txt <- if (any(is_req)) paste0("; requires ", paste0(rows$concept_name[is_req],
-               ifelse(!is.na(rows$include_descendants[is_req]) & rows$include_descendants[is_req], "*", ""), collapse = " or "),
+               ifelse(!is.na(rows$include_descendants[is_req]) & rows$include_descendants[is_req], "*", ""),
+               id_txt(rows$concept_id[is_req]), collapse = " or "),
                " at any time before index") else ""
   if (any(is_req)) rows <- rows[!is_req, , drop = FALSE]
   if (grepl("^age_", id)) return("None (derived from year of birth)")
-  if (id == "female")  return(paste0("Gender: ", tools::toTitleCase(tolower(rows$concept_name[1]))))
-  if (id == "nonwhite") return(paste0("Race: any recorded race other than ", rows$concept_name[1]))
-  if (id == "underweight") return("Body mass index (direct); else body weight and body height (computed)")
+  if (id == "female")  return(paste0("Gender: ", tools::toTitleCase(tolower(rows$concept_name[1])), id_txt(rows$concept_id[1])))
+  if (id == "nonwhite") return(paste0("Race: any recorded race other than ", rows$concept_name[1],
+                                      if (with_ids) paste0(" (excludes ", rows$concept_id[1], ")") else ""))
+  if (id == "underweight") return(paste0("Body mass index (direct); else body weight and body height (computed)",
+                                         if (with_ids) " (3038553 + 8 others)" else ""))
   g <- .defs_window_groups(rows)
   parts <- vapply(g$order, function(k) {
     r <- rows[g$key == k, , drop = FALSE]
@@ -489,16 +497,22 @@
     is_self_g <- is_hcpcs & grepl("^Self care functional limitation", inc$concept_name)
     is_hdev   <- is_hcpcs & !is_mob_g & !is_self_g
     plain <- inc[!is_hcpcs, , drop = FALSE]
-    items <- .compress_prefixes(paste0(plain$concept_name, ifelse(!is.na(plain$include_descendants) & plain$include_descendants, "*", "")))
+    labs  <- paste0(plain$concept_name, ifelse(!is.na(plain$include_descendants) & plain$include_descendants, "*", ""))
+    items <- .compress_prefixes(labs)
+    if (with_ids) {
+      if (length(items) == length(labs)) items <- paste0(labs, id_txt(plain$concept_id))   # nothing folded: list every id
+      else ids_unlisted <<- TRUE
+    }
     items <- c(items,
       if (any(is_mob_g))  "Mobility functional-limitation codes (HCPCS PT reporting, deprecated)",
       if (any(is_self_g)) "Self-care functional-limitation codes (HCPCS PT reporting, deprecated)",
       if (any(is_hdev))   sprintf("HCPCS cane, crutch, walker and wheelchair device codes (%d)", sum(is_hdev)))
     txt <- paste(items, collapse = "; ")
-    if (any(is_exc)) txt <- paste0(txt, " (excluding ", paste(r$concept_name[is_exc], collapse = " and "), ")")
+    if (any(is_exc)) txt <- paste0(txt, " (excluding ", paste0(r$concept_name[is_exc], id_txt(r$concept_id[is_exc]), collapse = " and "), ")")
     txt
   }, character(1))
-  paste0(paste(parts, collapse = "; "), req_txt)
+  paste0(paste(parts, collapse = "; "), req_txt,
+         if (with_ids && ids_unlisted) " [concept IDs: see the ATLAS cohort]" else "")
 }
 
 # Parent-concept text for one component, for the supplemental ATLAS cohort table (it used to be a
@@ -511,7 +525,7 @@
     if (!is.null(window_start) && nrow(rows) > 0L) {
       rows <- rows[.defs_window_groups(rows)$start == window_start, , drop = FALSE]
     }
-    if (nrow(rows) > 0L) return(.defs_parents(rows))
+    if (nrow(rows) > 0L) return(.defs_parents(rows, with_ids = TRUE))
   }
   v <- .TBL3_LOOKBACK_PARENTS[[covariate_name]][["parents"]]
   if (is.null(v)) "—" else v
@@ -5090,19 +5104,17 @@
           # counted). These used to be a column of Tables 3a-c. Covariate rows are built from the export's
           # score_component_definitions.csv, so they cannot drift from what the scoring step used.
           "Parent concepts (* = incl. descendants)" = c(
-            paste0("Procedure: Amputation above-knee*; Amputation of leg through tibia and fibula*; Through knee ",
-                   "amputation*; Disarticulation of hip*; Amputation of ankle* (the exact concept and Ankle ",
-                   "disarticulation*, Syme-type amputation*, ICD-9-Procedure 84.14 and CPT 27888 excluded; ",
-                   "supramalleolar amputation kept); Amputation of entire lower limb and ipsilateral hemipelvis*; ",
-                   "Revision of above knee amputation*; Revision of transtibial amputation*; Revision of below ",
-                   "knee amputation stump*. Indication: Peripheral arterial disease*; Arteriosclerosis of artery of ",
-                   "extremity*; Peripheral ischemia*; Peripheral vascular disease associated with another disorder* ",
-                   "(excluding upper-limb, embolic and renal/intestinal/thoracic vascular disorders); Diabetes ",
-                   "mellitus*; Complication due to diabetes mellitus*; lower-extremity wound (29 ancestors*: ulcer, ",
-                   "open wound, gangrene of all kinds including generic, dry and wet gangrene, cellulitis, necrotizing ",
-                   "fasciitis, osteomyelitis, diabetic foot). ",
-                   "Index-visit exclusions: Crushing injury of lower limb*; Crushing injury of foot*; Burn of lower ",
-                   "limb*; Degloving injury*; Fracture of lower limb*; Malignant tumor of lower limb*."),
+            paste0("Procedure: Amputation above-knee* (4195136); Amputation of leg through tibia and fibula* (4338257); ",
+                   "Through knee amputation* (4143795); Disarticulation of hip* (4242396); Amputation of ankle* (4264289; ",
+                   "the exact concept and Ankle disarticulation* (37168057), Syme through ankle amputation* (4169822), ",
+                   "ICD-9-Procedure 84.14 (2006242) and CPT 27888 (2105451) are excluded; supramalleolar amputation kept); ",
+                   "Amputation of entire lower limb and ipsilateral hemipelvis* (36675618); Revision of above knee ",
+                   "amputation* (4225223); Revision of transtibial amputation* (4234960); Revision of below knee amputation ",
+                   "stump* (43531499). Indication: peripheral artery disease, diabetes mellitus and lower-extremity wound, ",
+                   "each exactly as in the PAD, diabetes and wound rows below (1798592, 1798598, 1798663). ",
+                   "Index-visit exclusions: Crushing injury of lower limb* (194229); Crushing injury of foot* (72487); Burn of ",
+                   "lower limb* (197751); Degloving injury* (4095264); Fracture of lower limb* (4187096); Malignant tumor of ",
+                   "lower limb* (4177242)."),
             "None (resolved at run time from visit discharge disposition)",
             ip("vqifs",    "Coronary artery disease"),
             ip("vqifs",    "Congestive heart failure"),
@@ -5119,9 +5131,10 @@
             ip("iannuzzi", "Anemia (Hgb less than 10 g/dL)"),
             ip("vqifs",    "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)"),
             ip("vqifs",    "Renal impairment (creatinine > 1.8 mg/dL or dialysis)"),
-            paste0("Procedure: Amputation above-knee*; Amputation of leg through tibia and fibula*; Through knee ",
-                   "amputation*; Disarticulation of hip*; Amputation of ankle*; Amputation of entire lower limb and ",
-                   "ipsilateral hemipelvis* (Syme-type amputation* excluded)"),
+            paste0("Procedure: Amputation above-knee* (4195136); Amputation of leg through tibia and fibula* (4338257); ",
+                   "Through knee amputation* (4143795); Disarticulation of hip* (4242396); Amputation of ankle* (4264289); ",
+                   "Amputation of entire lower limb and ipsilateral hemipelvis* (36675618); Syme through ankle ",
+                   "amputation* (4169822), ICD-9-Procedure 84.14 (2006242) and CPT 27888 (2105451) excluded"),
             ip("iannuzzi", "Age 60-69 years at index"),
             ip("iannuzzi", "Female sex"),
             ip("iannuzzi", "Non-White race"),
@@ -5143,6 +5156,9 @@
         atlas_inventory[["Use in this study"]] <- vapply(atlas_inventory[["Use in this study"]], short_use, character(1))
         atlas_inventory[["Cohort / Concept Set"]] <- sub(" \\(risk score item\\)$", "",
                                                          sub("^\\[DVI\\] ", "", atlas_inventory[["Cohort / Concept Set"]]))
+        # Concept ids now sit in parentheses after each concept name in the one concepts column, so the separate
+        # "Concept ID(s)" column is dropped (2026-11-05).
+        atlas_inventory[["Concept ID(s)"]] <- NULL
         # Table 1 now reads PAD and diabetes from their cohorts, so those two rows also serve Table 1.
         tbl1_rows <- atlas_inventory[["ATLAS ID"]] %in% c("1798592", "1798598")
         atlas_inventory[["Use in this study"]][tbl1_rows] <- paste0(atlas_inventory[["Use in this study"]][tbl1_rows], ", Table 1")
@@ -5154,15 +5170,20 @@
           "Cohort / Concept Set" = c("Lower Extremity Wound (broad)", "Above-Knee Amputation", "Below-Knee Amputation"),   # "[DVI] " prefix already stripped from the rows above
           "Use in this study" = c("Table 1", "Table 1", "Table 1"),
           "Parent concepts (* = incl. descendants)" = c(
-            paste0("Ulcer of lower extremity*; Open wound of lower limb*; Open wound of foot*; gangrene (generic, dry, wet, trophic, ",
-                   "symmetrical, peripheral, gas incl. organism-specific, diabetic, ischemic, foot, toe, bilateral feet, due to peripheral ",
-                   "vascular disease, arteriosclerotic, acral, presenile, progressive cutaneous, arterial insufficiency, Raynaud)*; ",
-                   "cellulitis of lower limb, foot and toe*; Necrotizing fasciitis*; Osteomyelitis of ankle and foot*; Diabetic foot*; ",
-                   "Diabetic foot ulcer*"),
-            "Amputation above-knee*; Revision of above knee amputation*",
-            "Amputation of leg through tibia and fibula*; Revision of transtibial amputation*; Revision of below knee amputation stump*"),
-          "Concept ID(s)" = c("197304 + 28 other roots, the same set as the target cohort's wound indication (incl. five gangrene roots: 4263116, 44782426, 35615085, 4141477, 4142822)",
-                              "4195136, 4225223", "4338257, 4234960, 43531499"),
+            paste0("Ulcer of lower extremity* (197304); Open wound of lower limb* (4097962); Open wound of foot* (4054067); ",
+                   "Peripheral gangrene* (4108371); Gas gangrene* (433696); Gangrene due to diabetes mellitus* (4226354); ",
+                   "Ischemic gangrene* (4291464); Gangrene of foot* (4112159); Gangrene of toe* (4111843); Arteriosclerotic ",
+                   "gangrene* (317577); Acral gangrene* (4256119); Presenile gangrene* (4111732); Progressive cutaneous ",
+                   "gangrene* (40480503); Gangrene due to arterial insufficiency* (46273172); Gangrene due to Raynaud ",
+                   "disease* (46273522); Gangrene due to secondary Raynaud phenomenon* (46270361); Gangrene*, which includes ",
+                   "dry, wet, trophic and symmetrical gangrene (4263116); Gangrene due to peripheral vascular disease* ",
+                   "(44782426); Bilateral gangrene of feet* (35615085); Gas gangrene caused by clostridium histolyticum* ",
+                   "(4141477) and by Paeniclostridium sordellii* (4142822); Cellulitis of lower limb* (42709838), foot* ",
+                   "(4028237) and toe* (4320944); Necrotizing fasciitis* (133566); Osteomyelitis of ankle and foot* (133853) ",
+                   "and of foot* (1246044); Diabetic foot* (4087682); Diabetic foot ulcer* (4159742)"),
+            "Amputation above-knee* (4195136); Revision of above knee amputation* (4225223)",
+            "Amputation of leg through tibia and fibula* (4338257); Revision of transtibial amputation* (4234960); Revision of below knee amputation stump* (43531499)"),
+
           "Standard-Concept Logic" = "", "OMOP Table(s)" = "",
           check.names = FALSE, stringsAsFactors = FALSE)
         pos <- which(atlas_inventory[["ATLAS ID"]] == "1797941")
@@ -5171,8 +5192,9 @@
                                  atlas_inventory[-seq_len(pos), , drop = FALSE])
         names(atlas_inventory)[names(atlas_inventory) == "Cohort / Concept Set"] <- "Phenotype"
         names(atlas_inventory)[names(atlas_inventory) == "Use in this study"]    <- "Used for"
+        names(atlas_inventory)[names(atlas_inventory) == "Parent concepts (* = incl. descendants)"] <- "Concepts (OMOP concept ID; * = incl. descendants)"
         atlas_inventory <- atlas_inventory[, c("ATLAS ID", "OHDSI PL ID", "Phenotype", "Used for",
-                                               "Parent concepts (* = incl. descendants)", "Concept ID(s)")]
+                                               "Concepts (OMOP concept ID; * = incl. descendants)")]
         atlas_ft <- flextable::flextable(atlas_inventory) |>
           flextable::bold(part = "header") |>
           flextable::fontsize(size = 7, part = "all") |>
@@ -5181,11 +5203,10 @@
           flextable::color(part = "header", color = "white") |>
           flextable::padding(padding = 2, part = "all") |>
           flextable::width(j = "ATLAS ID", width = 0.6) |>
-          flextable::width(j = "OHDSI PL ID", width = 1.2) |>
-          flextable::width(j = "Phenotype", width = 1.2) |>
-          flextable::width(j = "Used for", width = 0.75) |>
-          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 2.2) |>
-          flextable::width(j = "Concept ID(s)", width = 1.35) |>
+          flextable::width(j = "OHDSI PL ID", width = 1.1) |>
+          flextable::width(j = "Phenotype", width = 1.1) |>
+          flextable::width(j = "Used for", width = 0.7) |>
+          flextable::width(j = "Concepts (OMOP concept ID; * = incl. descendants)", width = 3.8) |>
           flextable::set_table_properties(layout = "fixed")
         doc <- body_add_par(doc, "ATLAS concept sets and cohorts", style = "heading 3")
         doc <- body_add_flextable(doc, atlas_ft)
@@ -5193,7 +5214,8 @@
           paste0(supp_table("concept_set_inventory"), ". Cohorts and concept sets used in this analysis."),
           paste0("ATLAS ID is the cohort on atlas-demo.ohdsi.org (all named with a [DVI] prefix); the outcome is ",
                  "hand-written SQL. OHDSI PL ID is the closest Phenotype Library entry and our decision (aligned, or ",
-                 "deviates with the reason); None, no matching entry. * includes descendant concepts. ",
+                 "deviates with the reason); None, no matching entry. OMOP concept IDs are in parentheses; * includes ",
+                 "descendant concepts; where a long list is folded into one phrase, its IDs are in the ATLAS cohort. ",
                  "N/A, resolved by a direct query rather than a cohort.")
         )
         doc <- body_add_par(doc, "", style = "Normal")
