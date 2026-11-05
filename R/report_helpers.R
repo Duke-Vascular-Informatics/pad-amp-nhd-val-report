@@ -167,7 +167,10 @@ library(omopReportToolkit)
   # metrics.csv, so recomputing would only create a way for the two to drift.
   labs_map <- vapply(split(pts, pts$curve_label), function(d) {
     a <- if ("auc" %in% names(d)) suppressWarnings(as.numeric(d$auc[1])) else NA_real_
-    if (is.na(a)) d$curve_label[1] else sprintf("%s (AUC %.3f)", d$curve_label[1], a)
+    # Display name drops the internal " (Score)" suffix (the curve is the score's ROC, identical to its
+    # recalibrated model's); a shorter label also keeps the legend inside the figure.
+    nm <- sub(" \\(Score\\)$", "", d$curve_label[1])
+    if (is.na(a)) nm else sprintf("%s (AUC %.3f)", nm, a)
   }, character(1))
   pts$Curve <- factor(unname(labs_map[pts$curve_label]),
                       levels = unname(labs_map[sort(names(labs_map))]))
@@ -193,6 +196,9 @@ library(omopReportToolkit)
       y = "Sensitivity (true positive rate)",
       colour = NULL, linetype = NULL
     ) +
+    # One legend entry per row so long labels cannot be clipped at the figure edge.
+    ggplot2::guides(colour   = ggplot2::guide_legend(ncol = 1),
+                    linetype = ggplot2::guide_legend(ncol = 1)) +
     theme_manuscript() +
     ggplot2::theme(legend.position = "bottom",
                    panel.grid.minor = ggplot2::element_blank())

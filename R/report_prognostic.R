@@ -3536,9 +3536,11 @@
   # plotted before the conversion.
   .roc_pts <- read_report_input("agg_roc_points")
   roc_plot_file <- if (!is.null(.roc_pts) && "curve_label" %in% names(.roc_pts)) {
-    lk <- .roc_pts[.roc_pts$curve_label == "Iannuzzi (Lookup)", , drop = FALSE]
+    # The score-based curve is the recalibrated model's ROC (recalibration is monotone), so its AUROC
+    # equals Table 4. The published-lookup curve is NOT used: the report presents recalibrated models only.
+    lk <- .roc_pts[.roc_pts$curve_label == "Iannuzzi 2020 (Score)", , drop = FALSE]
     if (nrow(lk) == 0) lk <- .roc_pts[.roc_pts$curve_label ==
-                                        "Iannuzzi 2020 (Score)", , drop = FALSE]
+                                        "Iannuzzi (Lookup)", , drop = FALSE]
     .save_roc_plot_from_points(lk, temp_figure_dir, "roc_curve.png")
   } else NULL
 
@@ -3733,55 +3735,31 @@
     "covariate definition used in this analysis is registered on the public OHDSI ATLAS demonstration ",
     "instance, except the non-home discharge outcome, which is defined by hand-written SQL that ATLAS ",
     "cannot express; all are listed, with ATLAS id, standard-concept logic and source OMOP table(s), in ",
-    supp_table("concept_set_inventory"), ". Where the OHDSI Phenotype Library (github.com/OHDSI/",
-    "PhenotypeLibrary) holds a comparable phenotype, we used its concept set in preference to our own and ",
-    "deviated only for a stated analytic reason; each library identifier and our decision are given in the same ",
-    "table. The COPD cohort (library entry 1271) and the coronary artery disease cohort (197) were aligned ",
-    "to the library. The coronary set omits one library root, the generic arteriosclerotic vascular disease concept, ",
-    "which spans aortic, carotid, renal and limb vessels and would label nearly every patient with peripheral ",
-    "artery disease as having coronary disease; it is replaced by its coronary branch, coronary arteriosclerosis, ",
-    "and five deprecated or non-standard library roots were dropped. We kept our own scope where the score item ",
-    "differs from the library phenotype: heart failure of any etiology, including rheumatic (934); any current ",
-    "pneumonia rather than acute typical pneumonia (1261); any hypertensive disorder rather than essential ",
-    "hypertension (770); diabetes of any type rather than type 2 (40); major, not minor, lower-extremity ",
-    "amputation (999); a peripheral artery disease diagnosis rather than the library's claudication-pain ",
-    "phenotype (371); and the score's own serum creatinine threshold of 1.8 mg/dL rather than the library's ",
-    "3 mg/dL (946), the library's dialysis definitions (923, 930, 964) not being adopted. The tissue-loss, ",
-    "functional-status, ambulation, insulin and underweight definitions have no library counterpart, and the ",
-    "library's anemia entry (901) is diagnosis-based whereas our anemia items use hemoglobin thresholds, so it ",
-    "was not adopted. Concept sets were compared after expanding descendants; library entries were listed as ",
-    "pending peer review when compared (October 30 and November 4, 2026), and entry logic and lookback windows ",
-    "were not compared."
+    supp_table("concept_set_inventory"), ". Where a comparable phenotype existed in the OHDSI Phenotype ",
+    "Library (github.com/OHDSI/PhenotypeLibrary), we aligned our definition with it, and deviated only for ",
+    "specific analytic purposes; the library entry and our decision for each definition are documented in ",
+    "the same table."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
-    "\tThe target cohort comprised adults aged 18 years or older undergoing an inpatient major ",
-    "lower-extremity amputation (above-knee, through-knee, below-knee, supramalleolar, hip ",
-    "disarticulation, or hemipelvectomy, including re-amputation and revision of an above- or ",
-    "below-knee amputation; ankle disarticulation and Syme-type ankle procedures did not qualify), ",
-    "with peripheral arterial disease or diabetes mellitus documented at any time before the index ",
-    "date or up to 365 days after it, or a lower-extremity wound documented from 365 days before to ",
-    "365 days after it, and at least ",
+    "\tThe cohort comprised adults aged 18 years or older who underwent an inpatient major ",
+    "lower-extremity amputation (above-knee, through-knee, below-knee or supramalleolar, hip ",
+    "disarticulation, or hemipelvectomy; ankle-level procedures did not qualify) and had peripheral ",
+    "artery disease or diabetes mellitus documented before the index date or up to 365 days after it, ",
+    "or a lower-extremity wound documented within 365 days before or after it, and at least ",
     config$min_prior_observation_days %||% 1,
-    " day(s) of prior observation (a minimal requirement accommodating emergency presentations). ",
-    "Admissions with a limb-trauma mechanism (crush, burn, degloving, or lower-limb fracture) or a ",
-    "malignant tumor of the lower limb recorded on the index visit were excluded, as were patients ",
-    "admitted from another hospital or a skilled nursing facility, restricting the cohort to patients ",
-    "admitted from home (including elective admissions coordinated through an outpatient clinic referral). ",
-    "The outcome, non-home discharge ",
-    "(NHD), was ascertained from each patient's discharge disposition at the end of the index ",
-    "hospitalization and classified as non-home for any unambiguous institutional destination ",
-    "(skilled nursing facility, inpatient rehabilitation, long-term acute care, hospice, or other ",
-    "institutional care); discharges against medical advice, after which the patient returns home, ",
-    "were classified as home discharges (not-NHD). NHD is a complete-case classification: every target-cohort patient is ",
-    "retained, and a discharge is classified as not-NHD by default whenever the destination ",
-    "cannot be confirmed non-home — a conservative choice that may under-count true NHD events, ",
-    "discussed in the Limitations. Hospice discharges are classified as a single non-home category ",
-    "regardless of setting (home vs. facility); the Iannuzzi 2020 score's own NHD definition does ",
-    "not need to resolve this distinction, but not distinguishing the two here is noted as a ",
-    "limitation. The dataset contained ",
-    if (!is.na(n_target)) n_target else "N",
-    " patients with at least one qualifying amputation within the study window."
+    " day(s) of prior observation. We excluded amputations for trauma or malignancy and patients ",
+    "admitted from another hospital or a skilled nursing facility. Procedure codes are listed in ",
+    supp_table("cpt_codes"), "."
+  ), style = "Normal")
+
+  doc <- body_add_par(doc, paste0(
+    "\tThe outcome was non-home discharge (NHD), defined as discharge from the index hospitalization to ",
+    "a skilled nursing facility, inpatient rehabilitation facility, long-term acute care hospital, hospice, ",
+    "or other institutional care, using the discharge disposition recorded for the index visit (",
+    supp_table("discharge_codes"), "). Discharge to home, including home health and discharge against ",
+    "medical advice, and any destination that could not be confirmed as non-home were classified as not NHD, ",
+    "a conservative choice that may under-count NHD (see Limitations)."
   ), style = "Normal")
 
   n_scores <- 1L + (has_mfi5) + (has_vqifs)
@@ -3910,32 +3888,21 @@
   # same time: Table 4/Figure 4/Figure 5's own captions already carry the
   # specifics, so this prose states each method once without restating it.
   doc <- body_add_par(doc, paste0(
-    "\tFor each score, two kinds of specification were considered: the published mapping, where ",
-    "one exists, and a temporal recalibration — a logistic regression of the score's total integer ",
-    "value on the observed NHD outcome. Iannuzzi 2020's published score-to-risk lookup required a ",
-    "monotone (isotonic) fit pooling the derivation and validation columns of ",
-    "Iannuzzi 2020's Table III, since the published table's tail is non-monotonic in the sparse ",
-    "high-score cells (both raw columns are retained in covariates/risk_lookup.csv for provenance); ",
-    "no equivalent published mapping exists for the mFI-5 or sVQI-FS. Patients were sorted ",
-    "chronologically by index amputation date and divided at the midpoint; each recalibration was ",
-    "fitted on the earlier half only and evaluated on the later half, preventing optimistic bias ",
-    "from evaluating a locally fitted model on the data used to fit it. The Iannuzzi published-",
-    "lookup specification is the exception: as a fixed external mapping with no parameters ",
-    "estimated from these data, it is evaluated over the full cohort rather than discarding half ",
-    "the available events for no bias-reduction benefit (Table 4 states the evaluation set for ",
-    "every column). Because recalibration is a monotone transform of a single predictor, AUROC and ",
-    "AUPRC do not differ between a score's published/raw and recalibrated specifications; Table 4 ",
-    "and Figure 4 report the recalibrated specification for every score, and Figure 3 reports ",
-    "discrimination for the published/raw specification."
+    "\tAlthough Iannuzzi 2020 publishes a score-to-risk lookup for NHD, it was derived in patients ",
+    "undergoing lower-extremity revascularization, and the mFI-5 and sVQI-FS have no published NHD ",
+    "probability mapping. We therefore applied the same temporal recalibration to all three scores: a ",
+    "logistic regression of the score's total integer value on observed NHD. Patients were ordered ",
+    "chronologically by index date and divided at the midpoint; each recalibration model was fitted on ",
+    "the earlier half and evaluated on the later half, which avoids evaluating a locally fitted model on ",
+    "the data used to fit it. All tables and figures report the recalibrated models. Because ",
+    "recalibration is a monotone transformation of a single predictor, it does not change discrimination."
   ), style = "Normal")
-  # Append the split sample sizes when split_info.csv was found. The split is
-  # identical across scores by construction (same patients, same index dates),
-  # so report it once rather than repeating a near-identical sentence per model.
+  # The split sample sizes are a RESULT, so they are reported in Results (see "Cohort characteristics"),
+  # not here. The first available split_info is used: the split is identical across scores.
   split_sent <- NULL
   for (si in list(split_info_iannuzzi, split_info_mfi5, split_info_vqifs)) {
-    if (is.null(split_sent)) split_sent <- split_sentence(si, NULL)
+    if (is.null(split_sent) && !is.null(si) && nrow(si) > 0) split_sent <- si
   }
-  if (!is.null(split_sent)) doc <- body_add_par(doc, split_sent, style = "Normal")
   doc <- body_add_par(doc, paste0(
     "\tDiscrimination was summarised using AUROC and AUPRC, and calibration using the Brier score, ",
     "expected calibration error (ECE), calibration intercept, and calibration slope — each with 95% ",
@@ -4026,6 +3993,14 @@
     # "35.1%" everywhere else describing the identical rate.
     "NHD rate of ", fmt(outcome_prev, 1), "%."
   ), style = "Normal")
+  if (!is.null(split_sent)) {
+    doc <- body_add_par(doc, sprintf(
+      paste0("For model evaluation, patients were divided chronologically at the midpoint of index dates into a ",
+             "training set (n = %d; through %s) and a test set (n = %d; after %s); the same split applies to ",
+             "every score."),
+      split_sent$n_train[1], split_sent$split_date[1], split_sent$n_test[1], split_sent$split_date[1]
+    ), style = "Normal")
+  }
   doc <- body_add_flextable(doc, table1_ft(cohort_tbl))
   doc <- add_doc_caption(doc,
     "Table 1. Demographics and clinical characteristics of the validation cohort.",
@@ -4333,9 +4308,8 @@
       "Each recalibrated specification is a logistic regression of the score's total integer ",
       "value on the observed NHD outcome, fitted on the chronologically earlier half of the ",
       "cohort and evaluated on the later half; metrics reported here are on the test half only. ",
-      "AUROC and AUPRC are unchanged from the score's published-lookup or raw-score ",
-      "specification (recalibration is a monotone transform of a single predictor) and are also ",
-      "shown in Figure 3. ",
+      "AUROC and AUPRC are the same as for the score itself (recalibration is a monotone transform of a ",
+      "single predictor); the ROC curves are in Figure 3. ",
       if (nchar(split_caption) > 0) paste0(split_caption, " ") else "",
       "95% CI = 95% bootstrap percentile confidence interval (B = 500 resamples). ",
       "— indicates the specification is unavailable for this run."
@@ -4354,7 +4328,7 @@
   # ones this figure showed before -- and their AUCs now provably agree with
   # metrics.csv, which the normalised version did not guarantee.
   dual_roc_file <- NULL
-  .want_roc <- c("Iannuzzi (Lookup)",
+  .want_roc <- c("Iannuzzi 2020 (Score)",
                  if (has_mfi5)  "mFI-5 (Score)",
                  if (has_vqifs) "sVQI-FS (Score)")
   if (has_mfi5 && !is.null(.roc_pts) && "curve_label" %in% names(.roc_pts)) {
@@ -4374,21 +4348,19 @@
 
   fig2_file    <- if (!is.null(dual_roc_file) && file.exists(dual_roc_file)) dual_roc_file else roc_plot_file
   fig2_caption <- if (!is.null(dual_roc_file) && file.exists(dual_roc_file) && has_vqifs_roc) {
-    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup), ",
-           "the Subramaniam mFI-5 (raw integer score 0–5), and the Kraiss 2022 ",
-           "sVQI-FS (raw integer score) predicting non-home discharge. Curves are ",
-           "distinguished by grey level and line type; see the legend, which reports each AUC. ",
-           "AUROC with 95% bootstrap percentile CI (B = 500 resamples).")
+    paste0("ROC curves for the Iannuzzi 2020 NHD score, the Subramaniam 2018 mFI-5 and the Kraiss 2022 ",
+           "sVQI-FS predicting non-home discharge. Recalibration is a monotone transformation, so each ",
+           "curve is the same for the score and its recalibrated model, and the AUCs equal the AUROC in Table 4. ",
+           "Curves are distinguished by grey level and line type; see the legend, which reports each AUC.")
   } else if (!is.null(dual_roc_file) && file.exists(dual_roc_file)) {
-    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup) ",
-           "and the Subramaniam mFI-5 (raw integer score 0\u20135) predicting non-home ",
-           "discharge. Curves are distinguished by grey level and line type; see the legend. ",
-           "AUROC with 95% bootstrap percentile CI (B\u2009=\u2009500 resamples).")
+    paste0("ROC curves for the Iannuzzi 2020 NHD score and the Subramaniam 2018 mFI-5 predicting non-home ",
+           "discharge. Recalibration is a monotone transformation, so each curve is the same for the score and ",
+           "its recalibrated model. Curves are distinguished by grey level and line type; see the legend.")
   } else {
-    paste0("ROC curve for the Iannuzzi 2020 lookup model predicting non-home ",
-           "discharge. AUROC with 95% bootstrap percentile CI (B = 500 resamples). ",
+    paste0("ROC curve for the Iannuzzi 2020 NHD score predicting non-home discharge. ",
            "Dashed diagonal = no-discrimination reference line.")
   }
+
 
   if (!is.null(fig2_file) && file.exists(fig2_file)) {
     doc <- body_add_img(doc, src = fig2_file, width = 5.0, height = 4.5)
@@ -5400,8 +5372,8 @@
             "The Iannuzzi 2020 score's own outcome definition (rehabilitation or SNF discharge ",
             "only) is narrower than this study's NHD definition, which additionally counts ",
             "hospice and LTAC discharges as non-home — see the Limitations discussion. ",
-            "The Iannuzzi 2020 NHD score uses a published lookup table to convert integer score ",
-            "to predicted probability; a temporally recalibrated version is also evaluated. ",
+            "Iannuzzi 2020 publishes a score-to-risk lookup, but it was derived in patients undergoing ",
+            "lower-extremity revascularization, so all scores are evaluated after the same temporal recalibration. ",
             if (has_mfi5) paste0(
               "The Subramaniam mFI-5 — derived to predict mortality and postoperative ",
               "complications, not NHD — is evaluated via temporal logistic recalibration only ",
