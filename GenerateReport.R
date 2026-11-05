@@ -139,6 +139,32 @@ SYNTHETIC_DIR <- file.path("..", "pad-amp-nhd-val", "output")
               "timestamp; falling back to file modification time and using ",
               basename(zipf), ".")
     }
+    # ---- Refuse an archive from a run that stopped partway --------------------------------------------
+    # A PRCC run does its work in this order: Strategus modules (CohortGeneratorModule/ ...), then the scoring
+    # step (iannuzzi/, mfi5/, vqifs/), then the report extract (report_inputs/). If the run stops after the
+    # modules (for example at the cohort-freshness check, 2026-11-05), the export script still zips whatever is
+    # in the output folder: fresh module output next to scoring and report_inputs files left over from an
+    # EARLIER run. That archive renders without any error and looks complete. So compare file times inside
+    # the archive: in a finished run every one of those folders is newer than the module output.
+    local({
+      ent <- utils::unzip(zipf, list = TRUE)
+      top <- sub("/.*$", "", ent$Name)
+      stamp <- function(dirs) ent$Date[top %in% dirs & !grepl("/$", ent$Name)]
+      cg   <- stamp("CohortGeneratorModule")
+      later <- c("report_inputs", "iannuzzi", "mfi5", "vqifs")
+      stale <- Filter(function(d) { x <- stamp(d); length(x) > 0 && length(cg) > 0 &&
+                                      max(x) < min(cg) - 60 }, later)
+      if (length(stale) > 0L && !identical(Sys.getenv("REPORT_ALLOW_STALE_EXPORT"), "1")) {
+        fmt <- function(x) format(x, format = "%Y-%m-%d %H:%M")
+        stop("\n[report] STALE EXPORT: ", basename(zipf), " came from a run that did not finish.\n",
+             "  CohortGeneratorModule/ was written ", fmt(min(cg)), ", but ",
+             paste(vapply(stale, function(d) sprintf("%s/ was last written %s", d, fmt(max(stamp(d)))), character(1)), collapse = "; "),
+             ".\n  Those files are left over from an earlier run, so any report rendered from this archive\n",
+             "  would mix old and new results. Open the newest run_log_*.txt inside the archive for the error,\n",
+             "  fix it, rerun on PRCC and export again. (Set REPORT_ALLOW_STALE_EXPORT=1 only to inspect it.)",
+             call. = FALSE)
+      }
+    })
     stamp_file <- file.path(EXTRACT_DIR, ".source")
     prior      <- if (file.exists(stamp_file)) readLines(stamp_file, warn = FALSE)[1] else ""
     want       <- paste0(basename(zipf), "|", as.numeric(file.mtime(zipf)))
