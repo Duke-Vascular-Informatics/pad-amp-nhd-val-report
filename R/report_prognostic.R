@@ -5126,6 +5126,31 @@
         atlas_inventory[["Use in this study"]] <- vapply(atlas_inventory[["Use in this study"]], short_use, character(1))
         atlas_inventory[["Cohort / Concept Set"]] <- sub(" \\(risk score item\\)$", "",
                                                          sub("^\\[DVI\\] ", "", atlas_inventory[["Cohort / Concept Set"]]))
+        # Table 1 now reads PAD and diabetes from their cohorts, so those two rows also serve Table 1.
+        tbl1_rows <- atlas_inventory[["ATLAS ID"]] %in% c("1798592", "1798598")
+        atlas_inventory[["Use in this study"]][tbl1_rows] <- paste0(atlas_inventory[["Use in this study"]][tbl1_rows], ", Table 1")
+        # Cohorts that exist only for Table 1 (indication and amputation level); inserted before the final
+        # rows that have no cohort (age, sex, race, BMI). Their ATLAS IDs are the ones read back from ATLAS.
+        t1_new <- data.frame(
+          "ATLAS ID" = c("1798663", "1798664", "1798665"),
+          "OHDSI PL ID" = c("None", "999 (deviates: one amputation level)", "999 (deviates: one amputation level)"),
+          "Cohort / Concept Set" = c("Lower Extremity Wound (broad)", "Above-Knee Amputation", "Below-Knee Amputation"),   # "[DVI] " prefix already stripped from the rows above
+          "Use in this study" = c("Table 1", "Table 1", "Table 1"),
+          "Parent concepts (* = incl. descendants)" = c(
+            paste0("Ulcer of lower extremity*; Open wound of lower limb*; Open wound of foot*; gangrene (peripheral, gas, diabetic, ",
+                   "ischemic, foot, toe, arteriosclerotic, acral, presenile, progressive cutaneous, arterial insufficiency, Raynaud)*; ",
+                   "cellulitis of lower limb, foot and toe*; Necrotizing fasciitis*; Osteomyelitis of ankle and foot*; Diabetic foot*; ",
+                   "Diabetic foot ulcer*"),
+            "Amputation above-knee*; Revision of above knee amputation*",
+            "Amputation of leg through tibia and fibula*; Revision of transtibial amputation*; Revision of below knee amputation stump*"),
+          "Concept ID(s)" = c("197304 + 23 other roots (same set as the target cohort's wound indication)",
+                              "4195136, 4225223", "4338257, 4234960, 43531499"),
+          "Standard-Concept Logic" = "", "OMOP Table(s)" = "",
+          check.names = FALSE, stringsAsFactors = FALSE)
+        pos <- which(atlas_inventory[["ATLAS ID"]] == "1797941")
+        pos <- if (length(pos) == 1L) pos else nrow(atlas_inventory) - 4L
+        atlas_inventory <- rbind(atlas_inventory[seq_len(pos), , drop = FALSE], t1_new,
+                                 atlas_inventory[-seq_len(pos), , drop = FALSE])
         names(atlas_inventory)[names(atlas_inventory) == "Cohort / Concept Set"] <- "Phenotype"
         names(atlas_inventory)[names(atlas_inventory) == "Use in this study"]    <- "Used for"
         atlas_inventory <- atlas_inventory[, c("ATLAS ID", "OHDSI PL ID", "Phenotype", "Used for",
