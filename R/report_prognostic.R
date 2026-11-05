@@ -237,7 +237,7 @@
   "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days", parents = .AID_PARENTS),
   "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days, through index date", parents = "Ischemic ulcer*; Ischemic gangrene*"),
   "Anemia (Hgb less than 10 g/dL)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
-  "Insulin-dependent diabetes mellitus" = list(lookback = "Any time before index", parents = "Insulins and analogues* (ATC)"),
+  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days", parents = "Insulins and analogues* (ATC), outside inpatient stays; requires Diabetes mellitus* or Complication due to diabetes mellitus* at any time before index"),
   # ---- Subramaniam 2018 mFI-5 ----
   "Dependent functional status (ADL dependence)" = list(lookback = "365 days", parents = paste0(
     "Dependent for bathing, dressing, feeding, drinking, personal grooming, personal hygiene, ",
@@ -465,6 +465,13 @@
 .defs_parents <- function(rows) {
   rows$concept_name <- .tidy_concept_name(rows$concept_name)
   id <- rows$covariate_id[1]
+  # 'diagnosis_required' rows (the Iannuzzi insulin item's diabetes requirement, 2026-11-05) are not insulin
+  # concepts: show them as a requirement after the item's own concepts.
+  is_req <- !is.na(rows$concept_role) & rows$concept_role == "diagnosis_required"
+  req_txt <- if (any(is_req)) paste0("; requires ", paste0(rows$concept_name[is_req],
+               ifelse(!is.na(rows$include_descendants[is_req]) & rows$include_descendants[is_req], "*", ""), collapse = " or "),
+               " at any time before index") else ""
+  if (any(is_req)) rows <- rows[!is_req, , drop = FALSE]
   if (grepl("^age_", id)) return("None (derived from year of birth)")
   if (id == "female")  return(paste0("Gender: ", tools::toTitleCase(tolower(rows$concept_name[1]))))
   if (id == "nonwhite") return(paste0("Race: any recorded race other than ", rows$concept_name[1]))
@@ -490,7 +497,7 @@
     if (any(is_exc)) txt <- paste0(txt, " (excluding ", paste(r$concept_name[is_exc], collapse = " and "), ")")
     txt
   }, character(1))
-  paste(parts, collapse = "; ")
+  paste0(paste(parts, collapse = "; "), req_txt)
 }
 
 # Parent-concept text for one component, for the supplemental ATLAS cohort table (it used to be a
@@ -636,7 +643,7 @@
       derivation = "Most recent Hgb in measurement table within 365 days before index; g/L values converted"
     ),
     "Insulin-dependent diabetes mellitus" = list(
-      points = "+2", definition = "Insulin use (proxy for insulin-dependent diabetes mellitus)",
+      points = "+2", definition = "Outpatient insulin use in the prior year (not during an inpatient stay), in a patient with a diabetes diagnosis at any time before the index date",
       derivation = "drug_exposure with qualifying insulin ancestor within 365 days before index"
     )
   )
@@ -3831,8 +3838,10 @@
     ) else "",
     ". Components were ascertained from clinical documentation before the index date (the index ",
     "date itself is included only for tissue loss). Lookback windows reflect how stable each condition is: ",
-    "chronic conditions (diabetes, hypertension, COPD, coronary artery disease, peripheral artery disease ",
-    "and insulin-treated diabetes) were sought at any time before the index date; hemoglobin and body mass index within 90 ",
+    "chronic conditions (diabetes, hypertension, COPD, coronary artery disease and peripheral artery ",
+    "disease) were sought at any time before the index date; insulin-dependent diabetes required an outpatient ",
+    "insulin exposure (not during an inpatient stay) in the prior 365 days in a patient with a diabetes diagnosis at ",
+    "any time before the index date; hemoglobin and body mass index within 90 ",
     "days, so that they describe the patient at the time of surgery; heart failure and current pneumonia ",
     "in the mFI-5 within 30 days, as published; and the remaining components (functional status, ",
     "ambulation, sVQI-FS heart failure, renal impairment and tissue loss) within 365 days. A patient meeting a component's evidence threshold received its full published point ",
@@ -4967,7 +4976,7 @@
             "[DVI] Ambulatory Aid Use (Iannuzzi ambu_deficit, strict)",
             "[DVI] Impaired Ambulation (sVQI-FS nonambulatory, broad)",
             "[DVI] Pneumonia (mFI-5 current pneumonia)",
-            "[DVI] Insulin-Treated Diabetes",
+            "[DVI] Insulin Exposure Outside Inpatient Stay",
             "[DVI] Anemia (Hemoglobin Below 10 g per dL)",
             "[DVI] Anemia (Sex-Specific Hemoglobin Threshold)",
             "[DVI] Renal Impairment (Creatinine Above 1.8 mg per dL or Dialysis)",
@@ -4983,15 +4992,15 @@
             "4185932 + 18 other roots (OHDSI PL 197; excludes the all-vessel root 318443)",
             "316139",
             "316866",
-            "201820",
+            "201820, 442793",
             "255573, 258780",
-            "317309",
+            "40484167, 44782775, 4124836, 3654996; excluding 764058, 4117679, 199870, 321037, 4134603, 4190192, 4109481, 761857, 761856, 765061",
             "4029926, 4291464",
             "Observation: 4044722 + 26 others; Condition: 45770280",
             "Observation: 4012645, 4044714, 4022073 + 5 others; Device: 4240470, 37165652, 4141765, 4251933 + 88 HCPCS codes",
             "Aid-use set + Observation: 4306934, 36714126, 437643, 439405, 4086548 + 5 others; Condition: 4306934, 36714126, 437643",
             "255848 (excluding 4273378, 1340380)",
-            "21600713",
+            "21600713 (outside inpatient stays); requires 201820 or 442793 at any time before index",
             "3000963",
             "3000963",
             "3016723, 4146536, 4032243",
@@ -5137,13 +5146,14 @@
           "Cohort / Concept Set" = c("Lower Extremity Wound (broad)", "Above-Knee Amputation", "Below-Knee Amputation"),   # "[DVI] " prefix already stripped from the rows above
           "Use in this study" = c("Table 1", "Table 1", "Table 1"),
           "Parent concepts (* = incl. descendants)" = c(
-            paste0("Ulcer of lower extremity*; Open wound of lower limb*; Open wound of foot*; gangrene (peripheral, gas, diabetic, ",
-                   "ischemic, foot, toe, arteriosclerotic, acral, presenile, progressive cutaneous, arterial insufficiency, Raynaud)*; ",
+            paste0("Ulcer of lower extremity*; Open wound of lower limb*; Open wound of foot*; gangrene (generic, dry, wet, trophic, ",
+                   "symmetrical, peripheral, gas incl. organism-specific, diabetic, ischemic, foot, toe, bilateral feet, due to peripheral ",
+                   "vascular disease, arteriosclerotic, acral, presenile, progressive cutaneous, arterial insufficiency, Raynaud)*; ",
                    "cellulitis of lower limb, foot and toe*; Necrotizing fasciitis*; Osteomyelitis of ankle and foot*; Diabetic foot*; ",
                    "Diabetic foot ulcer*"),
             "Amputation above-knee*; Revision of above knee amputation*",
             "Amputation of leg through tibia and fibula*; Revision of transtibial amputation*; Revision of below knee amputation stump*"),
-          "Concept ID(s)" = c("197304 + 23 other roots (same set as the target cohort's wound indication)",
+          "Concept ID(s)" = c("197304 + 23 other roots (the target cohort's wound indication) + 5 gangrene roots: 4263116, 44782426, 35615085, 4141477, 4142822",
                               "4195136, 4225223", "4338257, 4234960, 43531499"),
           "Standard-Concept Logic" = "", "OMOP Table(s)" = "",
           check.names = FALSE, stringsAsFactors = FALSE)
