@@ -4053,7 +4053,7 @@
     "Table 1. Demographics and clinical characteristics of the study cohort.",
     paste0(
       "Values are n (%) unless stated; age is median (IQR). Indications are not mutually exclusive and ",
-      "reflect cohort entry, which also counts PAD documented up to 365 days after the index date. ",
+      "count diagnoses recorded on or before the index date. ",
       "Amputation level is hierarchical (above-knee, then below-knee, then other). Definitions are in ",
       supp_table("concept_set_inventory"), "."
     )

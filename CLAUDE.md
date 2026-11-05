@@ -55,6 +55,9 @@ Shared baseline (applies first):
   PAD concept set for both Table 1 and the sVQI-FS item, and the Methods say so. An export made before the PRCC rerun on
   that code (including `..._20261104-213138.zip`) used 365 days and the old PVD set, so Table 3 and the Methods would
   disagree for it: circulate the report only from an export made after the rerun.
+  **Fourth gate (Table 1 PAD):** `demographics_indication.csv` PAD used ancestor 317309 alone until 2026-11-05 (154 patients, 26.7%),
+  while the sVQI-FS item used the shared PAD set (387, 67.1%). The extract now uses the shared set, so an export made before
+  that fix shows a Table 1 PAD that disagrees with Table 3c; circulate only from an export made after it.
 - **Repositories table (Supplemental Table S11, last supplemental item):** rendered from
   `covariates/study_repositories.csv` (role, repository, version, doi, license, note); Methods 1.3 cites it and gives
   the three repository URLs. A blank `doi` renders "To be assigned at release" and the render prints a WARNING. After
