@@ -236,8 +236,8 @@
   "Non-White race"              = list(lookback = "Not applicable", parents = "Race: any recorded race other than White"),
   "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days", parents = .AID_PARENTS),
   "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days, through index date", parents = "Ischemic ulcer*; Ischemic gangrene*"),
-  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
-  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days", parents = "Insulins and analogues* (ATC)"),
+  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
+  "Insulin-dependent diabetes mellitus" = list(lookback = "Any time before index", parents = "Insulins and analogues* (ATC)"),
   # ---- Subramaniam 2018 mFI-5 ----
   "Dependent functional status (ADL dependence)" = list(lookback = "365 days", parents = paste0(
     "Dependent for bathing, dressing, feeding, drinking, personal grooming, personal hygiene, ",
@@ -246,21 +246,21 @@
     "Requires assistance with all daily activities, with personal care; Requires continuous ",
     "supervision for ADLs; Bed-ridden; Confined to chair; Dependence on wheelchair; ",
     "Self-care functional-limitation codes (HCPCS PT reporting, deprecated); Severe frailty")),
-  "Diabetes mellitus (any type)" = list(lookback = "365 days", parents = "Diabetes mellitus*"),
-  "COPD or current pneumonia"   = list(lookback = "COPD 365 days; pneumonia 30 days", parents = paste0(
+  "Diabetes mellitus (any type)" = list(lookback = "Any time before index", parents = "Diabetes mellitus*"),
+  "COPD or current pneumonia"   = list(lookback = "COPD any time before index; pneumonia 30 days", parents = paste0(
     "Chronic obstructive pulmonary disease*; Pneumonia* (excluding Interstitial pneumonia and ",
     "Exacerbation of interstitial pneumonia)")),
   "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days", parents = "Heart failure*"),
-  "Hypertension"                = list(lookback = "365 days", parents = "Hypertensive disorder*"),
+  "Hypertension"                = list(lookback = "Any time before index", parents = "Hypertensive disorder*"),
   # ---- Kraiss 2022 sVQI-FS (Hypertension shares the mFI-5 name above) ----
   "Congestive heart failure"    = list(lookback = "365 days", parents = "Heart failure*"),
-  "Coronary artery disease"     = list(lookback = "365 days", parents = "Ischemic heart disease*"),
-  "Peripheral vascular disease" = list(lookback = "365 days", parents = "Peripheral arterial occlusive disease*"),
-  "Chronic obstructive pulmonary disease" = list(lookback = "365 days", parents = "Chronic obstructive pulmonary disease*"),
+  "Coronary artery disease"     = list(lookback = "Any time before index", parents = "Ischemic heart disease*"),
+  "Peripheral vascular disease" = list(lookback = "Any time before index", parents = "Lower-extremity peripheral artery disease*"),
+  "Chronic obstructive pulmonary disease" = list(lookback = "Any time before index", parents = "Chronic obstructive pulmonary disease*"),
   "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days", parents = paste0(
     "Creatinine [Mass/volume] in Serum or Plasma (> 1.8 mg/dL); Renal dialysis*; Dialysis procedure*")),
-  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
-  "Underweight (BMI < 18.5)"    = list(lookback = "365 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
+  "Underweight (BMI < 18.5)"    = list(lookback = "90 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
   "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATION_BROAD_PARENTS)
 )
 
@@ -343,17 +343,42 @@
   out
 }
 
+# -----------------------------------------------------------------------------
+# .TBL3_DISPLAY: short Component names for Tables 3a-c. The export's covariate_name strings carry
+# thresholds and windows (e.g. "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)") that the
+# Definition and Lookback columns already give, so the table shows a short name and keeps the long one
+# only as the lookup key. Names not listed are shown unchanged.
+# -----------------------------------------------------------------------------
+.TBL3_DISPLAY <- c(
+  "Dependent functional status (ADL dependence)"                 = "Dependent functional status",
+  "Diabetes mellitus (any type)"                                 = "Diabetes mellitus",
+  "Congestive heart failure (within 30 days prior)"              = "Congestive heart failure",
+  "Chronic obstructive pulmonary disease"                        = "COPD",
+  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)"        = "Renal impairment",
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = "Anemia",
+  "Anemia (Hgb less than 10 g/dL)"                               = "Anemia",
+  "Underweight (BMI < 18.5)"                                     = "Underweight",
+  "Non-ambulatory / impaired ambulation status"                  = "Impaired ambulation",
+  "Ambulatory deficit (ambulatory aid use)"                      = "Ambulatory aid use",
+  "Tissue loss (CLI indication — wound ulcer or gangrene)"       = "Tissue loss",
+  "Age 60-69 years at index"                                     = "Age 60\u201369 years",
+  "Age 70-79 years at index"                                     = "Age 70\u201379 years",
+  "Age 80 or more years at index"                                = "Age \u226580 years"
+)
+
+# Decision-curve figure size (inches). The figure is inserted into the Word document at exactly this aspect
+# ratio (scaled to 6.0 in wide), so Word never rescales it to a different shape.
+.DCA_FIG_W <- 6.5
+.DCA_FIG_H <- 7.8
+
 # Footnote shared by Tables 3a-c.
 .tbl3_note <- function(n_total = NULL, measurement_components = NULL) {
   paste0(
-    "n (%) is the number of patients meeting the ",
-    "component, as a percentage of the full cohort",
+    "n (%) is the number meeting the component out of the full cohort",
     if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
-    "; a patient with no recorded evidence is counted as not meeting it",
-    if (!is.null(measurement_components)) paste0(
-      " (for ", measurement_components, ", this includes patients with no measurement)") else "",
-    ". Cohort ID is the ATLAS cohort each component is read from (\"None (computed)\": calculated ",
-    "directly from the data)."
+    "; no recorded evidence counts as not meeting it",
+    if (!is.null(measurement_components)) paste0(" (including no ", measurement_components, " measurement)") else "",
+    ". Cohort ID is the ATLAS cohort each component is read from."
   )
 }
 
@@ -397,6 +422,8 @@
 }
 
 .window_label <- function(s, e) {
+  # -36500 days (100 years) is the analysis code's value for "any time before the index date".
+  if (s <= -36500L) return(if (e == 0L) "Any time, through index date" else "Any time before index")
   if (s == 0L && e == 0L) "At index"
   else paste0(abs(s), " days", if (e == 0L) ", through index date" else "")
 }
@@ -513,6 +540,9 @@
     v <- .COMPONENT_COHORTS[[nm]]
     if (is.null(v)) "—" else v
   }, character(1))
+  # Short display names (lookups above used the full covariate_name).
+  disp <- .TBL3_DISPLAY[combined_data$Component]
+  combined_data$Component <- ifelse(is.na(disp), combined_data$Component, unname(disp))
   combined_data <- combined_data[, c("Component", "Points", "Definition", "Lookback", "Cohort", "n (%)")]
 
   # Widths sum to 7.3in; the text area is 7.5in (letter page minus the 0.5in margins set for this document).
@@ -598,7 +628,7 @@
       derivation = "observation_occurrence and device_exposure records of ambulatory-aid concepts within 365 days before index (day −365 to −1)"
     ),
     "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(
-      points = "+3", definition = "Critical limb ischaemia indication: wound, ulcer, or gangrene",
+      points = "+3", definition = "Critical limb ischemia indication: wound, ulcer, or gangrene",
       derivation = "condition_occurrence within 365 days before or on the index amputation date"
     ),
     "Anemia (Hgb less than 10 g/dL)" = list(
@@ -757,7 +787,7 @@
     ),
     "Peripheral vascular disease" = list(
       points = "+1",
-      definition = "Peripheral arterial occlusive disease, from diagnosis codes (Kraiss 2022 uses an ankle-brachial index < 0.7 or prior arterial intervention or amputation)",
+      definition = "Lower-extremity peripheral artery disease, from diagnosis codes, as for cohort entry (Kraiss 2022 uses an ankle-brachial index < 0.7 or prior arterial intervention or amputation)",
       derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Diabetes mellitus (any type)" = list(
@@ -767,7 +797,7 @@
     ),
     "Chronic obstructive pulmonary disease" = list(
       points = "+1",
-      definition = "COPD",
+      definition = "Chronic obstructive pulmonary disease",
       derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     # RENAL IMPAIRMENT — key updated 2026-07-26 to match the covariate_name in
@@ -1618,7 +1648,7 @@
       "concept 8527 [White] as reference), ambulatory deficit — use of an ambulatory ",
       "aid (+3; walking-aid use, wheelchair use or dependence, walkers, frames, crutches and ",
       "canes, recorded as SNOMED observations or SNOMED/HCPCS device records), ",
-      "tissue loss / critical limb ischaemia indication — wound, ulcer, or gangrene (+3; ",
+      "tissue loss / critical limb ischemia indication — wound, ulcer, or gangrene (+3; ",
       "concepts 4029926, 4291464 and descendants), anemia (hemoglobin <10 g/dL; +2; ",
       "LOINC 718-7, OMOP concept 3000963), and insulin-dependent diabetes mellitus (+2; ",
       "ATC insulins and analogues, OMOP concept 21600713 and descendants). The score is ",
@@ -3278,6 +3308,43 @@
               " strategies).")
     }
 
+    # ---- Net benefit table, drawn as a panel of the figure ----------------------
+    # Added 2026-11-05: the table used to be a separate Word table below the figure. It is now a third
+    # panel whose columns sit under the matching threshold tick marks. A model's value is BOLD when its
+    # net benefit exceeds both reference strategies (treat-all and treat-none, where treat-none is 0).
+    # Built from the same nb_wide that is written to decision_curve_net_benefit.csv, so the printed
+    # numbers can never disagree with the plotted curves.
+    p_tbl <- NULL
+    if (exists("nb_wide", inherits = FALSE) && !is.null(nb_wide) && nrow(nb_wide) > 0) {
+      pct_cols <- setdiff(names(nb_wide), "Strategy")
+      long <- do.call(rbind, lapply(seq_len(nrow(nb_wide)), function(i) data.frame(
+        Strategy = nb_wide$Strategy[i],
+        pct      = as.numeric(sub("%", "", pct_cols)),
+        nb       = as.numeric(unlist(nb_wide[i, pct_cols])),
+        stringsAsFactors = FALSE)))
+      ref_all  <- stats::setNames(long$nb[long$Strategy == "Treat all"],  long$pct[long$Strategy == "Treat all"])
+      ref_none <- stats::setNames(long$nb[long$Strategy == "Treat none"], long$pct[long$Strategy == "Treat none"])
+      best_ref <- pmax(ref_all[as.character(long$pct)], ref_none[as.character(long$pct)], na.rm = TRUE)
+      long$bold  <- long$Strategy %in% model_names & !is.na(best_ref) & long$nb > best_ref
+      long$label <- sprintf("%.3f", long$nb)
+      long$Strategy <- factor(long$Strategy, levels = rev(unique(nb_wide$Strategy)))
+      p_tbl <- ggplot2::ggplot(long, ggplot2::aes(x = pct, y = Strategy, label = label,
+                                                  fontface = ifelse(bold, "bold", "plain"))) +
+        ggplot2::geom_text(size = 2.8) +
+        ggplot2::scale_x_continuous(breaks = long$pct, labels = NULL) +
+        ggplot2::coord_cartesian(xlim = c(0, x_max)) +
+        ggplot2::labs(x = NULL, y = NULL, title = "Net benefit at selected thresholds") +
+        theme_manuscript() +
+        ggplot2::theme(
+          plot.title   = ggplot2::element_text(size = 9, face = "plain", hjust = 0),
+          panel.grid   = ggplot2::element_blank(),
+          panel.border = ggplot2::element_blank(),
+          axis.ticks   = ggplot2::element_blank(),
+          axis.text.x  = ggplot2::element_blank(),
+          axis.text.y  = ggplot2::element_text(size = 8)
+        )
+    }
+
     # Greyscale encoding via .gs_scales() (R/report_helpers.R): up to 4 model
     # curves take slots 1-4 (grey level + linetype + shape), and the two
     # reference strategies take slots 5-6 (lighter grey70, undecorated
@@ -3335,6 +3402,10 @@
                          linewidth = 0.7) +
       ggplot2::geom_point(data = dca_points, ggplot2::aes(shape = Strategy), size = 1.6) +
       gs$colour + gs$linetype + gs$shape +
+      # Two legend rows so the five entries cannot be clipped at the figure edge.
+      ggplot2::guides(colour   = ggplot2::guide_legend(nrow = 2, byrow = TRUE),
+                      linetype = ggplot2::guide_legend(nrow = 2, byrow = TRUE),
+                      shape    = ggplot2::guide_legend(nrow = 2, byrow = TRUE)) +
       # coord_cartesian(), not scale limits: zooming keeps every computed row
       # so lines stay continuous to the panel edge. Setting limits on the
       # scale would DROP the out-of-range rows, emitting "Removed N rows"
@@ -3399,8 +3470,9 @@
       message("[report] DCA clinical-impact strip omitted: no pct_high in ",
               "agg_dca_net_benefit.csv.")
       out_file <- tryCatch(
-        save_figure(p_dca, output_folder, "decision_curve_analysis.png",
-                    width = 6.5, height = 5.0),
+        save_figure(if (is.null(p_tbl)) p_dca else patchwork::wrap_plots(p_dca, p_tbl, ncol = 1, heights = c(3.4, 1.15)),
+                    output_folder, "decision_curve_analysis.png",
+                    width = .DCA_FIG_W, height = .DCA_FIG_H - 1.4),
         error = function(e) {
           message("[report] Could not save DCA plot: ", conditionMessage(e)); NULL })
       return(out_file)
@@ -3431,35 +3503,7 @@
       ggplot2::coord_cartesian(xlim = c(0, x_max), ylim = c(0, 100)) +
       ggplot2::labs(
         x       = "Threshold probability (%)",
-        y       = "Classified\nhigh risk",
-        # Hard-wrapped: ggplot2 does not wrap plot.caption, so a single long
-        # string is silently clipped at the panel edge. Keep lines under ~95
-        # characters at this 6.5in width if this text is edited.
-        # "pt" is written in plain ASCII rather than the "pₜ" subscript glyph,
-        # which the ragg TIFF device does not render in the default font.
-        caption = paste0(
-          "Net benefit = TP/N - FP/N x (pt / (1-pt)), where pt is the threshold probability.\n",
-          "Treat-all and treat-none are reference strategies (lighter grey).\n",
-          "Lower panel: percentage of the cohort each model classifies as high risk at that\n",
-          "threshold. Where a line reaches 0%, no patient is treated and net benefit is\n",
-          "necessarily 0 rather than meaningfully worse than the alternatives.\n",
-          # State the displayed range AND why it stops there, so a reader can
-          # see the axis was not cropped to flatter the models.
-          #
-          # The "nothing beyond this point" claim is only true of the
-          # data-derived bound, which is constructed to guarantee it. A
-          # pre-specified clinical bound may well cut across live curves — as
-          # a 60% bound does in this cohort, where Iannuzzi lookup still
-          # classifies ~8% of patients — so asserting it there would have the
-          # caption contradicting the impact strip directly above it.
-          "Net benefit was computed over thresholds of 1-99%; the axis is shown to ",
-          sprintf("%g%%", x_max),
-          if (is.null(threshold_max_pct)) paste0(
-            ",\nbeyond which no model classifies any patient as high risk and all curves ",
-            "are identically 0."
-          ) else
-            ",\nthe pre-specified clinically plausible range for this study."
-        )
+        y       = "Classified\nhigh risk"
       ) +
       theme_manuscript() +
       ggplot2::theme(
@@ -3468,12 +3512,15 @@
         panel.grid.minor = ggplot2::element_blank()
       )
 
-    combined_dca <- patchwork::wrap_plots(p_dca, p_impact, ncol = 1,
-                                          heights = c(3.4, 1))
+    panels  <- if (is.null(p_tbl)) list(p_dca, p_impact) else list(p_dca, p_impact, p_tbl)
+    heights <- if (is.null(p_tbl)) c(3.4, 1) else c(3.4, 1, 1.15)
+    combined_dca <- patchwork::wrap_plots(panels, ncol = 1, heights = heights)
 
     tryCatch({
-      save_figure(combined_dca, output_folder, "decision_curve.png",
-                  width = 6.5, height = 6.1)
+      out <- save_figure(combined_dca, output_folder, "decision_curve.png",
+                         width = .DCA_FIG_W, height = .DCA_FIG_H)
+      if (!is.null(out)) attr(out, "x_max") <- x_max
+      out
     }, error = function(e) {
       message("[report] Could not save DCA plot: ", conditionMessage(e))
       NULL
@@ -3536,9 +3583,11 @@
   # plotted before the conversion.
   .roc_pts <- read_report_input("agg_roc_points")
   roc_plot_file <- if (!is.null(.roc_pts) && "curve_label" %in% names(.roc_pts)) {
-    lk <- .roc_pts[.roc_pts$curve_label == "Iannuzzi (Lookup)", , drop = FALSE]
+    # The score-based curve is the recalibrated model's ROC (recalibration is monotone), so its AUROC
+    # equals Table 4. The published-lookup curve is NOT used: the report presents recalibrated models only.
+    lk <- .roc_pts[.roc_pts$curve_label == "Iannuzzi 2020 (Score)", , drop = FALSE]
     if (nrow(lk) == 0) lk <- .roc_pts[.roc_pts$curve_label ==
-                                        "Iannuzzi 2020 (Score)", , drop = FALSE]
+                                        "Iannuzzi (Lookup)", , drop = FALSE]
     .save_roc_plot_from_points(lk, temp_figure_dir, "roc_curve.png")
   } else NULL
 
@@ -3733,55 +3782,31 @@
     "covariate definition used in this analysis is registered on the public OHDSI ATLAS demonstration ",
     "instance, except the non-home discharge outcome, which is defined by hand-written SQL that ATLAS ",
     "cannot express; all are listed, with ATLAS id, standard-concept logic and source OMOP table(s), in ",
-    supp_table("concept_set_inventory"), ". Where the OHDSI Phenotype Library (github.com/OHDSI/",
-    "PhenotypeLibrary) holds a comparable phenotype, we used its concept set in preference to our own and ",
-    "deviated only for a stated analytic reason; each library identifier and our decision are given in the same ",
-    "table. The COPD cohort (library entry 1271) and the coronary artery disease cohort (197) were aligned ",
-    "to the library. The coronary set omits one library root, the generic arteriosclerotic vascular disease concept, ",
-    "which spans aortic, carotid, renal and limb vessels and would label nearly every patient with peripheral ",
-    "artery disease as having coronary disease; it is replaced by its coronary branch, coronary arteriosclerosis, ",
-    "and five deprecated or non-standard library roots were dropped. We kept our own scope where the score item ",
-    "differs from the library phenotype: heart failure of any etiology, including rheumatic (934); any current ",
-    "pneumonia rather than acute typical pneumonia (1261); any hypertensive disorder rather than essential ",
-    "hypertension (770); diabetes of any type rather than type 2 (40); major, not minor, lower-extremity ",
-    "amputation (999); a peripheral artery disease diagnosis rather than the library's claudication-pain ",
-    "phenotype (371); and the score's own serum creatinine threshold of 1.8 mg/dL rather than the library's ",
-    "3 mg/dL (946), the library's dialysis definitions (923, 930, 964) not being adopted. The tissue-loss, ",
-    "functional-status, ambulation, insulin and underweight definitions have no library counterpart, and the ",
-    "library's anemia entry (901) is diagnosis-based whereas our anemia items use hemoglobin thresholds, so it ",
-    "was not adopted. Concept sets were compared after expanding descendants; library entries were listed as ",
-    "pending peer review when compared (October 30 and November 4, 2026), and entry logic and lookback windows ",
-    "were not compared."
+    supp_table("concept_set_inventory"), ". Where a comparable phenotype existed in the OHDSI Phenotype ",
+    "Library (github.com/OHDSI/PhenotypeLibrary), we aligned our definition with it, and deviated only for ",
+    "specific analytic purposes; the library entry and our decision for each definition are documented in ",
+    "the same table."
   ), style = "Normal")
   doc <- body_add_par(doc, section_num("Cohort, outcome, and covariate definitions"), style = "heading 3")
   doc <- body_add_par(doc, paste0(
-    "\tThe target cohort comprised adults aged 18 years or older undergoing an inpatient major ",
-    "lower-extremity amputation (above-knee, through-knee, below-knee, supramalleolar, hip ",
-    "disarticulation, or hemipelvectomy, including re-amputation and revision of an above- or ",
-    "below-knee amputation; ankle disarticulation and Syme-type ankle procedures did not qualify), ",
-    "with peripheral arterial disease or diabetes mellitus documented at any time before the index ",
-    "date or up to 365 days after it, or a lower-extremity wound documented from 365 days before to ",
-    "365 days after it, and at least ",
+    "\tThe cohort comprised adults aged 18 years or older who underwent an inpatient major ",
+    "lower-extremity amputation (above-knee, through-knee, below-knee or supramalleolar, hip ",
+    "disarticulation, or hemipelvectomy; ankle-level procedures did not qualify) and had peripheral ",
+    "artery disease or diabetes mellitus documented before the index date or up to 365 days after it, ",
+    "or a lower-extremity wound documented within 365 days before or after it, and at least ",
     config$min_prior_observation_days %||% 1,
-    " day(s) of prior observation (a minimal requirement accommodating emergency presentations). ",
-    "Admissions with a limb-trauma mechanism (crush, burn, degloving, or lower-limb fracture) or a ",
-    "malignant tumor of the lower limb recorded on the index visit were excluded, as were patients ",
-    "admitted from another hospital or a skilled nursing facility, restricting the cohort to patients ",
-    "admitted from home (including elective admissions coordinated through an outpatient clinic referral). ",
-    "The outcome, non-home discharge ",
-    "(NHD), was ascertained from each patient's discharge disposition at the end of the index ",
-    "hospitalization and classified as non-home for any unambiguous institutional destination ",
-    "(skilled nursing facility, inpatient rehabilitation, long-term acute care, hospice, or other ",
-    "institutional care); discharges against medical advice, after which the patient returns home, ",
-    "were classified as home discharges (not-NHD). NHD is a complete-case classification: every target-cohort patient is ",
-    "retained, and a discharge is classified as not-NHD by default whenever the destination ",
-    "cannot be confirmed non-home — a conservative choice that may under-count true NHD events, ",
-    "discussed in the Limitations. Hospice discharges are classified as a single non-home category ",
-    "regardless of setting (home vs. facility); the Iannuzzi 2020 score's own NHD definition does ",
-    "not need to resolve this distinction, but not distinguishing the two here is noted as a ",
-    "limitation. The dataset contained ",
-    if (!is.na(n_target)) n_target else "N",
-    " patients with at least one qualifying amputation within the study window."
+    " day(s) of prior observation. We excluded amputations for trauma or malignancy and patients ",
+    "admitted from another hospital or a skilled nursing facility. Procedure codes are listed in ",
+    supp_table("cpt_codes"), "."
+  ), style = "Normal")
+
+  doc <- body_add_par(doc, paste0(
+    "\tThe outcome was non-home discharge (NHD), defined as discharge from the index hospitalization to ",
+    "a skilled nursing facility, inpatient rehabilitation facility, long-term acute care hospital, hospice, ",
+    "or other institutional care, using the discharge disposition recorded for the index visit (",
+    supp_table("discharge_codes"), "). Discharge to home, including home health and discharge against ",
+    "medical advice, and any destination that could not be confirmed as non-home were classified as not NHD, ",
+    "a conservative choice that may under-count NHD (see Limitations)."
   ), style = "Normal")
 
   n_scores <- 1L + (has_mfi5) + (has_vqifs)
@@ -3804,12 +3829,14 @@
       "and the equally weighted form is evaluated rather than the authors' differentially weighted ",
       "variant — both addressed in the Limitations)"
     ) else "",
-    ". Every component was ascertained from clinical documentation on or before the index date ",
-    "over a 365-day lookback window (index date excluded) unless the score's own publication ",
-    "defines the item differently (mFI-5 congestive heart failure and current pneumonia, 30 days; ",
-    "Iannuzzi tissue loss, index date included); a patient meeting a component's evidence ",
-    "threshold received its full published point value, and an absent record was treated as zero ",
-    "evidence. This null imputation applies without exception, including to the measurement-based ",
+    ". Components were ascertained from clinical documentation before the index date (the index ",
+    "date itself is included only for tissue loss). Lookback windows reflect how stable each condition is: ",
+    "chronic conditions (diabetes, hypertension, COPD, coronary artery disease, peripheral artery disease ",
+    "and insulin-treated diabetes) were sought at any time before the index date; hemoglobin and body mass index within 90 ",
+    "days, so that they describe the patient at the time of surgery; heart failure and current pneumonia ",
+    "in the mFI-5 within 30 days, as published; and the remaining components (functional status, ",
+    "ambulation, sVQI-FS heart failure, renal impairment and tissue loss) within 365 days. A patient meeting a component's evidence threshold received its full published point ",
+    "value, and an absent record was treated as zero evidence. This null imputation applies without exception, including to the measurement-based ",
     "components: anemia (hemoglobin below the score's threshold)",
     if (has_vqifs) " and underweight (body mass index < 18.5)" else "",
     ". A patient with no ",
@@ -3910,34 +3937,23 @@
   # same time: Table 4/Figure 4/Figure 5's own captions already carry the
   # specifics, so this prose states each method once without restating it.
   doc <- body_add_par(doc, paste0(
-    "\tFor each score, two kinds of specification were considered: the published mapping, where ",
-    "one exists, and a temporal recalibration — a logistic regression of the score's total integer ",
-    "value on the observed NHD outcome. Iannuzzi 2020's published score-to-risk lookup required a ",
-    "monotone (isotonic) fit pooling the derivation and validation columns of ",
-    "Iannuzzi 2020's Table III, since the published table's tail is non-monotonic in the sparse ",
-    "high-score cells (both raw columns are retained in covariates/risk_lookup.csv for provenance); ",
-    "no equivalent published mapping exists for the mFI-5 or sVQI-FS. Patients were sorted ",
-    "chronologically by index amputation date and divided at the midpoint; each recalibration was ",
-    "fitted on the earlier half only and evaluated on the later half, preventing optimistic bias ",
-    "from evaluating a locally fitted model on the data used to fit it. The Iannuzzi published-",
-    "lookup specification is the exception: as a fixed external mapping with no parameters ",
-    "estimated from these data, it is evaluated over the full cohort rather than discarding half ",
-    "the available events for no bias-reduction benefit (Table 4 states the evaluation set for ",
-    "every column). Because recalibration is a monotone transform of a single predictor, AUROC and ",
-    "AUPRC do not differ between a score's published/raw and recalibrated specifications; Table 4 ",
-    "and Figure 4 report the recalibrated specification for every score, and Figure 3 reports ",
-    "discrimination for the published/raw specification."
+    "\tAlthough Iannuzzi 2020 publishes a score-to-risk lookup for NHD, it was derived in patients ",
+    "undergoing lower-extremity revascularization, and the mFI-5 and sVQI-FS have no published NHD ",
+    "probability mapping. We therefore applied the same temporal recalibration to all three scores: a ",
+    "logistic regression of the score's total integer value on observed NHD. Patients were ordered ",
+    "chronologically by index date and divided at the midpoint; each recalibration model was fitted on ",
+    "the earlier half and evaluated on the later half, which avoids evaluating a locally fitted model on ",
+    "the data used to fit it. All tables and figures report the recalibrated models. Because ",
+    "recalibration is a monotone transformation of a single predictor, it does not change discrimination."
   ), style = "Normal")
-  # Append the split sample sizes when split_info.csv was found. The split is
-  # identical across scores by construction (same patients, same index dates),
-  # so report it once rather than repeating a near-identical sentence per model.
+  # The split sample sizes are a RESULT, so they are reported in Results (see "Cohort characteristics"),
+  # not here. The first available split_info is used: the split is identical across scores.
   split_sent <- NULL
   for (si in list(split_info_iannuzzi, split_info_mfi5, split_info_vqifs)) {
-    if (is.null(split_sent)) split_sent <- split_sentence(si, NULL)
+    if (is.null(split_sent) && !is.null(si) && nrow(si) > 0) split_sent <- si
   }
-  if (!is.null(split_sent)) doc <- body_add_par(doc, split_sent, style = "Normal")
   doc <- body_add_par(doc, paste0(
-    "\tDiscrimination was summarised using AUROC and AUPRC, and calibration using the Brier score, ",
+    "\tDiscrimination was summarized using AUROC and AUPRC, and calibration using the Brier score, ",
     "expected calibration error (ECE), calibration intercept, and calibration slope — each with 95% ",
     "bootstrap percentile confidence intervals (B = 500 resamples). ECE is the probability-weighted ",
     "mean absolute difference between predicted and observed NHD rates across ten quantile-based bins ",
@@ -3996,18 +4012,16 @@
   # block is skipped rather than erroring, the same graceful-omission
   # convention used for subgroup_bias.csv elsewhere in this file.
   consort_flow <- read_report_input("agg_consort_flow")
-  consort_plot_file <- .save_consort_flow_plot(consort_flow, temp_figure_dir)
+  # Drawn at the exact size it is inserted at (6.5 x 8.3 in), so Word never rescales it to a different
+  # aspect ratio. It was previously drawn at the toolkit default (6 x ~12.4 in) and inserted at 5.5 x 6.5 in,
+  # which squashed it vertically.
+  consort_w <- 6.5; consort_h <- 8.3
+  consort_plot_file <- .save_consort_flow_plot(consort_flow, temp_figure_dir, width = consort_w, height = consort_h)
   if (!is.null(consort_plot_file) && file.exists(consort_plot_file)) {
-    doc <- body_add_img(doc, src = consort_plot_file, width = 5.5, height = 6.5)
+    doc <- body_add_img(doc, src = consort_plot_file, width = consort_w, height = consort_h)
     doc <- add_doc_caption(doc,
       "Figure 1. Patient flow diagram.",
-      paste0(
-        "Cumulative cohort attrition from entry criteria to the final validation ",
-        "cohort. The first five stages are the target cohort's inclusion/exclusion ",
-        "rules, applied in the order evaluated; the final stage additionally excludes ",
-        "patients whose index admission originated from another hospital or a skilled ",
-        "nursing facility (see Methods)."
-      )
+      "Cohort attrition from the entry criteria to the final study cohort."
     )
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] Figure 1 (CONSORT patient-flow diagram) added.")
@@ -4026,14 +4040,21 @@
     # "35.1%" everywhere else describing the identical rate.
     "NHD rate of ", fmt(outcome_prev, 1), "%."
   ), style = "Normal")
+  if (!is.null(split_sent)) {
+    doc <- body_add_par(doc, sprintf(
+      paste0("For model evaluation, patients were divided chronologically at the midpoint of index dates into a ",
+             "training set (n = %d; through %s) and a test set (n = %d; after %s); the same split applies to ",
+             "every score."),
+      split_sent$n_train[1], split_sent$split_date[1], split_sent$n_test[1], split_sent$split_date[1]
+    ), style = "Normal")
+  }
   doc <- body_add_flextable(doc, table1_ft(cohort_tbl))
   doc <- add_doc_caption(doc,
-    "Table 1. Demographics and clinical characteristics of the validation cohort.",
+    "Table 1. Demographics and clinical characteristics of the study cohort.",
     paste0(
-      "Values are n (%) unless stated. Age is summarised as median (IQR). ",
-      "Indication rows are not mutually exclusive; a patient may have more than one. ",
-      "Amputation level is assigned hierarchically (AKA, then BKA, then Other) and is mutually ",
-      "exclusive. Concept-set definitions underlying every row are in ",
+      "Values are n (%) unless stated; age is median (IQR). Indications are not mutually exclusive and ",
+      "reflect cohort entry, which also counts PAD documented up to 365 days after the index date. ",
+      "Amputation level is hierarchical (above-knee, then below-knee, then other). Definitions are in ",
       supp_table("concept_set_inventory"), "."
     )
   )
@@ -4135,26 +4156,16 @@
     doc <- body_add_par(doc,
       paste0(
         "Among the ", n_nhd_denom, " patients who experienced non-home discharge (NHD) at ",
-        "the end of the index hospitalization, Table 2 summarises key post-discharge outcomes."
+        "the end of the index hospitalization, Table 2 summarizes key post-discharge outcomes."
       ),
       style = "Normal"
     )
     doc <- body_add_flextable(doc, nhd_out_ft)
     doc <- add_doc_caption(doc,
-      "Table 2. NHD patient outcomes at the index hospitalization and within 90 days.",
+      "Table 2. Outcomes of patients with non-home discharge, at the index hospitalization and within 90 days.",
       paste0(
-        "Denominator is all patients with non-home discharge at the index ",
-        "hospitalization (n\u00a0=\u00a0", n_nhd_denom, "). ",
-        "Index hospitalization LOS: length of the inpatient visit (visit_concept_id 9201) ",
-        "containing the index procedure date, calculated as DATEDIFF(DAY, visit_start_date, ",
-        "COALESCE(visit_end_date, visit_start_date)). ",
-        "Discharge destination: destination concept name from visit_occurrence.discharged_to_concept_id ",
-        "joined to the vocabulary concept table; destinations with fewer than 11 patients are suppressed. ",
-        "90-day readmission: any inpatient visit (visit_concept_id 9201) starting after the index ",
-        "hospitalization's discharge date and within 90 days of that discharge date (anchored on ",
-        "discharge, not admission, so patients with a longer index stay are not given a shorter ",
-        "effective follow-up window). ",
-        "90-day mortality: any death record on or after the discharge date and within 90 days of it."
+        "Denominator is patients with non-home discharge (n\u00a0=\u00a0", n_nhd_denom, "). Readmission and ",
+        "mortality are within 90 days of discharge. Destinations with fewer than 11 patients are suppressed."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
@@ -4165,15 +4176,10 @@
   if (!is.null(nhd_year_plot_file) && file.exists(nhd_year_plot_file)) {
     doc <- body_add_img(doc, src = nhd_year_plot_file, width = 5.5, height = 3.5)
     doc <- add_doc_caption(doc,
-      "Figure 2. Non-home discharge (NHD) rate by disposition type and amputation year.",
+      "Figure 2. Non-home discharge (NHD) rate by discharge destination and year of amputation.",
       paste0(
-        "Non-home discharge (NHD) rate (%) by calendar year of index amputation. The Overall line ",
-        "is the combined NHD rate across all dispositions; the remaining lines break it out by ",
-        "disposition (SNF = Skilled Nursing Facility; IRF = Inpatient Rehabilitation Facility; ",
-        "LTAC = Long-term Acute Care; Hospice; Other NHD), distinguished by grey level, line type, ",
-        "and point shape. Years with fewer than 11 patients are suppressed (small-cell privacy ",
-        "rule, matching Table 2's discharge-destination suppression threshold). Disposition is ",
-        "mapped from UB-04 discharged_to_source_value codes."
+        "SNF, skilled nursing facility; IRF, inpatient rehabilitation facility; LTAC, long-term acute care. ",
+        "Years with fewer than 11 patients are suppressed."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
@@ -4192,12 +4198,9 @@
   if (!is.null(covariate_summary_mfi5) && nrow(covariate_summary_mfi5) > 0) {
     doc <- body_add_flextable(doc, .build_mfi5_component_table(covariate_summary_mfi5, defs_for("mfi5")))
     doc <- add_doc_caption(doc,
-      "Table 3a. Subramaniam 2018 mFI-5: component definitions and activation summary.",
+      "Table 3a. Subramaniam 2018 mFI-5: components and activation.",
       paste0(
-        "Point value (range 0–5) and observed activation for each of the five components of the ",
-        "Subramaniam 2018 modified Frailty Index-5 (mFI-5). Lookback, counted back from the index date, is 365 days except congestive heart ",
-        "failure and current pneumonia (30 days, as in Subramaniam 2018). ",
-        .tbl3_note(covariate_summary_mfi5$n_total[1]), " Concept definitions are in ",
+        .tbl3_note(covariate_summary_mfi5$n_total[1]), " Definitions are in ",
         supp_table("concept_set_inventory"), "."
       )
     )
@@ -4213,11 +4216,10 @@
   }
   doc <- body_add_flextable(doc, tbl3b_data)
   doc <- add_doc_caption(doc,
-    "Table 3b. Iannuzzi 2020 NHD score: component definitions and activation summary.",
+    "Table 3b. Iannuzzi 2020 NHD score: components and activation.",
     paste0(
-      "Point values (range 0–18) and observed activation for the nine components of the Iannuzzi 2020 ",
-      "NHD score. Lookback, counted back from the index date, is 365 days (tissue loss includes the index date). ",
-      .tbl3_note(covariate_summary$n_total[1], "anemia"), " Concept definitions are in ", supp_table("concept_set_inventory"), "."
+      .tbl3_note(covariate_summary$n_total[1], "anemia"), " Definitions are in ",
+      supp_table("concept_set_inventory"), "."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -4227,15 +4229,9 @@
   if (!is.null(covariate_summary_vqifs) && nrow(covariate_summary_vqifs) > 0) {
     doc <- body_add_flextable(doc, .build_vqifs_component_table(covariate_summary_vqifs, defs_for("vqifs")))
     doc <- add_doc_caption(doc,
-      "Table 3c. Kraiss 2022 sVQI-FS: component definitions and activation summary.",
+      "Table 3c. Kraiss 2022 sVQI-FS: components and activation.",
       paste0(
-        "Point value (range 0–10 as implemented) and observed activation for each of the ten components of the ",
-        "Kraiss 2022 simple VQI Frailty Score (sVQI-FS). Kraiss 2022's eleventh item, non-home residence, is ",
-        "omitted because every patient in this cohort was admitted from home. Lookback, counted back from the index date, is 365 days. Renal ",
-        "impairment, anemia and underweight use the laboratory and measurement thresholds of Kraiss 2022; ",
-        "peripheral vascular disease is identified from diagnosis codes rather than the ankle-brachial index ",
-        "used by Kraiss 2022. ",
-        .tbl3_note(covariate_summary_vqifs$n_total[1], "anemia and underweight"), " Concept definitions are in ",
+        .tbl3_note(covariate_summary_vqifs$n_total[1], "anemia or body mass index"), " Definitions are in ",
         supp_table("concept_set_inventory"), "."
       )
     )
@@ -4324,21 +4320,10 @@
 
   doc <- body_add_flextable(doc, perf_ft)
   doc <- add_doc_caption(doc,
+    "Table 4. Discrimination and calibration of the recalibrated models on the test set.",
     paste0(
-      "Table 4. Model performance: discrimination and calibration metrics for the ",
-      "temporally recalibrated Iannuzzi 2020, Subramaniam mFI-5, and Kraiss 2022 sVQI-FS ",
-      "specifications."
-    ),
-    paste0(
-      "Each recalibrated specification is a logistic regression of the score's total integer ",
-      "value on the observed NHD outcome, fitted on the chronologically earlier half of the ",
-      "cohort and evaluated on the later half; metrics reported here are on the test half only. ",
-      "AUROC and AUPRC are unchanged from the score's published-lookup or raw-score ",
-      "specification (recalibration is a monotone transform of a single predictor) and are also ",
-      "shown in Figure 3. ",
-      if (nchar(split_caption) > 0) paste0(split_caption, " ") else "",
-      "95% CI = 95% bootstrap percentile confidence interval (B = 500 resamples). ",
-      "— indicates the specification is unavailable for this run."
+      "AUROC, area under the receiver operating characteristic curve; AUPRC, area under the precision-recall curve; ",
+      "ECE, expected calibration error. 95% CI, bootstrap percentile confidence interval."
     )
   )
   doc <- body_add_par(doc, "", style = "Normal")
@@ -4354,7 +4339,7 @@
   # ones this figure showed before -- and their AUCs now provably agree with
   # metrics.csv, which the normalised version did not guarantee.
   dual_roc_file <- NULL
-  .want_roc <- c("Iannuzzi (Lookup)",
+  .want_roc <- c("Iannuzzi 2020 (Score)",
                  if (has_mfi5)  "mFI-5 (Score)",
                  if (has_vqifs) "sVQI-FS (Score)")
   if (has_mfi5 && !is.null(.roc_pts) && "curve_label" %in% names(.roc_pts)) {
@@ -4373,22 +4358,9 @@
   has_vqifs_roc <- has_vqifs
 
   fig2_file    <- if (!is.null(dual_roc_file) && file.exists(dual_roc_file)) dual_roc_file else roc_plot_file
-  fig2_caption <- if (!is.null(dual_roc_file) && file.exists(dual_roc_file) && has_vqifs_roc) {
-    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup), ",
-           "the Subramaniam mFI-5 (raw integer score 0–5), and the Kraiss 2022 ",
-           "sVQI-FS (raw integer score) predicting non-home discharge. Curves are ",
-           "distinguished by grey level and line type; see the legend, which reports each AUC. ",
-           "AUROC with 95% bootstrap percentile CI (B = 500 resamples).")
-  } else if (!is.null(dual_roc_file) && file.exists(dual_roc_file)) {
-    paste0("ROC curves for the Iannuzzi 2020 NHD score (published lookup) ",
-           "and the Subramaniam mFI-5 (raw integer score 0\u20135) predicting non-home ",
-           "discharge. Curves are distinguished by grey level and line type; see the legend. ",
-           "AUROC with 95% bootstrap percentile CI (B\u2009=\u2009500 resamples).")
-  } else {
-    paste0("ROC curve for the Iannuzzi 2020 lookup model predicting non-home ",
-           "discharge. AUROC with 95% bootstrap percentile CI (B = 500 resamples). ",
-           "Dashed diagonal = no-discrimination reference line.")
-  }
+  fig2_caption <- "Predicting non-home discharge. The legend gives each score's area under the curve (AUC)."
+
+
 
   if (!is.null(fig2_file) && file.exists(fig2_file)) {
     doc <- body_add_img(doc, src = fig2_file, width = 5.0, height = 4.5)
@@ -4441,29 +4413,13 @@
     has_vqifs_cal <- !is.null(vqifs_calibration_table_path) &&
                      file.exists(vqifs_calibration_table_path)
     fig3_title <- if (has_mfi5_cal && has_vqifs_cal)
-      "Figure 4. NHD risk score calibration — three recalibrated specifications."
+      "Figure 4. Calibration of the recalibrated models."
     else if (has_mfi5_cal)
-      "Figure 4. NHD risk score calibration — two recalibrated specifications."
+      "Figure 4. Calibration of the recalibrated models."
     else
-      "Figure 4. Iannuzzi 2020: temporal recalibration calibration plot."
-    fig3_caption <- if (has_mfi5_cal && has_vqifs_cal)
-      paste0("Calibration curves for the temporally recalibrated Iannuzzi 2020, mFI-5, and ",
-             "sVQI-FS specifications (Table 4), each a logistic regression of the score's total ",
-             "integer value fitted on the chronologically earlier half of the cohort and ",
-             "evaluated on the later half. Mean predicted NHD risk (x-axis) vs. observed NHD ",
-             "rate (y-axis) by quantile bin. Dotted diagonal = perfect calibration.")
-    else if (has_mfi5_cal)
-      paste0("Calibration curves for the temporally recalibrated Iannuzzi 2020 and mFI-5 ",
-             "specifications (Table 4), each a logistic regression of the score's total integer ",
-             "value fitted on the chronologically earlier half of the cohort and evaluated on the ",
-             "later half. Mean predicted NHD risk (x-axis) vs. observed NHD rate (y-axis) by ",
-             "quantile bin. Dotted diagonal = perfect calibration.")
-    else
-      paste0("Calibration of the Iannuzzi 2020 temporal recalibration specification (Table 4): ",
-             "a logistic regression of the total integer score fitted on the chronologically ",
-             "earlier half of the cohort and evaluated on the later half. Mean predicted NHD ",
-             "risk (x-axis) vs. observed NHD rate (y-axis) by quantile bin. Dotted diagonal = ",
-             "perfect calibration.")
+      "Figure 4. Calibration of the recalibrated model."
+    fig3_caption <- paste0("Mean predicted versus observed non-home discharge rate by quantile bin on the test set. ",
+                           "The dotted diagonal is perfect calibration.")
     doc <- body_add_img(doc, src = dual_cal_file, width = 5.0, height = 5.0)
     doc <- add_doc_caption(doc, fig3_title, fig3_caption)
     doc <- body_add_par(doc, "", style = "Normal")
@@ -4471,13 +4427,10 @@
   } else if (file.exists(recalibrated_calibration_plot_temp)) {
     # Fallback: single-curve, Iannuzzi 2020 temporal recalibration only (the
     # published-lookup plot is never used for Figure 4 — see header comment).
-    cal_caption <- paste0(
-      "Calibration plot for the Iannuzzi 2020 temporal recalibration model. ",
-      "Mean predicted non-home discharge risk (x-axis) vs. observed NHD rate (y-axis) ",
-      "by quantile bin. Dashed diagonal = perfect calibration."
-    )
+    cal_caption <- paste0("Mean predicted versus observed non-home discharge rate by quantile bin on the test set. ",
+                          "The dashed diagonal is perfect calibration.")
     doc <- body_add_img(doc, src = recalibrated_calibration_plot_temp, width = 4.5, height = 4.5)
-    doc <- add_doc_caption(doc, "Figure 4. Iannuzzi 2020: temporal recalibration calibration plot.", cal_caption)
+    doc <- add_doc_caption(doc, "Figure 4. Calibration of the recalibrated model.", cal_caption)
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] Figure 4 (single calibration fallback) added.")
   }
@@ -4638,28 +4591,11 @@
     doc <- body_add_par(doc, section_num("Risk tier analysis"), style = "heading 3")
     doc <- body_add_flextable(doc, tier_ft)
     doc <- add_doc_caption(doc,
+      "Table 5. Observed non-home discharge rate by predicted risk tier.",
       paste0(
-        "Table 5. Risk tier classification by model specification. ",
-        "Patients are stratified into ", tier_count_word, " tiers based on each recalibrated ",
-        "model's predicted NHD risk: ", tier_threshold_desc, ". ",
-        "The observed NHD rate within each tier provides a direct assessment of clinical utility."
-      ),
-      paste0(
-        n_word, " specification", if (n_tier_models > 1) "s are" else " is",
-        " shown in separate sections: ",
-        paste(model_names_used, collapse = "; "), ". ",
-        "EVALUATION SET: all three specifications are restricted to the temporal test ",
-        "partition, matching Table 4, because the training half was used to fit their ",
-        "recalibration. ",
-        "N = number of patients assigned to that tier by the corresponding model. ",
-        "NHD Events = number with non-home discharge. ",
-        "Percentages in parentheses are column percents: the share of that model's ",
-        "patients (N) or of its NHD events (NHD Events) falling in each tier. ",
-        "Observed NHD Rate = NHD Events / N (the row percent). ",
-        "Note that logistic recalibration of a weakly discriminating integer score compresses ",
-        "the predicted probability range toward the cohort base rate; when this places every ",
-        "patient in a single probability tier, that is a substantive finding about the score's ",
-        "limited spread, not a computational artefact."
+        "Tiers are defined by each recalibrated model's predicted risk (", tier_threshold_desc, ") on the test set. ",
+        "N, patients in the tier; NHD events, patients with non-home discharge; percentages in parentheses are ",
+        "column percentages."
       )
     )
     doc <- body_add_par(doc, "", style = "Normal")
@@ -4726,13 +4662,8 @@
 
     doc <- body_add_flextable(doc, score_rate_ft)
     doc <- add_doc_caption(doc,
-      "Table 6. Non-home discharge rate by mFI-5 point score.",
-      paste0(
-        "Observed NHD rate at each mFI-5 integer score value (0–5), combining the ",
-        "temporal train and test partitions to describe the full validation cohort. ",
-        "N = patients with that score; NHD Events = number with non-home discharge. ",
-        "Score values with fewer than 5 patients in either partition are suppressed."
-      )
+      "Table 6. Non-home discharge rate by mFI-5 score.",
+      "N, patients with that score; NHD events, patients with non-home discharge. Scores with fewer than 5 patients are suppressed."
     )
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] mFI-5 score-rate table (Table 6) added.")
@@ -4742,60 +4673,18 @@
   doc <- add_doc_page_break(doc)
   doc <- body_add_par(doc, section_num("Decision curve analysis"), style = "heading 3")
   if (!is.null(dca_plot_file) && file.exists(dca_plot_file)) {
-    doc <- body_add_img(doc, src = dca_plot_file, width = 5.5, height = 3.8)
+    # Inserted at the figure's own aspect ratio (6.0 in wide); see .DCA_FIG_W / .DCA_FIG_H.
+    doc <- body_add_img(doc, src = dca_plot_file, width = 6.0, height = 6.0 * .DCA_FIG_H / .DCA_FIG_W)
     doc <- add_doc_caption(doc, "Figure 5. Decision curve analysis.", paste0(
-      "Decision curve analysis for the recalibrated Iannuzzi 2020, mFI-5, and sVQI-FS ",
-      "specifications available in this run, evaluated on the temporal test partition so ",
-      "that all curves compare net benefit across the same patients. ",
-      "Net benefit is plotted across threshold probabilities from 1% to 99%. ",
-      "Model curves are compared with the 'treat-all' (dashed) and ",
-      "'treat-none' (zero reference) strategies. Threshold probabilities correspond ",
-      "to the minimum predicted NHD risk at which a clinician would recommend an intervention."
+      "Top: net benefit of each recalibrated score on the test set, compared with treating all and treating no ",
+      "patients, across threshold probabilities of 1% to 99%. ",
+      "Middle: percentage of the cohort each score classifies as high risk; where a line reaches 0%, no patient is ",
+      "treated and net benefit is 0. ",
+      "Bottom: net benefit at selected thresholds; bold values exceed both treat-all and treat-none. ",
+      "Net benefit = true positives/N - false positives/N x (threshold/(1 - threshold))."
     ))
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] Figure 5 (DCA) added.")
-
-    # ---- Net benefit at selected thresholds (exact values) -------------------
-    # save_dca_plot() already computes this table purely to write it as a
-    # sidecar CSV (decision_curve_net_benefit.csv, next to the figure) --
-    # reading it back and rendering it here gives readers exact numbers at
-    # the thresholds where the curves above are hardest to tell apart, on top
-    # of the existing grey level/linetype/shape encoding and heavier model
-    # (vs. reference) line weight. No new computation; same values plotted.
-    nb_csv_path <- file.path(temp_figure_dir, "decision_curve_net_benefit.csv")
-    if (file.exists(nb_csv_path)) {
-      nb_tbl <- tryCatch(
-        utils::read.csv(nb_csv_path, check.names = FALSE, stringsAsFactors = FALSE),
-        error = function(e) NULL
-      )
-      if (!is.null(nb_tbl) && nrow(nb_tbl) > 0) {
-        pct_cols  <- setdiff(names(nb_tbl), "Strategy")
-        pct_width <- max(0.45, min(0.75, 5.0 / max(1, length(pct_cols))))
-        nb_ft <- flextable::flextable(nb_tbl) |>
-          flextable::colformat_double(j = pct_cols, digits = 3) |>
-          flextable::bold(part = "header") |>
-          flextable::fontsize(size = 8, part = "all") |>
-          flextable::font(fontname = "Calibri", part = "all") |>
-          flextable::bg(part = "header", bg = "#1F3864") |>
-          flextable::color(part = "header", color = "white") |>
-          flextable::padding(padding = 3, part = "all") |>
-          flextable::width(j = "Strategy", width = 1.6) |>
-          flextable::width(j = pct_cols, width = pct_width) |>
-          flextable::align(j = pct_cols, align = "center", part = "all") |>
-          flextable::set_table_properties(layout = "fixed")
-        doc <- body_add_flextable(doc, nb_ft)
-        doc <- add_doc_caption(doc,
-          "Net benefit at selected threshold probabilities.",
-          paste0(
-            "Exact net benefit for each strategy in Figure 5, at 10-percentage-point increments ",
-            "of the threshold probability, for comparing curves that are close together. Values ",
-            "match the plotted curves exactly."
-          )
-        )
-        doc <- body_add_par(doc, "", style = "Normal")
-        message("[report] DCA net-benefit table added.")
-      }
-    }
   }
 
   # Helper: load, sort, and render a subgroup_bias.csv as a table + two forest
@@ -4871,10 +4760,9 @@
     doc <- body_add_flextable(doc, bias_ft)
     doc <- add_doc_caption(doc,
       table_caption,
-      paste0("Subgroups with fewer than 10 observed NHD events are suppressed. ",
-             "Overall ECE = ", round(overall_ece_val, 3),
-             if (has_auroc) paste0(". Overall AUROC = ", round(overall_auroc_val, 3)) else "",
-             ". 95% CI = bootstrap percentile interval (B\u2009=\u2009200 resamples).")
+      paste0("Subgroups with fewer than 10 NHD events are suppressed. Overall ECE = ", round(overall_ece_val, 3),
+             if (has_auroc) paste0("; overall AUROC = ", round(overall_auroc_val, 3)) else "",
+             ". CI, bootstrap percentile confidence interval.")
     )
     doc <- body_add_par(doc, "", style = "Normal")
 
@@ -4889,10 +4777,7 @@
                           height = min(plot_height, 9.0))
       doc <- add_doc_caption(doc,
         figure_caption,
-        paste0("Expected calibration error (ECE) with 95% bootstrap percentile CIs ",
-               "(B\u2009=\u2009200) by subgroup. ",
-               "Dashed vertical line = overall ECE. ",
-               "Subgroups with < 10 NHD events are suppressed.")
+        "Expected calibration error with 95% confidence intervals by subgroup. The dashed line is the overall value."
       )
       doc <- body_add_par(doc, "", style = "Normal")
     }
@@ -4910,11 +4795,7 @@
                             height = min(plot_height, 9.0))
         doc <- add_doc_caption(doc,
           figure_caption_auroc,
-          paste0("AUROC with 95% bootstrap percentile CIs ",
-                 "(B\u2009=\u2009200) by subgroup. ",
-                 "Dashed vertical line = overall AUROC. ",
-                 "Subgroups with < 10 NHD events, or a constant outcome within ",
-                 "a subgroup, are suppressed.")
+          "AUROC with 95% confidence intervals by subgroup. The dashed line is the overall value."
         )
         doc <- body_add_par(doc, "", style = "Normal")
       }
@@ -5011,10 +4892,7 @@
           doc <- body_add_flextable(doc, cdm_src_ft)
           doc <- add_doc_caption(doc,
             paste0(supp_table("cdm_metadata"), ". CDM source metadata."),
-            paste0("Metadata from the cdm_source table of the OMOP CDM instance ",
-                   "used for this analysis. CDM Version and Vocabulary Version confirm ",
-                   "compliance with OMOP CDM v5.4 and the Athena vocabulary release used ",
-                   "during ETL.")
+            "From the cdm_source table of the OMOP CDM instance used for this analysis."
           )
           doc <- body_add_par(doc, "", style = "Normal")
           message("[report] Supplemental Table S1 (CDM source) added.")
@@ -5234,10 +5112,24 @@
           ),
           check.names = FALSE, stringsAsFactors = FALSE
         )
-        # Column order: identity, role, definition, then the supporting detail.
-        atlas_inventory <- atlas_inventory[, c("ATLAS ID", "OHDSI PL ID", "Cohort / Concept Set", "Use in this study",
-                                               "Parent concepts (* = incl. descendants)", "Concept ID(s)",
-                                               "Standard-Concept Logic", "OMOP Table(s)")]
+        # Streamlined 2026-11-05: the prose "Standard-Concept Logic" column and the "OMOP Table(s)" column
+        # were dropped (they restated the phenotype name and its concepts; the logic and domains are in
+        # ATLAS under the ATLAS ID), "Use" is reduced to the role / score names (lookbacks are in
+        # Tables 3a-c), and the "[DVI]" prefix and "(risk score item)" suffix are dropped from names.
+        short_use <- function(u) {
+          if (grepl("^Study population", u)) return("Target population")
+          if (grepl("^Outcome", u))          return("Outcome")
+          if (grepl("^Superseded", u))       return("Superseded (not used)")
+          sc <- c(if (grepl("Iannuzzi", u)) "Iannuzzi", if (grepl("mFI-5", u)) "mFI-5", if (grepl("sVQI-FS", u)) "sVQI-FS")
+          if (length(sc)) paste(sc, collapse = ", ") else u
+        }
+        atlas_inventory[["Use in this study"]] <- vapply(atlas_inventory[["Use in this study"]], short_use, character(1))
+        atlas_inventory[["Cohort / Concept Set"]] <- sub(" \\(risk score item\\)$", "",
+                                                         sub("^\\[DVI\\] ", "", atlas_inventory[["Cohort / Concept Set"]]))
+        names(atlas_inventory)[names(atlas_inventory) == "Cohort / Concept Set"] <- "Phenotype"
+        names(atlas_inventory)[names(atlas_inventory) == "Use in this study"]    <- "Used for"
+        atlas_inventory <- atlas_inventory[, c("ATLAS ID", "OHDSI PL ID", "Phenotype", "Used for",
+                                               "Parent concepts (* = incl. descendants)", "Concept ID(s)")]
         atlas_ft <- flextable::flextable(atlas_inventory) |>
           flextable::bold(part = "header") |>
           flextable::fontsize(size = 7, part = "all") |>
@@ -5245,41 +5137,21 @@
           flextable::bg(part = "header", bg = "#1F3864") |>
           flextable::color(part = "header", color = "white") |>
           flextable::padding(padding = 2, part = "all") |>
-          flextable::width(j = "ATLAS ID", width = 0.65) |>
-          flextable::width(j = "OHDSI PL ID", width = 0.8) |>
-          flextable::width(j = "Cohort / Concept Set", width = 1.1) |>
-          flextable::width(j = "Use in this study", width = 1.15) |>
-          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 1.4) |>
-          flextable::width(j = "Concept ID(s)", width = 0.95) |>
-          flextable::width(j = "Standard-Concept Logic", width = 0.85) |>
-          flextable::width(j = "OMOP Table(s)", width = 0.65) |>
+          flextable::width(j = "ATLAS ID", width = 0.6) |>
+          flextable::width(j = "OHDSI PL ID", width = 1.2) |>
+          flextable::width(j = "Phenotype", width = 1.2) |>
+          flextable::width(j = "Used for", width = 0.75) |>
+          flextable::width(j = "Parent concepts (* = incl. descendants)", width = 2.2) |>
+          flextable::width(j = "Concept ID(s)", width = 1.35) |>
           flextable::set_table_properties(layout = "fixed")
         doc <- body_add_par(doc, "ATLAS concept sets and cohorts", style = "heading 3")
         doc <- body_add_flextable(doc, atlas_ft)
         doc <- add_doc_caption(doc,
-          paste0(supp_table("concept_set_inventory"), ". ATLAS concept sets and cohorts used in this analysis."),
-          paste0("Every cohort and covariate definition used in the analysis is registered on the public OHDSI ATLAS ",
-                 "demonstration instance (https://atlas-demo.ohdsi.org) and named with a [DVI] prefix. The ATLAS ID column ",
-                 "gives the official ATLAS cohort id, which can be opened at ",
-                 "https://atlas-demo.ohdsi.org/#/cohortdefinition/<id>. ",
-                 "The one exception is the non-home discharge outcome, which is defined by hand-written ",
-                 "SQL in the study repository because ATLAS cannot express a discharge-destination criterion, so it has no ",
-                 "ATLAS id. OHDSI PL ID gives the closest entry in the OHDSI Phenotype Library ",
-                 "(github.com/OHDSI/PhenotypeLibrary) and our decision: aligned (our concept set was brought into line ",
-                 "with the library's, with any stated exception) or deviates (we kept our own scope because the study's ",
-                 "score item differs from the library phenotype; reason given). None means no matching library entry ",
-                 "was found. Library entries were pending peer review when compared (October 30 and November 4, 2026), and the comparison ",
-                 "covers concept sets only, not entry logic or lookback windows. ",
-                 "Cohort 1797941 is the earlier shared target, kept only for lineage. Use in this study gives each definition's role: ",
-                 "study-population inclusion or exclusion, outcome, or covariate in the named score model(s) ",
-                 "(Iannuzzi, mFI-5, sVQI-FS) with its lookback window. Parent concepts are the standard concepts ",
-                 "that define each definition (* = descendant concepts also counted); the component tables (Tables ",
-                 "3a-c) show only each component's definition, lookback and activation. The final four rows ",
-                 "are predictors resolved by a direct concept or demographic query rather than a cohort ",
-                 "definition (ATLAS ID: N/A). Concept ID(s) lists each definition's primary standard ",
-                 "concept(s); a set with more than a few members is given as an anchor concept plus a ",
-                 "count of additional descendants/related concepts, with the full expansion available in ",
-                 "the study repository's cohort definitions.")
+          paste0(supp_table("concept_set_inventory"), ". Cohorts and concept sets used in this analysis."),
+          paste0("ATLAS ID is the cohort on atlas-demo.ohdsi.org (all named with a [DVI] prefix); the outcome is ",
+                 "hand-written SQL. OHDSI PL ID is the closest Phenotype Library entry and our decision (aligned, or ",
+                 "deviates with the reason); None, no matching entry. * includes descendant concepts. ",
+                 "N/A, resolved by a direct query rather than a cohort.")
         )
         doc <- body_add_par(doc, "", style = "Normal")
         message("[report] Supplemental Table (ATLAS concept sets and cohorts) added.")
@@ -5393,24 +5265,10 @@
         doc <- add_doc_caption(doc,
           paste0(supp_table("model_descriptions"), ". Description of integer risk score models evaluated."),
           paste0(
-            "Derivation details for each score are read from covariates/model_metadata.yaml. ",
-            "None of these instruments was derived to predict non-home discharge after major ",
-            "lower-extremity amputation (see Methods 1.3 for the transportability framing this ",
-            "study uses instead of describing itself as an external validation). ",
-            "The Iannuzzi 2020 score's own outcome definition (rehabilitation or SNF discharge ",
-            "only) is narrower than this study's NHD definition, which additionally counts ",
-            "hospice and LTAC discharges as non-home — see the Limitations discussion. ",
-            "The Iannuzzi 2020 NHD score uses a published lookup table to convert integer score ",
-            "to predicted probability; a temporally recalibrated version is also evaluated. ",
-            if (has_mfi5) paste0(
-              "The Subramaniam mFI-5 — derived to predict mortality and postoperative ",
-              "complications, not NHD — is evaluated via temporal logistic recalibration only ",
-              "(no published NHD lookup table exists). "
-            ) else "",
-            if (has_vqifs) paste0(
-              "The Kraiss 2022 sVQI-FS — derived to predict 9-month mortality, not NHD — is ",
-              "likewise evaluated via temporal logistic recalibration only. "
-            ) else ""
+            "None of these scores was derived to predict non-home discharge after major lower-extremity amputation. ",
+            "Iannuzzi 2020 publishes a score-to-risk lookup, but it was derived in patients undergoing ",
+            "revascularization and its outcome (rehabilitation or SNF discharge) is narrower than ours, so all ",
+            "scores are recalibrated in the same way."
           )
         )
         doc <- body_add_par(doc, "", style = "Normal")
@@ -5510,13 +5368,9 @@
           doc <- body_add_flextable(doc, cpt_ft)
           doc <- add_doc_caption(doc,
             paste0(supp_table("cpt_codes"), ". CPT codes for index amputation subgroups."),
-            paste0("CPT-4 codes mapped from each amputation subgroup's standard concept (see ",
-                   supp_table("concept_set_inventory"), "). Cases (n) = number of distinct patients ",
-                   "with that source concept; counts below ", config$min_cell_count_applied %||% 5L, " are suppressed and shown as <",
-                   config$min_cell_count_applied %||% 5L, ", and a count of 0 is shown as 0. A code may appear in more than one group. ",
-                   "Ankle-level codes (ankle disarticulation, Syme-type) are listed for completeness only: ",
-                   "they do not qualify a patient for the cohort (concept-set exclusions), so a patient with ",
-                   "one of these codes is in the cohort through another qualifying amputation procedure.")
+            paste0("Cases (n), distinct patients with that code. Counts below ", config$min_cell_count_applied %||% 5L,
+                   " are shown as <", config$min_cell_count_applied %||% 5L, " and a count of 0 as 0. ",
+                   "Ankle-level codes are shown for completeness; they do not qualify a patient for the cohort.")
           )
           doc <- body_add_par(doc, "", style = "Normal")
           message("[report] Supplemental Table S3 (CPT codes) added.")
@@ -5584,20 +5438,9 @@
           doc <- body_add_par(doc, "Discharge destination source codes", style = "heading 3")
           doc <- body_add_flextable(doc, dest_supp_ft)
           doc <- add_doc_caption(doc,
-            paste0(supp_table("discharge_codes"), ". UB-04 NUBC discharge disposition codes observed in the validation cohort."),
-            paste0("All distinct values of visit_occurrence.discharged_to_source_value ",
-                   "for the index inpatient visit (visit_concept_id 9201) among target cohort patients, ",
-                   "including rows with no source code recorded ('(none / NULL)'). ",
-                   "OMOP Concept ID and Concept Name are drawn from discharged_to_concept_id. ",
-                   "Classification: Home = confirmed home discharge (not-NHD); SNF/IRF/Hospice/LTAC/Other NHD = ",
-                   "confirmed non-home discharge; HO = classified Home (source value treated as authoritative) ",
-                   "even when the ETL has assigned a conflicting non-home concept_id; ",
-                   "AM = Against Medical Advice, classified as home discharge (not-NHD); ",
-                   "Other / Unknown = destination not classifiable from source code or concept ID, also ",
-                   "classified not-NHD (presumed home) — a conservative default, not a removal from the ",
-                   "analytic denominator; see Methods 1.2. ",
-                   "Visits (n) = total index hospitalizations; Persons (n) = distinct patients. ",
-                   "Counts below ", .min_cell, " are suppressed and shown as <", .min_cell, "; a count of 0 is shown as 0.")
+            paste0(supp_table("discharge_codes"), ". UB-04 NUBC discharge disposition codes observed in the study cohort."),
+            paste0("Source value of the discharge destination for the index visit, with its OMOP concept and our ",
+                   "classification. Counts below ", .min_cell, " are shown as <", .min_cell, " and a count of 0 as 0.")
           )
           doc <- body_add_par(doc, "", style = "Normal")
           message("[report] Supplemental Table S4 (discharge destination source codes) added.")
@@ -5617,10 +5460,7 @@
     doc <- body_add_img(doc, src = nhd_month_plot_file, width = 5.5, height = 3.5)
     doc <- add_doc_caption(doc,
       paste0(supp_figure("nhd_rate_by_month"), ". Non-home discharge (NHD) rate by calendar month of amputation."),
-      paste0("Observed non-home discharge rate (%) for each calendar month ",
-             "(January through December), pooled across all study years. Bar height represents the ",
-             "NHD rate; numbers above each bar show the total procedure count for that month. ",
-             "Months with fewer than 5 procedures are suppressed.")
+      "Bar height is the NHD rate; the number above each bar is the procedure count. Months with fewer than 5 procedures are suppressed."
     )
     doc <- body_add_par(doc, "", style = "Normal")
     message("[report] Supplemental Figure S5 (NHD by month) added.")
@@ -5644,10 +5484,7 @@
       doc <- add_doc_caption(doc,
         paste0(fig_label, ". Distribution of ",
                dist_info$label, " integer risk score by outcome group."),
-        paste0("Stacked count histogram of ", dist_info$label, " integer scores. ",
-               "Blue bars = patients without NHD; red bars = patients with NHD. ",
-               "Bars are stacked so the total bar height equals the count of all patients at that score. ",
-               "NHD = non-home discharge.")
+        "Number of patients at each score, stacked by outcome (NHD, non-home discharge)."
       )
       doc <- body_add_par(doc, "", style = "Normal")
       message("[report] ", fig_label, " (", dist_info$label, " score distribution) added.")
@@ -5684,18 +5521,8 @@
                          full_csv, row.names = FALSE)
         doc <- add_doc_caption(doc,
           paste0(supp_table("mfi5_source_codes"), ". ICD-10-CM, ICD-9-CM, CPT and HCPCS codes behind each mFI-5 component."),
-          paste0("Source codes whose OMOP vocabulary mapping (\"Maps to\") lands on the component's standard concept set, ",
-                 "with descendant concepts included and any excluded concepts removed exactly as in the scoring step (",
-                 supp_table("concept_set_inventory"), "). Lists of more than 12 codes are shown by 3-character category, ",
-                 "e.g. E11.* (n) = n ICD-10-CM codes in category E11; the complete list is in the accompanying file ",
-                 basename(full_csv), ". ",
-                 if (!any(src_codes$vocabulary_id == "CPT4", na.rm = TRUE))
-                   paste0("No CPT procedure code is used by any mFI-5 component; the last column holds only HCPCS entries ",
-                          "(where present: retired physical-therapy functional-limitation reporting codes for self-care, ",
-                          "and a quality-reporting code). ") else "",
-                 "Because descendant concepts are included, a category can contain codes broader than the component's ",
-                 "common meaning (for example pregnancy-related hypertension or organism-specific pneumonia). ",
-                 "Codes of an older edition that have since been retired are retained, because historical records still carry them.")
+          paste0("Source codes whose OMOP \"Maps to\" relationship reaches each component's concepts, descendants included. ",
+                 "Lists of more than 12 codes are shown by 3-character category; the full list is in ", basename(full_csv), ".")
         )
         doc <- body_add_par(doc, "", style = "Normal")
         message("[report] ", supp_table("mfi5_source_codes"), " (mFI-5 source codes) added; full list -> ", full_csv)
@@ -5740,12 +5567,9 @@
       doc <- body_add_par(doc, "Repositories and archived software", style = "heading 3")
       doc <- body_add_flextable(doc, repo_ft)
       doc <- add_doc_caption(doc,
-        paste0(supp_table("repositories"), ". Repositories, releases and archived software used in this study."),
-        paste0("Code and the synthetic development data are public; each release is archived on Zenodo, and a DOI resolves at ",
-               "https://doi.org/<DOI>. The synthetic dataset (pad_amp v3) was used only to develop and test the code; no result ",
-               "in this report comes from it, and it is verified by its SHA-256 digest ",
-               "(9c402386f251a24d79da6251b89b121890c900141cd502d4191ccf82a937254f). \"All versions\" DOIs resolve to the latest ",
-               "release of a template, which was used only as a starting scaffold. Vocabulary files are not distributed with any repository.")
+        paste0(supp_table("repositories"), ". Repositories and archived software used in this study."),
+        paste0("Each release is archived on Zenodo; a DOI resolves at https://doi.org/<DOI>. The synthetic data were used ",
+               "only to develop and test the code; no result in this report comes from them.")
       )
       doc <- body_add_par(doc, "", style = "Normal")
       if (n_pending > 0L) {

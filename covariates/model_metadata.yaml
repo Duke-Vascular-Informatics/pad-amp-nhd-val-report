@@ -41,11 +41,11 @@ iannuzzi:
     care (LTAC) — narrower than this study's NHD outcome definition, which
     additionally counts hospice and LTAC as non-home (see Methods 1.2 and the
     Limitations discussion of this population/outcome mismatch).
-  prediction_window: "Index hospitalisation"
+  prediction_window: "Index hospitalization"
   score_design: >
     Integer score (0-18 pts) from 9 pre-operative components: age 60-69 (+2),
     70-79 (+4), >=80 (+6) [reference: age <60, 0 pts]; sex/race interaction
-    modelled as white female (+1), nonwhite male (+2), nonwhite female (+3)
+    modeled as white female (+1), nonwhite male (+2), nonwhite female (+3)
     [reference: white male, 0 pts; implemented in this study as two additive
     binary components, female +1 and non-White +2, which reproduces the
     published point totals exactly because the interaction's integer weights
