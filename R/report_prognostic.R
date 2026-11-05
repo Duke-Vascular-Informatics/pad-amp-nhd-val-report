@@ -353,6 +353,7 @@
   "Dependent functional status (ADL dependence)"                 = "Dependent functional status",
   "Diabetes mellitus (any type)"                                 = "Diabetes mellitus",
   "Congestive heart failure (within 30 days prior)"              = "Congestive heart failure",
+  "Peripheral vascular disease"                                  = "Peripheral artery disease",
   "Chronic obstructive pulmonary disease"                        = "COPD",
   "Renal impairment (creatinine > 1.8 mg/dL or dialysis)"        = "Renal impairment",
   "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = "Anemia",
@@ -2853,7 +2854,7 @@
       # Indication (PAD, DM, and/or LE wound documented before index; not mutually exclusive)
       row1("Indication (not mutually exclusive)", header = TRUE),
       sub_row("Peripheral arterial disease (PAD)", pad_n,   n_target),
-      sub_row("Diabetes mellitus",                  dm_n,    n_target),
+      sub_row("Diabetes mellitus (any type)",       dm_n,    n_target),
       sub_row("Lower-extremity wound / gangrene",   wound_n, n_target),
       # Amputation level (mutually exclusive: AKA > BKA > Other)
       row1("Amputation level", header = TRUE),
@@ -3803,7 +3804,8 @@
     "or a lower-extremity wound documented within 365 days before or after it, and at least ",
     config$min_prior_observation_days %||% 1,
     " day(s) of prior observation. We excluded amputations for trauma or malignancy and patients ",
-    "admitted from another hospital or a skilled nursing facility. Procedure codes are listed in ",
+    "admitted from another hospital or a skilled nursing facility. Diabetes includes all types (type 1, type 2 ",
+    "and diabetic complications), and the wound criterion includes gangrene. Procedure codes are listed in ",
     supp_table("cpt_codes"), "."
   ), style = "Normal")
 
@@ -3860,7 +3862,10 @@
       "have data was not applied, since ascertainment here is presence/absence of coded records ",
       "rather than an explicit missing state."
     ) else "",
-    " Component definitions, point values, and observed activation are in Tables 3a–c; the ",
+    " Each clinical phenotype is a single definition wherever it appears: diabetes (any type) and peripheral ",
+    "artery disease are the same cohorts for cohort entry, the baseline characteristics in Table 1 and the score ",
+    "components, and the Table 1 indication and amputation-level rows are read from those cohorts rather than from ",
+    "separate concept lists. Component definitions, point values, and observed activation are in Tables 3a–c; the ",
     "ATLAS concept-set/cohort inventory underlying every definition is in ",
     supp_table("concept_set_inventory"), "."
   ), style = "Normal")
@@ -3881,16 +3886,17 @@
     "site-specific SQL editing, credentials, or institution-specific identifiers embedded. ",
     "Predictor ascertainment is likewise cohort-based: every score component resolves to a named, ",
     "cohort definition authored from that score's own concept set (", supp_table("concept_set_inventory"), "); ",
-    "one cohort may serve several score items, with the lookback window held in a separate mapping. Three ",
+    "one cohort may serve several score items, with the lookback window held in a separate mapping (the insulin ",
+    "item combines two cohorts, outpatient insulin and diabetes). Three ",
     "elements fall outside what Strategus/Circe can express and are implemented as documented ",
     "extensions: the non-home discharge outcome (Circe has no discharge-disposition criterion), ",
     "application of the three published scoring rules (Strategus's prediction module fits new ",
     "models rather than applying fixed published weights), and arithmetic on measurement values ",
     "(body mass index, laboratory unit normalization). To verify that cohort-based ascertainment ",
     "measures the same thing as a direct CDM query, both routes are retained and an automated ",
-    "regression test requires every predictor's per-patient values to agree exactly between them, ",
-    "and a second automated check confirms each cohort's concept set still matches the concept set ",
-    "recorded for that score component."
+    "regression test requires every predictor's per-patient values, and the Table 1 phenotype counts, to agree ",
+    "exactly between them, and a second automated check confirms each cohort's concept set still matches the ",
+    "concept set recorded for that score component."
   ), style = "Normal")
   doc <- body_add_par(doc, paste0(
     "\tThe analysis code was developed and tested with the assistance of Claude (Anthropic), in an ",
@@ -5091,8 +5097,9 @@
                    "knee amputation stump*. Indication: Peripheral arterial disease*; Arteriosclerosis of artery of ",
                    "extremity*; Peripheral ischemia*; Peripheral vascular disease associated with another disorder* ",
                    "(excluding upper-limb, embolic and renal/intestinal/thoracic vascular disorders); Diabetes ",
-                   "mellitus*; Complication due to diabetes mellitus*; lower-extremity wound (24 ancestors*: ulcer, ",
-                   "open wound, gangrene, cellulitis, necrotizing fasciitis, osteomyelitis, diabetic foot). ",
+                   "mellitus*; Complication due to diabetes mellitus*; lower-extremity wound (29 ancestors*: ulcer, ",
+                   "open wound, gangrene of all kinds including generic, dry and wet gangrene, cellulitis, necrotizing ",
+                   "fasciitis, osteomyelitis, diabetic foot). ",
                    "Index-visit exclusions: Crushing injury of lower limb*; Crushing injury of foot*; Burn of lower ",
                    "limb*; Degloving injury*; Fracture of lower limb*; Malignant tumor of lower limb*."),
             "None (resolved at run time from visit discharge disposition)",
