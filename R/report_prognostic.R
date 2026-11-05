@@ -236,8 +236,8 @@
   "Non-White race"              = list(lookback = "Not applicable", parents = "Race: any recorded race other than White"),
   "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days", parents = .AID_PARENTS),
   "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days, through index date", parents = "Ischemic ulcer*; Ischemic gangrene*"),
-  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
-  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days", parents = "Insulins and analogues* (ATC)"),
+  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
+  "Insulin-dependent diabetes mellitus" = list(lookback = "Any time before index", parents = "Insulins and analogues* (ATC)"),
   # ---- Subramaniam 2018 mFI-5 ----
   "Dependent functional status (ADL dependence)" = list(lookback = "365 days", parents = paste0(
     "Dependent for bathing, dressing, feeding, drinking, personal grooming, personal hygiene, ",
@@ -246,21 +246,21 @@
     "Requires assistance with all daily activities, with personal care; Requires continuous ",
     "supervision for ADLs; Bed-ridden; Confined to chair; Dependence on wheelchair; ",
     "Self-care functional-limitation codes (HCPCS PT reporting, deprecated); Severe frailty")),
-  "Diabetes mellitus (any type)" = list(lookback = "365 days", parents = "Diabetes mellitus*"),
-  "COPD or current pneumonia"   = list(lookback = "COPD 365 days; pneumonia 30 days", parents = paste0(
+  "Diabetes mellitus (any type)" = list(lookback = "Any time before index", parents = "Diabetes mellitus*"),
+  "COPD or current pneumonia"   = list(lookback = "COPD any time before index; pneumonia 30 days", parents = paste0(
     "Chronic obstructive pulmonary disease*; Pneumonia* (excluding Interstitial pneumonia and ",
     "Exacerbation of interstitial pneumonia)")),
   "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days", parents = "Heart failure*"),
-  "Hypertension"                = list(lookback = "365 days", parents = "Hypertensive disorder*"),
+  "Hypertension"                = list(lookback = "Any time before index", parents = "Hypertensive disorder*"),
   # ---- Kraiss 2022 sVQI-FS (Hypertension shares the mFI-5 name above) ----
   "Congestive heart failure"    = list(lookback = "365 days", parents = "Heart failure*"),
   "Coronary artery disease"     = list(lookback = "365 days", parents = "Ischemic heart disease*"),
-  "Peripheral vascular disease" = list(lookback = "365 days", parents = "Peripheral arterial occlusive disease*"),
-  "Chronic obstructive pulmonary disease" = list(lookback = "365 days", parents = "Chronic obstructive pulmonary disease*"),
+  "Peripheral vascular disease" = list(lookback = "Any time before index", parents = "Lower-extremity peripheral artery disease*"),
+  "Chronic obstructive pulmonary disease" = list(lookback = "Any time before index", parents = "Chronic obstructive pulmonary disease*"),
   "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days", parents = paste0(
     "Creatinine [Mass/volume] in Serum or Plasma (> 1.8 mg/dL); Renal dialysis*; Dialysis procedure*")),
-  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "365 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
-  "Underweight (BMI < 18.5)"    = list(lookback = "365 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
+  "Underweight (BMI < 18.5)"    = list(lookback = "90 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
   "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATION_BROAD_PARENTS)
 )
 
@@ -422,6 +422,8 @@
 }
 
 .window_label <- function(s, e) {
+  # -36500 days (100 years) is the analysis code's value for "any time before the index date".
+  if (s <= -36500L) return(if (e == 0L) "Any time, through index date" else "Any time before index")
   if (s == 0L && e == 0L) "At index"
   else paste0(abs(s), " days", if (e == 0L) ", through index date" else "")
 }
@@ -785,7 +787,7 @@
     ),
     "Peripheral vascular disease" = list(
       points = "+1",
-      definition = "Peripheral arterial occlusive disease, from diagnosis codes (Kraiss 2022 uses an ankle-brachial index < 0.7 or prior arterial intervention or amputation)",
+      definition = "Lower-extremity peripheral artery disease, from diagnosis codes, as for cohort entry (Kraiss 2022 uses an ankle-brachial index < 0.7 or prior arterial intervention or amputation)",
       derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
     ),
     "Diabetes mellitus (any type)" = list(
@@ -3827,12 +3829,15 @@
       "and the equally weighted form is evaluated rather than the authors' differentially weighted ",
       "variant — both addressed in the Limitations)"
     ) else "",
-    ". Every component was ascertained from clinical documentation on or before the index date ",
-    "over a 365-day lookback window (index date excluded) unless the score's own publication ",
-    "defines the item differently (mFI-5 congestive heart failure and current pneumonia, 30 days; ",
-    "Iannuzzi tissue loss, index date included); a patient meeting a component's evidence ",
-    "threshold received its full published point value, and an absent record was treated as zero ",
-    "evidence. This null imputation applies without exception, including to the measurement-based ",
+    ". Components were ascertained from clinical documentation before the index date (the index ",
+    "date itself is included only for tissue loss). Lookback windows reflect how stable each condition is: ",
+    "chronic conditions (diabetes, hypertension, COPD, peripheral artery disease and insulin-treated ",
+    "diabetes) were sought at any time before the index date; hemoglobin and body mass index within 90 ",
+    "days, so that they describe the patient at the time of surgery; heart failure and current pneumonia ",
+    "in the mFI-5 within 30 days, as published; and the remaining components (functional status, ",
+    "ambulation, coronary artery disease, sVQI-FS heart failure, renal impairment and tissue loss) within ",
+    "365 days. A patient meeting a component's evidence threshold received its full published point ",
+    "value, and an absent record was treated as zero evidence. This null imputation applies without exception, including to the measurement-based ",
     "components: anemia (hemoglobin below the score's threshold)",
     if (has_vqifs) " and underweight (body mass index < 18.5)" else "",
     ". A patient with no ",
@@ -4049,8 +4054,8 @@
     "Table 1. Demographics and clinical characteristics of the study cohort.",
     paste0(
       "Values are n (%) unless stated; age is median (IQR). Indications are not mutually exclusive and ",
-      "reflect cohort entry (PAD here is broader than the Table 3c component). Amputation level is ",
-      "hierarchical (above-knee, then below-knee, then other). Definitions are in ",
+      "reflect cohort entry, which also counts PAD documented up to 365 days after the index date. ",
+      "Amputation level is hierarchical (above-knee, then below-knee, then other). Definitions are in ",
       supp_table("concept_set_inventory"), "."
     )
   )

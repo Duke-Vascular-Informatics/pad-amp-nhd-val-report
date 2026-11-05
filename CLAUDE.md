@@ -50,6 +50,11 @@ Shared baseline (applies first):
   ten-quantile-bin `compute_ece()` as the overall ECE (it was equal-width bins), and the Methods say so. An export
   made before that change (including `..._20261104-163229.zip`) has equal-width subgroup ECE, so the sentence would
   be wrong for it: render the circulated report only from an export made after the PRCC rerun on the new code.
+  **Third export gate (lookback windows + PAD set, 2026-11-05):** from this date `pad-amp-nhd-val` uses any-time-before-index
+  lookback for diabetes, hypertension, COPD, PAD and insulin-treated diabetes, 90 days for anemia and underweight, and one
+  PAD concept set for both Table 1 and the sVQI-FS item, and the Methods say so. An export made before the PRCC rerun on
+  that code (including `..._20261104-213138.zip`) used 365 days and the old PVD set, so Table 3 and the Methods would
+  disagree for it: circulate the report only from an export made after the rerun.
 - **Repositories table (Supplemental Table S11, last supplemental item):** rendered from
   `covariates/study_repositories.csv` (role, repository, version, doi, license, note); Methods 1.3 cites it and gives
   the three repository URLs. A blank `doi` renders "To be assigned at release" and the render prints a WARNING. After
