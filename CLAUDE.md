@@ -53,8 +53,8 @@ Shared baseline (applies first):
 - **Repositories table (Supplemental Table S11, last supplemental item):** rendered from
   `covariates/study_repositories.csv` (role, repository, version, doi, license, note); Methods 1.3 cites it and gives
   the three repository URLs. A blank `doi` renders "To be assigned at release" and the render prints a WARNING. After
-  tagging `pad-amp-nhd-val` and this repo, put their Zenodo version DOIs in the CSV (the generator's v3 DOI, Charon
-  v1.2.1, the toolkit v0.1.0 and the three template concept DOIs were checked against Zenodo on 2026-11-04) and re-render
+  tagging `pad-amp-nhd-val` and this repo, put their Zenodo version DOIs in the CSV (the generator's v3 DOI and Charon
+  v1.2.1 were checked against Zenodo on 2026-11-04; templates and the toolkit are intentionally not listed, they are covered by Charon) and re-render
   before circulating. New supplemental items go AFTER this one only if S11 may move; otherwise insert before it.
 - **Decision-curve figure:** the mFI-5 curve is drawn as a fine dotted line (linetype `"11"`),
   overriding the toolkit palette for that one series, because its jagged step-function curve made
