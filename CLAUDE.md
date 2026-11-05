@@ -59,6 +59,10 @@ Shared baseline (applies first):
   hand-written concept lists (PAD used ancestor 317309 alone: 154 patients, 26.7%, against 387, 67.1%, for the sVQI-FS item).
   They now come from cohorts 9100003, 9100021, 9100029, 9100030 and 9100031 (Supplemental Table S2 lists their ATLAS IDs), so an
   export made before that change shows a Table 1 that disagrees with Table 3c and S2; circulate only from an export made after it.
+- **Stale-export guard (2026-11-05):** `GenerateReport.R` lists the archive's file times and refuses it when `report_inputs/`, `iannuzzi/`,
+  `mfi5/` or `vqifs/` are all older than `CohortGeneratorModule/`. A PRCC run that stops after the Strategus modules (for example at the
+  cohort-freshness check) still produces a zip, with fresh module output beside scoring and report files left over from an earlier run;
+  without this guard it would render without error. `REPORT_ALLOW_STALE_EXPORT=1` overrides it for inspection only.
 - **Repositories table (Supplemental Table S11, last supplemental item):** rendered from
   `covariates/study_repositories.csv` (role, repository, version, doi, license, note); Methods 1.3 cites it and gives
   the three repository URLs. A blank `doi` renders "To be assigned at release" and the render prints a WARNING. After
