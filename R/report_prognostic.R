@@ -227,21 +227,21 @@
   d <- d[!duplicated(d$concept_id), , drop = FALSE]
   lab <- function(id, nm) {
     key <- as.character(id)
-    if (key %in% names(.HTN_ATC_LABELS)) return(paste0(.HTN_ATC_LABELS[[key]], " (", id, ")"))
-    paste0(nm, " (", id, ")")
+    if (key %in% names(.HTN_ATC_LABELS)) return(.HTN_ATC_LABELS[[key]])
+    nm   # concept ids are in Supplemental Table S2, so only names are shown here
   }
   rows <- lapply(.HTN_DRUG_GROUPS, function(g) {
     m <- d[d$concept_id %in% g$ids, , drop = FALSE]
     if (nrow(m) == 0L) return(NULL)
     m <- m[order(match(m$concept_id, g$ids)), , drop = FALSE]
     data.frame(`Medication group` = g$group,
-               `Drugs (OMOP concept ID)` = paste(mapply(lab, m$concept_id, m$concept_name), collapse = "; "),
+               Drugs = paste(mapply(lab, m$concept_id, m$concept_name), collapse = "; "),
                `Source of the drug list` = g$source, check.names = FALSE, stringsAsFactors = FALSE)
   })
   left <- d[!d$concept_id %in% unlist(lapply(.HTN_DRUG_GROUPS, `[[`, "ids")), , drop = FALSE]
   if (nrow(left) > 0L)
     rows <- c(rows, list(data.frame(`Medication group` = "Not grouped",
-                                    `Drugs (OMOP concept ID)` = paste(mapply(lab, left$concept_id, left$concept_name), collapse = "; "),
+                                    Drugs = paste(mapply(lab, left$concept_id, left$concept_name), collapse = "; "),
                                     `Source of the drug list` = "Not recorded", check.names = FALSE, stringsAsFactors = FALSE)))
   do.call(rbind, rows)
 }
@@ -5662,7 +5662,7 @@
             flextable::color(part = "header", color = "white") |>
             flextable::padding(padding = 3, part = "all") |>
             flextable::width(j = "Medication group", width = 1.5) |>
-            flextable::width(j = "Drugs (OMOP concept ID)", width = 3.9) |>
+            flextable::width(j = "Drugs", width = 3.9) |>
             flextable::width(j = "Source of the drug list", width = 1.1) |>
             flextable::set_table_properties(layout = "fixed")
           doc <- body_add_flextable(doc, htn_ft)
