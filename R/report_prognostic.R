@@ -287,7 +287,7 @@
   "Diabetes mellitus (any type)"  = "1798598",
   "COPD or current pneumonia"     = "1798591 (COPD); 1798602 (pneumonia)",
   "Congestive heart failure (within 30 days prior)" = "1798600",
-  "Hypertension"                  = "1798599",
+  "Hypertension"                  = "1798599 (diagnosis); medication cohort pending ATLAS",  # 2026-11-06: replace with the ATLAS id once pad-amp-nhd-val cohort 9100032 is pushed
   # ---- Kraiss 2022 sVQI-FS ----
   "Congestive heart failure"      = "1798600",
   "Coronary artery disease"       = "1798601",
@@ -738,8 +738,10 @@
     ),
     "Hypertension" = list(
       points = "+1",
-      definition = "Hypertensive disorder of any type (Subramaniam 2018 also requires antihypertensive medication; that requirement is not applied here)",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      # REVISED 2026-11-06: the medication requirement is now applied (pad-amp-nhd-val cohort 9100032 AND 9100022).
+      # An export made before the PRCC rerun on that code scored diagnosis only, so this text would be wrong for it.
+      definition = "Hypertension requiring medication: a hypertensive disorder diagnosis and an outpatient antihypertensive prescription (thiazide or other diuretic, beta blocker, calcium channel blocker, ACE inhibitor or angiotensin receptor blocker, or other antihypertensive)",
+      derivation = "drug_exposure within 365 days before index (outpatient) AND condition_occurrence at any time before index"
     )
   )
 
