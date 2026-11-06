@@ -79,9 +79,10 @@ mfi5:
   score_design: >
     Modified Frailty Index (5-item, range 0-5): 1 point each for diabetes
     mellitus (any type), COPD, congestive heart failure (30-day lookback per
-    the original publication), hypertension requiring medication (a
-    hypertension diagnosis and an outpatient antihypertensive prescription in
-    the prior 365 days, as in the published definition), and dependent
+    the original publication), hypertension requiring medication (an
+    outpatient antihypertensive prescription in the prior 365 days in a patient
+    with a hypertension diagnosis at any time before index, as in the published
+    definition), and dependent
     functional status.
   score_range: "0-5"
   c_statistic_derivation: "Not reported for NHD (mFI-5 was not derived to predict NHD)"

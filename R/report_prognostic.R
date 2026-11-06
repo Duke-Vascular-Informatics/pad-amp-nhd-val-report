@@ -740,7 +740,7 @@
       points = "+1",
       # REVISED 2026-11-06: the medication requirement is now applied (pad-amp-nhd-val cohort 9100032 AND 9100022).
       # An export made before the PRCC rerun on that code scored diagnosis only, so this text would be wrong for it.
-      definition = "Hypertension requiring medication: a hypertensive disorder diagnosis and an outpatient antihypertensive prescription (thiazide or thiazide-like diuretic, dihydropyridine calcium channel blocker, beta blocker, ACE inhibitor or angiotensin receptor blocker)",
+      definition = "Outpatient antihypertensive prescription in the prior year (thiazide or thiazide-like diuretic, dihydropyridine calcium channel blocker, beta blocker, ACE inhibitor or angiotensin receptor blocker), in a patient with a hypertensive disorder diagnosis at any time before the index date (hypertension requiring medication, Subramaniam 2018)",
       derivation = "drug_exposure within 365 days before index (outpatient) AND condition_occurrence at any time before index"
     )
   )
