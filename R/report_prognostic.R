@@ -217,8 +217,8 @@
        ids = c(21601783, 21601801, 21601822, 21601832))
 )
 # ATC class names as the export spells them are upper case; these are the readable forms.
-.HTN_ATC_LABELS <- c(`21601783` = "ACE inhibitors, plain (ATC C09A)", `21601801` = "ACE inhibitors, combinations (ATC C09B)",
-                     `21601822` = "ARBs, plain (ATC C09C)",           `21601832` = "ARBs, combinations (ATC C09D)")
+.HTN_ATC_LABELS <- c(`21601783` = "ACE inhibitors, plain, ATC C09A", `21601801` = "ACE inhibitors, combinations, ATC C09B",
+                     `21601822` = "ARBs, plain, ATC C09C",           `21601832` = "ARBs, combinations, ATC C09D")
 
 .build_htn_drug_group_rows <- function(defs) {
   d <- defs[defs$score_id == "mfi5" & defs$covariate_id == "htn" &
