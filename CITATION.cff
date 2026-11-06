@@ -28,7 +28,7 @@ authors:
     affiliation: "Duke University School of Medicine"
 
 version: "1.0.0"
-date-released: "2026-11-04"
+date-released: "2026-11-06"
 
 repository-code: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report"
 url: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report"
@@ -59,6 +59,15 @@ keywords:
   - R
 
 references:
+  - type: software
+    title: "External Validation of Three Published Integer Risk Scores for Non-Home Discharge After Major Lower Extremity Amputation (analysis code, pad-amp-nhd-val)"
+    authors:
+      - family-names: "Johnson"
+        given-names: "Adam P."
+    doi: "10.5281/zenodo.24013403"
+    repository-code: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val"
+    version: "v1.0.0"
+    year: 2026
   - type: software
     title: "Charon: Containerized HADES Analytics for Research in OHDSI Networks (the development container this repo was built in, institution-specific configuration; v1.2.1)"
     authors:
