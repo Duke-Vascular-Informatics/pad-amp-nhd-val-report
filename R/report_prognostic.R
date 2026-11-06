@@ -196,6 +196,57 @@
 }
 
 # -----------------------------------------------------------------------------
+# Antihypertensive medication groups (mFI-5 hypertension item), shown with the source-code table.
+#
+# The medication half of the mFI-5 hypertension item is a set of drug concepts (RxNorm ingredients and
+# ATC classes), not source codes, so it cannot sit in the ICD / CPT / HCPCS columns above. Instead each
+# concept of the item's drug rows in report_inputs/score_component_definitions.csv is listed under its
+# pharmacological group. The concept names come from the export (they cannot drift from what the scoring
+# step used); only the grouping (concept id -> group) is static, and mirrors the group comments in
+# pad-amp-nhd-val/covariates/covariate_concepts_mfi5.csv -- KEEP IN SYNC. A drug concept not in the map
+# is listed under "Not grouped" so a change to the concept set cannot pass unnoticed.
+# -----------------------------------------------------------------------------
+.HTN_DRUG_GROUPS <- list(
+  list(group = "Thiazide and thiazide-like diuretics", source = "OHDSI PL 1046",
+       ids = c(1395058, 974166, 978555, 907013)),
+  list(group = "Dihydropyridine calcium channel blockers", source = "OHDSI PL 1047",
+       ids = c(1332418, 1353776, 1326012, 1318137, 1318853, 1319880)),
+  list(group = "Beta blockers", source = "OHDSI PL 1049",
+       ids = c(1319998, 1314002, 1322081, 1338005, 1346823, 1386957, 1307046, 1313200, 1314577, 1327978, 1345858, 1353766)),
+  list(group = "ACE inhibitors and angiotensin II receptor blockers (ARBs)", source = "ATC third level; not in the library",
+       ids = c(21601783, 21601801, 21601822, 21601832))
+)
+# ATC class names as the export spells them are upper case; these are the readable forms.
+.HTN_ATC_LABELS <- c(`21601783` = "ACE inhibitors, plain (ATC C09A)", `21601801` = "ACE inhibitors, combinations (ATC C09B)",
+                     `21601822` = "ARBs, plain (ATC C09C)",           `21601832` = "ARBs, combinations (ATC C09D)")
+
+.build_htn_drug_group_rows <- function(defs) {
+  d <- defs[defs$score_id == "mfi5" & defs$covariate_id == "htn" &
+              (is.na(defs$concept_role) | defs$concept_role %in% c("", "NA")), , drop = FALSE]
+  if (nrow(d) == 0L) return(NULL)
+  d <- d[!duplicated(d$concept_id), , drop = FALSE]
+  lab <- function(id, nm) {
+    key <- as.character(id)
+    if (key %in% names(.HTN_ATC_LABELS)) return(paste0(.HTN_ATC_LABELS[[key]], " (", id, ")"))
+    paste0(nm, " (", id, ")")
+  }
+  rows <- lapply(.HTN_DRUG_GROUPS, function(g) {
+    m <- d[d$concept_id %in% g$ids, , drop = FALSE]
+    if (nrow(m) == 0L) return(NULL)
+    m <- m[order(match(m$concept_id, g$ids)), , drop = FALSE]
+    data.frame(`Medication group` = g$group,
+               `Drugs (OMOP concept ID)` = paste(mapply(lab, m$concept_id, m$concept_name), collapse = "; "),
+               `Source of the drug list` = g$source, check.names = FALSE, stringsAsFactors = FALSE)
+  })
+  left <- d[!d$concept_id %in% unlist(lapply(.HTN_DRUG_GROUPS, `[[`, "ids")), , drop = FALSE]
+  if (nrow(left) > 0L)
+    rows <- c(rows, list(data.frame(`Medication group` = "Not grouped",
+                                    `Drugs (OMOP concept ID)` = paste(mapply(lab, left$concept_id, left$concept_name), collapse = "; "),
+                                    `Source of the drug list` = "Not recorded", check.names = FALSE, stringsAsFactors = FALSE)))
+  do.call(rbind, rows)
+}
+
+# -----------------------------------------------------------------------------
 # .TBL3_LOOKBACK_PARENTS / .component_flextable()
 #
 # Static design text for Tables 3a-c: each component's LOOKBACK WINDOW and its
@@ -5598,15 +5649,35 @@
           flextable::set_table_properties(layout = "fixed")
         doc <- body_add_par(doc, "mFI-5 source codes", style = "heading 3")
         doc <- body_add_flextable(doc, sc_ft)
+        # Medication groups of the hypertension item (drug concepts, so not source codes; see .HTN_DRUG_GROUPS).
+        htn_rows <- if (exists("score_defs_all", inherits = TRUE) && !is.null(score_defs_all)) .build_htn_drug_group_rows(score_defs_all) else NULL
+        if (!is.null(htn_rows)) {
+          doc <- body_add_par(doc, "", style = "Normal")
+          doc <- body_add_par(doc, "mFI-5 hypertension item: antihypertensive medication groups", style = "heading 3")
+          htn_ft <- flextable::flextable(htn_rows) |>
+            flextable::bold(part = "header") |>
+            flextable::fontsize(size = 8, part = "all") |>
+            flextable::font(fontname = "Calibri", part = "all") |>
+            flextable::bg(part = "header", bg = "#1F3864") |>
+            flextable::color(part = "header", color = "white") |>
+            flextable::padding(padding = 3, part = "all") |>
+            flextable::width(j = "Medication group", width = 1.5) |>
+            flextable::width(j = "Drugs (OMOP concept ID)", width = 3.9) |>
+            flextable::width(j = "Source of the drug list", width = 1.1) |>
+            flextable::set_table_properties(layout = "fixed")
+          doc <- body_add_flextable(doc, htn_ft)
+        }
         full_csv <- file.path(dirname(report_file), "mfi5_source_codes_full_list.csv")
         utils::write.csv(src_codes[src_codes$score_id == "mfi5",
                                    c("covariate_name", "vocabulary_id", "concept_code", "source_name",
                                      "standard_concept_id", "standard_concept_name")],
                          full_csv, row.names = FALSE)
         doc <- add_doc_caption(doc,
-          paste0(supp_table("mfi5_source_codes"), ". ICD-10-CM, ICD-9-CM, CPT and HCPCS codes behind each mFI-5 component."),
+          paste0(supp_table("mfi5_source_codes"), ". ICD-10-CM, ICD-9-CM, CPT and HCPCS codes behind each mFI-5 component, and the antihypertensive medication groups of the hypertension item."),
           paste0("Source codes whose OMOP \"Maps to\" relationship reaches each component's concepts, descendants included. ",
-                 "Lists of more than 12 codes are shown by 3-character category; the full list is in ", basename(full_csv), ".")
+                 "Lists of more than 12 codes are shown by 3-character category; the full list is in ", basename(full_csv), ". ",
+                 "The medication table lists drug concepts (RxNorm ingredients and ATC classes), each with all descendant drug products and combinations; ",
+                 "the item requires an outpatient exposure in the prior 365 days and a hypertension diagnosis at any time before index.")
         )
         doc <- body_add_par(doc, "", style = "Normal")
         message("[report] ", supp_table("mfi5_source_codes"), " (mFI-5 source codes) added; full list -> ", full_csv)
