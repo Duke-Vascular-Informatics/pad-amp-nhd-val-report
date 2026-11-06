@@ -287,7 +287,7 @@
   "Diabetes mellitus (any type)"  = "1798598",
   "COPD or current pneumonia"     = "1798591 (COPD); 1798602 (pneumonia)",
   "Congestive heart failure (within 30 days prior)" = "1798600",
-  "Hypertension"                  = "1798599 (diagnosis); medication cohort pending ATLAS",  # 2026-11-06: replace with the ATLAS id once pad-amp-nhd-val cohort 9100032 is pushed
+  "Hypertension"                  = "1798599 (diagnosis); 1798678 (outpatient antihypertensive, mFI-5 only)",   # cohort 9100032 = ATLAS 1798678 (2026-11-06)
   # ---- Kraiss 2022 sVQI-FS ----
   "Congestive heart failure"      = "1798600",
   "Coronary artery disease"       = "1798601",
@@ -740,7 +740,7 @@
       points = "+1",
       # REVISED 2026-11-06: the medication requirement is now applied (pad-amp-nhd-val cohort 9100032 AND 9100022).
       # An export made before the PRCC rerun on that code scored diagnosis only, so this text would be wrong for it.
-      definition = "Hypertension requiring medication: a hypertensive disorder diagnosis and an outpatient antihypertensive prescription (thiazide or other diuretic, beta blocker, calcium channel blocker, ACE inhibitor or angiotensin receptor blocker, or other antihypertensive)",
+      definition = "Hypertension requiring medication: a hypertensive disorder diagnosis and an outpatient antihypertensive prescription (thiazide or thiazide-like diuretic, dihydropyridine calcium channel blocker, beta blocker, ACE inhibitor or angiotensin receptor blocker)",
       derivation = "drug_exposure within 365 days before index (outpatient) AND condition_occurrence at any time before index"
     )
   )
@@ -4967,7 +4967,7 @@
             "1798601", "1798600", "1798599", "1798598",
             "1798591", "1798592", "1798593", "1798603",
             "1798604", "1798605", "1798602",
-            "1798594", "1798595", "1798596", "1798597",
+            "1798594", "1798678", "1798595", "1798596", "1798597",
             "1797941",
             "N/A", "N/A", "N/A", "N/A"
           ),
@@ -4976,11 +4976,13 @@
           # phenotype_library/catalog.yaml and the evidence in its notes. KEEP IN SYNC with that file.
           "OHDSI PL ID" = c(
             "999 (deviates: major amputation only)", "None",
-            "197 (aligned, minus all-vessel root)", "934 (deviates: includes rheumatic HF)", "770 (deviates: any hypertensive disorder)",
+            "197 (aligned, minus all-vessel root)", "934 (deviates: includes rheumatic HF)", "770 (deviates: any hypertensive disorder; diagnosis set equals that of 1046, 1047, 1049)",
             "40 (deviates: any-type diabetes)",
             "1271 (aligned)", "371 (deviates: claudication-pain phenotype; PAD diagnosis kept)", "None", "None",
             "None", "None", "1261 (deviates: any pneumonia)",
-            "None", "None (library entry 901 is diagnosis-based)", "None (library entry 901 is diagnosis-based)",
+            "None",
+            "1046, 1047, 1049 (aligned: their thiazide, dihydropyridine CCB and beta blocker drug sets adopted, not their new-user design; ACE inhibitors and ARBs added, absent from the library)",
+            "None (library entry 901 is diagnosis-based)", "None (library entry 901 is diagnosis-based)",
             "946 (deviates: creatinine > 1.8 vs > 3 mg/dL; library dialysis entries not adopted)",
             "Not assessed (superseded)",
             "N/A", "N/A", "N/A", "N/A"
@@ -5000,6 +5002,7 @@
             "[DVI] Impaired Ambulation (sVQI-FS nonambulatory, broad)",
             "[DVI] Pneumonia (mFI-5 current pneumonia)",
             "[DVI] Insulin Exposure Outside Inpatient Stay",
+            "[DVI] Antihypertensive Exposure Outside Inpatient Stay",
             "[DVI] Anemia (Hemoglobin Below 10 g per dL)",
             "[DVI] Anemia (Sex-Specific Hemoglobin Threshold)",
             "[DVI] Renal Impairment (Creatinine Above 1.8 mg per dL or Dialysis)",
@@ -5024,6 +5027,7 @@
             "Aid-use set + Observation: 4306934, 36714126, 437643, 439405, 4086548 + 5 others; Condition: 4306934, 36714126, 437643",
             "255848 (excluding 4273378, 1340380)",
             "21600713 (outside inpatient stays); requires 201820 or 442793 at any time before index",
+            "26 drug concepts (22 ingredients from OHDSI PL 1046, 1047, 1049; ATC 21601783, 21601801, 21601822, 21601832), outside inpatient stays; requires 316866 at any time before index",
             "3000963",
             "3000963",
             "3016723, 4146536, 4032243",
@@ -5048,6 +5052,7 @@
             "Any documented limitation of ambulation, regardless of etiology (aid use plus impaired mobility, difficulty walking, abnormal gait, unable to walk, bed-ridden and PT-reported mobility limitation)",
             "Pneumonia diagnosis and descendants, excluding two non-infectious interstitial-pneumonia concepts (30-day window; OR'd with COPD for the mFI-5 item)",
             "Insulin exposure",
+            "Antihypertensive drug exposure",
             "Hemoglobin measurement below a fixed threshold (< 10 g/dL; equivalently < 100 g/L)",
             "Hemoglobin measurement below a sex-specific threshold (< 13 g/dL male, < 12 g/dL female; equivalently < 130 / < 120 g/L)",
             "Creatinine > 1.8 mg/dL, or dialysis (procedure or diagnosis)",
@@ -5066,7 +5071,7 @@
             "Observation, DeviceExposure",
             "Observation, DeviceExposure, ConditionOccurrence",
             "ConditionOccurrence",
-            "DrugExposure", "Measurement", "Measurement",
+            "DrugExposure", "DrugExposure", "Measurement", "Measurement",
             "Measurement, ProcedureOccurrence, ConditionOccurrence",
             "ProcedureOccurrence, VisitOccurrence",
             "Person", "Person", "Person", "Measurement"
@@ -5083,7 +5088,7 @@
             "Outcome (non-home discharge; all three score models).",
             "Covariate: sVQI-FS (coronary artery disease, 365 d).",
             "Covariate: mFI-5 (congestive heart failure, 30 d); sVQI-FS (congestive heart failure, 365 d).",
-            "Covariate: mFI-5 (hypertension, 365 d); sVQI-FS (hypertension, 365 d).",
+            "Covariate: sVQI-FS (hypertension, any time before index); mFI-5 (the diagnosis half of hypertension requiring medication, any time before index).",
             "Covariate: mFI-5 (diabetes mellitus, 365 d); sVQI-FS (diabetes mellitus, 365 d).",
             "Covariate: mFI-5 (COPD arm of the COPD-or-pneumonia item, 365 d); sVQI-FS (COPD, 365 d).",
             "Covariate: sVQI-FS (peripheral vascular disease, 365 d).",
@@ -5093,6 +5098,7 @@
             "Covariate: sVQI-FS (non-ambulatory / impaired ambulation, 365 d).",
             "Covariate: mFI-5 (pneumonia arm of the COPD-or-pneumonia item, 30 d).",
             "Covariate: Iannuzzi (insulin-dependent diabetes mellitus, 365 d).",
+            "Covariate: mFI-5 (hypertension requiring medication: the outpatient antihypertensive half, 365 d).",
             "Covariate: Iannuzzi (anemia, hemoglobin < 10 g/dL, 365 d).",
             "Covariate: sVQI-FS (anemia, sex-specific hemoglobin threshold, 365 d).",
             "Covariate: sVQI-FS (renal impairment, 365 d).",
@@ -5130,6 +5136,15 @@
             ip("vqifs",    "Non-ambulatory / impaired ambulation status"),
             ip("mfi5",     "COPD or current pneumonia", window_start = -30),
             ip("iannuzzi", "Insulin-dependent diabetes mellitus"),
+            paste0("Thiazide and thiazide-like diuretics (OHDSI PL 1046): chlorthalidone* (1395058), hydrochlorothiazide* (974166), ",
+                   "indapamide* (978555), metolazone* (907013); dihydropyridine calcium channel blockers (PL 1047): amlodipine* ",
+                   "(1332418), felodipine* (1353776), isradipine* (1326012), nicardipine* (1318137), nifedipine* (1318853), ",
+                   "nisoldipine* (1319880); beta blockers (PL 1049): acebutolol* (1319998), atenolol* (1314002), betaxolol* (1322081), ",
+                   "bisoprolol* (1338005), carvedilol* (1346823), labetalol* (1386957), metoprolol* (1307046), nadolol* (1313200), ",
+                   "nebivolol* (1314577), penbutolol* (1327978), pindolol* (1345858), propranolol* (1353766); ACE inhibitors, plain* ",
+                   "(21601783) and combinations* (21601801), and angiotensin II receptor blockers, plain* (21601822) and combinations* ",
+                   "(21601832) (ATC third level; not in the library). Outside inpatient stays, within 365 days before index; the ",
+                   "mFI-5 item also requires Hypertensive disorder* (316866) at any time before index (hypertension row above)."),
             ip("iannuzzi", "Anemia (Hgb less than 10 g/dL)"),
             ip("vqifs",    "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)"),
             ip("vqifs",    "Renal impairment (creatinine > 1.8 mg/dL or dialysis)"),
