@@ -27,19 +27,43 @@ narrative — is specific to this study and stays here, not in the toolkit.
 
 ## Usage
 
-```r
-# from a clone of this repo, sibling to a clone of pad-amp-nhd-val:
-RESULTS_DIR=../pad-amp-nhd-val/output Rscript GenerateReport.R
+This repo needs no database, no VPN and no credentials. It needs R and a copy of the results.
 
-# or against a results export copied from anywhere (PRCC, a colleague's run):
-RESULTS_DIR=/path/to/results REPORT_OUTPUT_DIR=/path/to/write/report Rscript GenerateReport.R
-```
+### Steps
+
+1. **Restore the R packages** from the lockfile:
+
+   ```bash
+   Rscript -e 'renv::restore(prompt = FALSE)'
+   ```
+
+2. **Choose where the results come from.** Use one of these:
+   - **Your own run:** clone `pad-amp-nhd-val` next to this repo and point at its `output/` folder:
+
+     ```bash
+     RESULTS_DIR=../pad-amp-nhd-val/output Rscript GenerateReport.R
+     ```
+
+   - **An approved Duke export:** drop the `.zip` into `prcc_data/` and run `Rscript GenerateReport.R`. The script takes the timestamped archive, checks it, and extracts it. See `prcc_data/README.md`.
+   - **A results folder copied from anywhere:**
+
+     ```bash
+     RESULTS_DIR=/path/to/results REPORT_OUTPUT_DIR=/path/to/write/report Rscript GenerateReport.R
+     ```
+
+3. **Read the banner.** The script prints `DATA SOURCE:` before it renders. If it says `SYNTHETIC`, the report is development output and must not be circulated as Duke results.
+
+Expected: a Word report is written to `REPORT_OUTPUT_DIR`, or to `reports/` when the source is an extracted export. The default output is the results folder itself when it is not an export.
 
 `RESULTS_DIR` must contain `iannuzzi/`, `mfi5/`, `vqifs/` (each with
 `person_level_scores.csv`, `calibration_table_*.csv`, `subgroup_bias.csv`,
 `metrics.csv`) and `report_inputs/` (CSVs + `_report_config.yaml`, written by
 `pad-amp-nhd-val`'s `R/extract_report_inputs.R`). This is exactly the shape
 of `pad-amp-nhd-val`'s own `output/` folder.
+
+If the script stops with `STALE EXPORT`, the archive came from a run that did not finish. Rerun on the analysis side and export again. `REPORT_ALLOW_STALE_EXPORT=1` exists only to inspect such an archive; do not circulate a report made with it.
+
+Tests: this repo has no test suite yet. The check is the render itself, plus comparing the output against the previous report.
 
 ## Config — deliberately not duplicated here
 
@@ -53,18 +77,12 @@ meant to avoid.
 
 ## Provenance
 
-`R/report_prognostic.R`, `R/report_extended.R`, `R/report_helpers.R`, and
-`covariates/model_metadata.yaml` were moved here from `pad-amp-nhd-val`
-2026-08-11, verbatim except for one dead-code removal (an unconditional
-`source("R/cohort_demographics.R")` that neither this repo's code nor
-`pad-amp-nhd-val`'s own report code ever called — that file's real,
-DB-touching functions belong to and are already sourced independently by
-`pad-amp-nhd-val`'s scoring step).
-
-Verified by running the full report end-to-end from this repo against
-`pad-amp-nhd-val`'s existing `output/` directory and diffing the result
-against the last report generated before the split: 31,901 paragraphs,
-identical except the generation date.
+The report code (`R/report_prognostic.R`, `R/report_extended.R`, `R/report_helpers.R`) and
+`covariates/model_metadata.yaml` moved here from `pad-amp-nhd-val` on 2026-08-11, so that the
+analysis repo never imports plotting or Word packages. The move was verified by rendering the
+full report from this repo and diffing it against the last report made before the split: 31,901
+paragraphs, identical except the generation date. One dead line was removed, an unconditional
+`source()` of a file this report never used; the details are in `CHANGELOG.md`.
 
 ## Citing
 

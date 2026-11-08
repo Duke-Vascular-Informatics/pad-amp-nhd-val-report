@@ -42,23 +42,19 @@ Shared baseline (applies first):
   "Data source" paragraph summarises it. The comparison is concept sets only (descendants expanded, dev
   vocabulary); the library entries were "Pending"/"Pending peer review" on 2026-10-30, so the report says
   "pending peer review" and must not call them peer reviewed.
-  **Export vintage:** the aligned COPD (PL 1271) and CAD (PL 197) definitions took effect in the
-  Duke export `..._20261104-163229.zip` onward (checked 2026-11-04: its cohort concept sets for
-  9100002 and 9100024 equal `pad-amp-nhd-val/inst/cohorts/*.json`). Any earlier export used the old
-  definitions (COPD without 258780; CAD = 4185932 only), so do not circulate a report rendered from one.
-  **Second export gate (ECE):** from 2026-11-04 the subgroup ECE in `pad-amp-nhd-val` / `-prog` uses the same
-  ten-quantile-bin `compute_ece()` as the overall ECE (it was equal-width bins), and the Methods say so. An export
-  made before that change (including `..._20261104-163229.zip`) has equal-width subgroup ECE, so the sentence would
-  be wrong for it: render the circulated report only from an export made after the PRCC rerun on the new code.
-  **Third export gate (lookback windows + PAD set, 2026-11-05):** from this date `pad-amp-nhd-val` uses any-time-before-index
-  lookback for diabetes, hypertension, COPD, CAD, PAD and insulin-treated diabetes, 90 days for anemia and underweight, and one
-  PAD concept set for both Table 1 and the sVQI-FS item, and the Methods say so. An export made before the PRCC rerun on
-  that code (including `..._20261104-213138.zip`) used 365 days and the old PVD set, so Table 3 and the Methods would
-  disagree for it: circulate the report only from an export made after the rerun.
-  **Fourth gate (Table 1 from ATLAS cohorts):** until 2026-11-05 the Table 1 indication and amputation-level rows came from
-  hand-written concept lists (PAD used ancestor 317309 alone: 154 patients, 26.7%, against 387, 67.1%, for the sVQI-FS item).
-  They now come from cohorts 9100003, 9100021, 9100029, 9100030 and 9100031 (Supplemental Table S2 lists their ATLAS IDs), so an
-  export made before that change shows a Table 1 that disagrees with Table 3c and S2; circulate only from an export made after it.
+  **Export vintage gates.** The report's Methods text describes the analysis code as it stood
+  on a given date. An export made earlier can contradict that text, so each gate below says which
+  export a circulated report may be rendered from. Each export zip is named by its timestamp
+  (`..._YYYYMMDD-HHMMSS.zip`).
+
+  | Gate | What changed in the analysis | Why an older export is wrong | Render only from an export made after |
+  |---|---|---|---|
+  | Cohort vintage | COPD (PL 1271) and CAD (PL 197) concept sets aligned to the OHDSI Phenotype Library | Old sets lacked COPD concept 258780; CAD used 4185932 only | `..._20261104-163229.zip` (checked 2026-11-04 against `pad-amp-nhd-val/inst/cohorts/*.json`) |
+  | ECE | Subgroup ECE uses the same ten-quantile-bin `compute_ece()` as the overall ECE | Earlier exports used equal-width bins, so the Methods sentence would be wrong | the PRCC rerun on that code (later than `..._20261104-163229.zip`) |
+  | Lookback and PAD set (2026-11-05) | Any-time-before-index lookback for chronic items; 90 days for anemia and underweight; one PAD concept set for Table 1 and the sVQI-FS item | Earlier exports used 365 days and the old PVD set, so Table 3 and the Methods disagree | the PRCC rerun on that code (later than `..._20261104-213138.zip`) |
+  | Table 1 from ATLAS cohorts (2026-11-05) | Indication and amputation-level rows come from cohorts 9100003, 9100021, 9100029 to 9100031, not hand-written concept lists | Earlier exports disagree with Table 3c and Supplemental Table S2 (PAD: 154 patients, 26.7%, against 387, 67.1%, under the sVQI-FS item) | any export made after 2026-11-05 |
+
+  Dated history of these changes is in `CHANGELOG.md`.
 - **Stale-export guard (2026-11-05):** `GenerateReport.R` lists the archive's file times and refuses it when `report_inputs/`, `iannuzzi/`,
   `mfi5/` or `vqifs/` are all older than `CohortGeneratorModule/`. A PRCC run that stops after the Strategus modules (for example at the
   cohort-freshness check) still produces a zip, with fresh module output beside scoring and report files left over from an earlier run;
