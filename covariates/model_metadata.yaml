@@ -43,7 +43,7 @@ iannuzzi:
     Limitations discussion of this population/outcome mismatch).
   prediction_window: "Index hospitalization"
   score_design: >
-    Integer score (0-18 pts) from 9 pre-operative components: age 60-69 (+2),
+    Integer score (0-19 pts; 0-18 as observed in the derivation paper) from 9 pre-operative components: age 60-69 (+2),
     70-79 (+4), >=80 (+6) [reference: age <60, 0 pts]; sex/race interaction
     modeled as white female (+1), nonwhite male (+2), nonwhite female (+3)
     [reference: white male, 0 pts; implemented in this study as two additive
@@ -52,7 +52,7 @@ iannuzzi:
     are exactly additive]; ambulation deficit (+3); tissue loss (+3); anemia
     (+2); insulin-dependent diabetes, i.e. outpatient insulin in a patient with
     diabetes (+2).
-  score_range: "0-18"
+  score_range: "0-19"
   c_statistic_derivation: 0.77
   c_statistic_validation: 0.78
 
@@ -80,8 +80,8 @@ mfi5:
     Modified Frailty Index (5-item, range 0-5): 1 point each for diabetes
     mellitus (any type), COPD, congestive heart failure (30-day lookback per
     the original publication), hypertension requiring medication (an
-    outpatient antihypertensive prescription in the prior 365 days in a patient
-    with a hypertension diagnosis at any time before index, as in the published
+    outpatient antihypertensive prescription in the 365 days up to and including the index date in a patient
+    with a hypertension diagnosis on or before the index date, as in the published
     definition), and dependent
     functional status.
   score_range: "0-5"
