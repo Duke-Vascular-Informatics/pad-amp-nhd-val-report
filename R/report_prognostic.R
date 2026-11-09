@@ -411,7 +411,7 @@
   "Underweight (BMI < 18.5)"                                     = "Underweight",
   "Non-ambulatory / impaired ambulation status"                  = "Impaired ambulation",
   "Ambulatory deficit (ambulatory aid use)"                      = "Ambulatory aid use",
-  "Tissue loss (CLI indication — wound ulcer or gangrene)"       = "Tissue loss",
+  "Tissue loss (CLI indication — wound ulcer or gangrene)"       = "Tissue loss (ischemic ulcer or gangrene)",
   "Age 60-69 years at index"                                     = "Age 60\u201369 years",
   "Age 70-79 years at index"                                     = "Age 70\u201379 years",
   "Age 80 or more years at index"                                = "Age \u226580 years"
@@ -700,7 +700,7 @@
       derivation = "observation_occurrence and device_exposure records of ambulatory-aid concepts within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(
-      points = "+3", definition = "Critical limb ischemia indication: wound, ulcer, or gangrene",
+      points = "+3", definition = "Ischemic ulcer or ischemic gangrene (critical limb ischemia); narrower than the wound row of Table 1",
       derivation = "condition_occurrence within 365 days before or on the index amputation date"
     ),
     "Anemia (Hgb less than 10 g/dL)" = list(
@@ -2882,7 +2882,14 @@
     # distinct subgroup variables.
     white_n   <- lookup_concept(demog$race,      8527L)
     black_n   <- lookup_concept(demog$race,      8516L)
-    asian_n   <- lookup_concept(demog$race,      8515L)
+    # Asian, American Indian or Alaska Native and "other" are folded into ONE row (2026-11-09): the small categories are
+    # individually suppressed in the export, and listing only some of them meant Table 1's race rows could not be
+    # reconciled with the Iannuzzi Non-White component (Black + this row; the unrecorded group is scored as not Non-White).
+    # The row is the remainder of the cohort after White, Black and unrecorded, so it needs no suppressed cell.
+    unknown_race_n <- lookup_concept(demog$race, 0L)     # 0 = "No matching concept" (race not recorded)
+    race_df_ok     <- !is.null(demog$race) && nrow(demog$race) > 0
+    has_unknown    <- race_df_ok && any(as.integer(demog$race[[names(demog$race)[toupper(names(demog$race)) == "CONCEPT_ID"][1]]]) == 0L)
+    other_race_n   <- n_target - white_n - black_n - (if (has_unknown) unknown_race_n else 0L)
     latino_n  <- lookup_concept(demog$ethnicity, 38003563L)
     non_latino_n <- lookup_concept(demog$ethnicity, 38003564L)
 
@@ -2909,7 +2916,8 @@
       row1("Race", header = TRUE),
       sub_row("White",             white_n,  n_target),
       sub_row("Black",             black_n,  n_target),
-      sub_row("Asian",             asian_n,  n_target),
+      sub_row("Asian, American Indian or Alaska Native, or other", other_race_n, n_target),
+      if (has_unknown) sub_row("Race not recorded", unknown_race_n, n_target),
       # Ethnicity — a SEPARATE OMOP field from race (a patient may be e.g. both
       # White and Hispanic); rendered as its own section rather than folded into
       # Race, which previously made the Race section's percentages sum to over
@@ -2921,7 +2929,7 @@
       row1("Indication (not mutually exclusive)", header = TRUE),
       sub_row("Peripheral arterial disease (PAD)", pad_n,   n_target),
       sub_row("Diabetes mellitus (any type)",       dm_n,    n_target),
-      sub_row("Lower-extremity wound / gangrene",   wound_n, n_target),
+      sub_row("Lower-extremity wound, gangrene or related infection",   wound_n, n_target),
       # Amputation level (mutually exclusive: AKA > BKA > Other)
       row1("Amputation level", header = TRUE),
       sub_row("Above-knee (AKA)", aka_n,       n_target),
@@ -4136,9 +4144,13 @@
   doc <- add_doc_caption(doc,
     "Table 1. Demographics and clinical characteristics of the study cohort.",
     paste0(
-      "Values are n (%) unless stated; age is median (IQR). Indications are not mutually exclusive and ",
+      "Values are n (%) unless stated; age is median (IQR). Race categories are mutually exclusive; the ",
+      "Iannuzzi Non-White component (Table 3b) is the Black row plus the Asian, American Indian or Alaska Native, or ",
+      "other row (patients with no recorded race are not counted as Non-White). Indications are not mutually exclusive and ",
       "count diagnoses recorded on or before the index date, the same window and cohort definitions as the ",
-      "corresponding Table 3 components. ",
+      "corresponding Table 3 components for PAD and diabetes. The wound row is the broad lower-extremity wound ",
+      "definition of the cohort entry criterion (ulcer, open wound, any gangrene, cellulitis, osteomyelitis, diabetic ",
+      "foot) and is not the Iannuzzi tissue-loss component (Table 3b), which counts only ischemic ulcer or ischemic gangrene. ",
       "Amputation level is hierarchical (above-knee, then below-knee, then other). Definitions are in ",
       supp_table("concept_set_inventory"), "."
     )
