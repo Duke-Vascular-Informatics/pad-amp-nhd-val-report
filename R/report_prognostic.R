@@ -239,6 +239,12 @@
   invisible(NULL)
 }
 
+# Display name of a subgroup variable ("amp_level" -> "Amputation level"; the rest are title-cased as before).
+.subgroup_var_label <- function(x) {
+  x <- as.character(x)
+  ifelse(x == "amp_level", "Amputation level", tools::toTitleCase(gsub("_", " ", x)))
+}
+
 # -----------------------------------------------------------------------------
 # .TBL3_LOOKBACK_PARENTS / .component_flextable()
 #
@@ -1605,7 +1611,7 @@
         "This study externally validated two published integer risk scores for non-home ",
         "discharge (NHD) following major lower-extremity amputation in patients with ",
         "peripheral arterial disease, diabetes mellitus, or a lower-extremity wound indication. ",
-        "The scores evaluated were the Iannuzzi 2020 NHD integer score (9 components, 0–18 points) ",
+        "The scores evaluated were the Iannuzzi 2020 NHD integer score (9 components, 0–19 points) ",
         "and the Subramaniam 2018 modified Frailty Index — 5-item (mFI-5, 0–5 points). ",
         "The analysis was performed on ",
         config$cdm_database_name %||% "the validation database",
@@ -1621,7 +1627,7 @@
       paste0(
         "This study externally validated two published integer risk scores for non-home ",
         "discharge (NHD) following major lower-extremity amputation: the Iannuzzi 2020 ",
-        "NHD integer score (9 components, 0–18 points) and the Subramaniam 2018 mFI-5 ",
+        "NHD integer score (9 components, 0–19 points) and the Subramaniam 2018 mFI-5 ",
         "(5 components, 0–5 points)."
       ),
       style = "Normal"
@@ -1708,7 +1714,7 @@
   )
   doc <- body_add_par(doc,
     paste0(
-      "Iannuzzi 2020 non-home discharge integer risk score (score range 0–18 points). ",
+      "Iannuzzi 2020 non-home discharge integer risk score (score range 0–19 points; the derivation paper observed scores of 0–18). ",
       "This nine-component score was originally derived and internally validated in patients ",
       "undergoing open lower-extremity revascularisation for peripheral artery disease. ",
       "Components and point values are: age 60–69 years (+2), age 70–79 years (+4), ",
@@ -3095,7 +3101,7 @@
 
     # Impose Table 1 ordering on subgroup facets.
     var_order <- c("age_group", "sex", "race", "ethnicity",
-                   "indication", "proc_type", "year")
+                   "indication", "amp_level", "year")
     present_vars <- var_order[var_order %in% bias_df$subgroup_var]
     extra_vars   <- setdiff(unique(bias_df$subgroup_var), present_vars)
     ordered_vars <- c(present_vars, extra_vars)
@@ -3103,7 +3109,7 @@
 
     # Build a combined label: "Sex: Female", "Race: Black", etc.
     bias_df$label <- paste0(
-      tools::toTitleCase(gsub("_", " ", as.character(bias_df$subgroup_var))),
+      .subgroup_var_label(bias_df$subgroup_var),
       ": ",
       bias_df$subgroup_level
     )
@@ -3117,7 +3123,7 @@
 
     # Facet labels: capitalise the subgroup variable name for display.
     facet_labels <- setNames(
-      tools::toTitleCase(gsub("_", " ", levels(bias_df$subgroup_var))),
+      .subgroup_var_label(levels(bias_df$subgroup_var)),
       levels(bias_df$subgroup_var)
     )
 
@@ -3886,7 +3892,7 @@
 
   doc <- body_add_par(doc, paste0(
     "\t", score_word, " published integer risk scores were evaluated as candidate predictors of ",
-    "NHD: the Iannuzzi 2020 NHD score (range 0–18 points; its published four-level sex/race ",
+    "NHD: the Iannuzzi 2020 NHD score (range 0–19 points, 0–18 as observed in the derivation paper; its published four-level sex/race ",
     "interaction is implemented as two additive binary components, female +1 and non-White +2, ",
     "reproducing the published point totals exactly)",
     if (has_mfi5) ", the Subramaniam 2018 modified Frailty Index-5 (mFI-5, range 0–5 points)" else "",
@@ -4787,13 +4793,13 @@
     has_auroc <- all(c("auroc", "auroc_ci_lower", "auroc_ci_upper") %in% names(df))
 
     subgroup_order <- c(age_group = 1, sex = 2, race = 3, ethnicity = 4,
-                        indication = 5, proc_type = 6, year = 7)
+                        indication = 5, amp_level = 6, year = 7)
     sort_key <- subgroup_order[match(df$subgroup_var, names(subgroup_order))]
     sort_key[is.na(sort_key)] <- 99L
     df <- df[order(sort_key, df$subgroup_level), ]
 
     bias_display <- data.frame(
-      Subgroup  = tools::toTitleCase(gsub("_", " ", df$subgroup_var)),
+      Subgroup  = .subgroup_var_label(df$subgroup_var),
       Level     = df$subgroup_level,
       N         = df$n,
       Events    = df$n_events,
