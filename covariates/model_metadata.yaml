@@ -81,7 +81,7 @@ mfi5:
     mellitus (any type), COPD, congestive heart failure (30-day lookback per
     the original publication), hypertension requiring medication (an
     outpatient antihypertensive prescription in the prior 365 days in a patient
-    with a hypertension diagnosis at any time before index, as in the published
+    with a hypertension diagnosis on or before the index date, as in the published
     definition), and dependent
     functional status.
   score_range: "0-5"

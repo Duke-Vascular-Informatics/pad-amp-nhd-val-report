@@ -290,17 +290,17 @@
     "Requires assistance with all daily activities, with personal care; Requires continuous ",
     "supervision for ADLs; Bed-ridden; Confined to chair; Dependence on wheelchair; ",
     "Self-care functional-limitation codes (HCPCS PT reporting, deprecated); Severe frailty")),
-  "Diabetes mellitus (any type)" = list(lookback = "Any time before index", parents = "Diabetes mellitus*"),
-  "COPD or current pneumonia"   = list(lookback = "COPD any time before index; pneumonia 30 days", parents = paste0(
+  "Diabetes mellitus (any type)" = list(lookback = "Any time, through index date", parents = "Diabetes mellitus*"),
+  "COPD or current pneumonia"   = list(lookback = "COPD any time, through index date; pneumonia 30 days", parents = paste0(
     "Chronic obstructive pulmonary disease*; Pneumonia* (excluding Interstitial pneumonia and ",
     "Exacerbation of interstitial pneumonia)")),
   "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days", parents = "Heart failure*"),
-  "Hypertension"                = list(lookback = "Any time before index", parents = "Hypertensive disorder*"),
+  "Hypertension"                = list(lookback = "Any time, through index date", parents = "Hypertensive disorder*"),
   # ---- Kraiss 2022 sVQI-FS (Hypertension shares the mFI-5 name above) ----
   "Congestive heart failure"    = list(lookback = "365 days", parents = "Heart failure*"),
-  "Coronary artery disease"     = list(lookback = "Any time before index", parents = "Ischemic heart disease*"),
-  "Peripheral vascular disease" = list(lookback = "Any time before index", parents = "Lower-extremity peripheral artery disease*"),
-  "Chronic obstructive pulmonary disease" = list(lookback = "Any time before index", parents = "Chronic obstructive pulmonary disease*"),
+  "Coronary artery disease"     = list(lookback = "Any time, through index date", parents = "Ischemic heart disease*"),
+  "Peripheral vascular disease" = list(lookback = "Any time, through index date", parents = "Lower-extremity peripheral artery disease*"),
+  "Chronic obstructive pulmonary disease" = list(lookback = "Any time, through index date", parents = "Chronic obstructive pulmonary disease*"),
   "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days", parents = paste0(
     "Creatinine [Mass/volume] in Serum or Plasma (> 1.8 mg/dL); Renal dialysis*; Dialysis procedure*")),
   "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
@@ -521,7 +521,7 @@
   req_txt <- if (any(is_req)) paste0("; requires ", paste0(rows$concept_name[is_req],
                ifelse(!is.na(rows$include_descendants[is_req]) & rows$include_descendants[is_req], "*", ""),
                id_txt(rows$concept_id[is_req]), collapse = " or "),
-               " at any time before index") else ""
+               " on or before the index date") else ""
   if (any(is_req)) rows <- rows[!is_req, , drop = FALSE]
   if (grepl("^age_", id)) return("None (derived from year of birth)")
   if (id == "female")  return(paste0("Gender: ", tools::toTitleCase(tolower(rows$concept_name[1])), id_txt(rows$concept_id[1])))
@@ -702,7 +702,7 @@
       derivation = "Most recent Hgb in measurement table within 365 days before index; g/L values converted"
     ),
     "Insulin-dependent diabetes mellitus" = list(
-      points = "+2", definition = "Outpatient insulin use in the prior year (not during an inpatient stay), in a patient with a diabetes diagnosis at any time before the index date",
+      points = "+2", definition = "Outpatient insulin use in the prior year (not during an inpatient stay), in a patient with a diabetes diagnosis on or before the index date",
       derivation = "drug_exposure with qualifying insulin ancestor within 365 days before index"
     )
   )
@@ -785,7 +785,7 @@
       # REVISED 2026-11-06: the medication requirement is now applied (pad-amp-nhd-val cohort 9100032 AND 9100022).
       # An export made before the PRCC rerun on that code scored diagnosis only, so this text would be wrong for it.
       definition = "Outpatient antihypertensive prescription in the prior year (thiazide or thiazide-like diuretic, dihydropyridine calcium channel blocker, beta blocker, ACE inhibitor or angiotensin receptor blocker), in a patient with a hypertensive disorder diagnosis at any time before the index date (hypertension requiring medication, Subramaniam 2018)",
-      derivation = "drug_exposure within 365 days before index (outpatient) AND condition_occurrence at any time before index"
+      derivation = "drug_exposure within 365 days before index (outpatient) AND condition_occurrence on or before the index date"
     )
   )
 
@@ -3899,11 +3899,11 @@
       "variant — both addressed in the Limitations)"
     ) else "",
     ". Components were ascertained from clinical documentation before the index date (the index ",
-    "date itself is included only for tissue loss). Lookback windows reflect how stable each condition is: ",
+    "date itself is included for chronic-condition diagnoses and tissue loss). Lookback windows reflect how stable each condition is: ",
     "chronic conditions (diabetes, hypertension, COPD, coronary artery disease and peripheral artery ",
-    "disease) were sought at any time before the index date; insulin-dependent diabetes required an outpatient ",
+    "disease) were sought at any time up to and including the index date; insulin-dependent diabetes required an outpatient ",
     "insulin exposure (not during an inpatient stay) in the prior 365 days in a patient with a diabetes diagnosis at ",
-    "any time before the index date; hemoglobin and body mass index within 90 ",
+    "any time up to and including the index date; hemoglobin and body mass index within 90 ",
     "days, so that they describe the patient at the time of surgery; heart failure and current pneumonia ",
     "in the mFI-5 within 30 days, as published; and the remaining components (functional status, ",
     "ambulation, sVQI-FS heart failure, renal impairment and tissue loss) within 365 days. A patient meeting a component's evidence threshold received its full published point ",
@@ -4128,8 +4128,8 @@
     "Table 1. Demographics and clinical characteristics of the study cohort.",
     paste0(
       "Values are n (%) unless stated; age is median (IQR). Indications are not mutually exclusive and ",
-      "count diagnoses recorded on or before the index date (the Table 3 components use records before it, so ",
-      "their counts can be slightly lower). ",
+      "count diagnoses recorded on or before the index date, the same window and cohort definitions as the ",
+      "corresponding Table 3 components. ",
       "Amputation level is hierarchical (above-knee, then below-knee, then other). Definitions are in ",
       supp_table("concept_set_inventory"), "."
     )
