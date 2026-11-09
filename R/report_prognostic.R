@@ -3850,7 +3850,10 @@
     "covariate definition used in this analysis is registered on the public OHDSI ATLAS demonstration ",
     "instance, except the non-home discharge outcome, which is defined by hand-written SQL that ATLAS ",
     "cannot express; all are listed, with ATLAS id, standard-concept logic and source OMOP table(s), in ",
-    supp_table("concept_set_inventory"), ". Where a comparable phenotype existed in the OHDSI Phenotype ",
+    supp_table("concept_set_inventory"), ". The ATLAS entries are provided for ease of review and may be ",
+    "updated after publication; the cohort definitions used at the time of the analysis (the exact JSON and SQL) ",
+    "are preserved, version-tagged, in the study repository (", supp_table("repositories"), "). ",
+    "Where a comparable phenotype existed in the OHDSI Phenotype ",
     "Library (github.com/OHDSI/PhenotypeLibrary), we aligned our definition with it, and deviated only for ",
     "specific analytic purposes; the library entry and our decision for each definition are documented in ",
     "the same table."
