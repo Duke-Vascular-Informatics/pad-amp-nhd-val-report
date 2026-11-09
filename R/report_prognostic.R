@@ -4845,7 +4845,13 @@
     doc <- body_add_flextable(doc, bias_ft)
     doc <- add_doc_caption(doc,
       table_caption,
-      paste0("Subgroups with fewer than 10 NHD events are suppressed. Overall ECE = ", round(overall_ece_val, 3),
+      paste0(
+             # N counts the temporal TEST partition only (the same patients as the overall ECE/AUROC), not the whole cohort, so
+             # level counts are smaller than the full-cohort counts in Table 1 and a variable's levels sum to the test partition.
+             if (!is.null(split_sent) && !is.na(split_sent$n_test[1]))
+               paste0("N is the number of patients in the temporal test partition (n = ", split_sent$n_test[1], " of ",
+                      split_sent$n_train[1] + split_sent$n_test[1], "), not the full cohort described in Table 1. ") else "",
+             "Subgroups with fewer than 10 NHD events are suppressed, so a variable's levels may sum to less than the test partition. Overall ECE = ", round(overall_ece_val, 3),
              if (has_auroc) paste0("; overall AUROC = ", round(overall_auroc_val, 3)) else "",
              ". CI, bootstrap percentile confidence interval.")
     )
