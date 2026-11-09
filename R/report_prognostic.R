@@ -278,12 +278,12 @@
   "Age 80 or more years at index" = list(lookback = "At index", parents = "None (derived from year of birth)"),
   "Female sex"                  = list(lookback = "Not applicable", parents = "Gender: Female"),
   "Non-White race"              = list(lookback = "Not applicable", parents = "Race: any recorded race other than White"),
-  "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days", parents = .AID_PARENTS),
+  "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days, through index date", parents = .AID_PARENTS),
   "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days, through index date", parents = "Ischemic ulcer*; Ischemic gangrene*"),
-  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
-  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days", parents = "Insulins and analogues* (ATC), outside inpatient stays; requires Diabetes mellitus* or Complication due to diabetes mellitus* at any time before index"),
+  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "90 days, through index date", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
+  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days, through index date", parents = "Insulins and analogues* (ATC), outside inpatient stays; requires Diabetes mellitus* or Complication due to diabetes mellitus* on or before the index date"),
   # ---- Subramaniam 2018 mFI-5 ----
-  "Dependent functional status (ADL dependence)" = list(lookback = "365 days", parents = paste0(
+  "Dependent functional status (ADL dependence)" = list(lookback = "365 days, through index date", parents = paste0(
     "Dependent for bathing, dressing, feeding, drinking, personal grooming, personal hygiene, ",
     "rising to feet, sitting, sitting down, standing, walking; Needs help with dressing, feeding, ",
     "personal grooming, walking, washing self, mouthcare; Needs assistance with shaving; ",
@@ -291,21 +291,21 @@
     "supervision for ADLs; Bed-ridden; Confined to chair; Dependence on wheelchair; ",
     "Self-care functional-limitation codes (HCPCS PT reporting, deprecated); Severe frailty")),
   "Diabetes mellitus (any type)" = list(lookback = "Any time, through index date", parents = "Diabetes mellitus*"),
-  "COPD or current pneumonia"   = list(lookback = "COPD any time, through index date; pneumonia 30 days", parents = paste0(
+  "COPD or current pneumonia"   = list(lookback = "COPD any time, through index date; pneumonia 30 days, through index date", parents = paste0(
     "Chronic obstructive pulmonary disease*; Pneumonia* (excluding Interstitial pneumonia and ",
     "Exacerbation of interstitial pneumonia)")),
-  "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days", parents = "Heart failure*"),
+  "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days, through index date", parents = "Heart failure*"),
   "Hypertension"                = list(lookback = "Any time, through index date", parents = "Hypertensive disorder*"),
   # ---- Kraiss 2022 sVQI-FS (Hypertension shares the mFI-5 name above) ----
-  "Congestive heart failure"    = list(lookback = "365 days", parents = "Heart failure*"),
+  "Congestive heart failure"    = list(lookback = "365 days, through index date", parents = "Heart failure*"),
   "Coronary artery disease"     = list(lookback = "Any time, through index date", parents = "Ischemic heart disease*"),
   "Peripheral vascular disease" = list(lookback = "Any time, through index date", parents = "Lower-extremity peripheral artery disease*"),
   "Chronic obstructive pulmonary disease" = list(lookback = "Any time, through index date", parents = "Chronic obstructive pulmonary disease*"),
-  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days", parents = paste0(
+  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days, through index date", parents = paste0(
     "Creatinine [Mass/volume] in Serum or Plasma (> 1.8 mg/dL); Renal dialysis*; Dialysis procedure*")),
-  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
-  "Underweight (BMI < 18.5)"    = list(lookback = "90 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
-  "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATION_BROAD_PARENTS)
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "90 days, through index date", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
+  "Underweight (BMI < 18.5)"    = list(lookback = "90 days, through index date", parents = "Body mass index (direct); else body weight and body height (computed)"),
+  "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days, through index date", parents = .AMBULATION_BROAD_PARENTS)
 )
 
 # Cohort behind each Table 3 component, shown in the "Cohort" column so the table says explicitly
@@ -691,7 +691,7 @@
     ),
     "Ambulatory deficit (ambulatory aid use)" = list(
       points = "+3", definition = "Use of an ambulatory aid: walking aid, wheelchair use or dependence, walker, walking frame, crutch, or cane",
-      derivation = "observation_occurrence and device_exposure records of ambulatory-aid concepts within 365 days before index (day −365 to −1)"
+      derivation = "observation_occurrence and device_exposure records of ambulatory-aid concepts within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(
       points = "+3", definition = "Critical limb ischemia indication: wound, ulcer, or gangrene",
@@ -699,11 +699,11 @@
     ),
     "Anemia (Hgb less than 10 g/dL)" = list(
       points = "+2", definition = "Pre-operative anemia: hemoglobin < 10 g/dL",
-      derivation = "Most recent Hgb in measurement table within 365 days before index; g/L values converted"
+      derivation = "Most recent Hgb in measurement table within 365 days up to and including the index date; g/L values converted"
     ),
     "Insulin-dependent diabetes mellitus" = list(
-      points = "+2", definition = "Outpatient insulin use in the prior year (not during an inpatient stay), in a patient with a diabetes diagnosis on or before the index date",
-      derivation = "drug_exposure with qualifying insulin ancestor within 365 days before index"
+      points = "+2", definition = "Outpatient insulin use in the year up to and including the index date (not during an inpatient stay), in a patient with a diabetes diagnosis on or before the index date",
+      derivation = "drug_exposure with qualifying insulin ancestor within 365 days up to and including the index date"
     )
   )
 
@@ -763,29 +763,29 @@
     "Dependent functional status (ADL dependence)" = list(
       points = "+1",
       definition = "Partial or total dependence for activities of daily living (bathing, dressing, feeding, grooming, hygiene, or mobility), bed-ridden, confined to chair, wheelchair dependence, a therapist-reported self-care limitation, or severe frailty",
-      derivation = "observation_occurrence and condition_occurrence records within 365 days before index (day −365 to −1)"
+      derivation = "observation_occurrence and condition_occurrence records within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Diabetes mellitus (any type)" = list(
       points = "+1",
       definition = "Any type of diabetes mellitus",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      derivation = "condition_occurrence within 365 days up to and including the index date (day −365 to 0)"
     ),
     "COPD or current pneumonia" = list(
       points = "+1",
       definition = "Chronic obstructive pulmonary disease, or current pneumonia; either qualifies",
-      derivation = "condition_occurrence: COPD within 365 days OR pneumonia within 30 days before index"
+      derivation = "condition_occurrence: COPD at any time up to the index date OR pneumonia within 30 days up to and including the index date"
     ),
     "Congestive heart failure (within 30 days prior)" = list(
       points = "+1",
       definition = "Congestive heart failure",
-      derivation = "condition_occurrence within 30 days before index (lookback_start_day = −30)"
+      derivation = "condition_occurrence within 30 days up to and including the index date (lookback_start_day = −30)"
     ),
     "Hypertension" = list(
       points = "+1",
       # REVISED 2026-11-06: the medication requirement is now applied (pad-amp-nhd-val cohort 9100032 AND 9100022).
       # An export made before the PRCC rerun on that code scored diagnosis only, so this text would be wrong for it.
-      definition = "Outpatient antihypertensive prescription in the prior year (thiazide or thiazide-like diuretic, dihydropyridine calcium channel blocker, beta blocker, ACE inhibitor or angiotensin receptor blocker), in a patient with a hypertensive disorder diagnosis at any time before the index date (hypertension requiring medication, Subramaniam 2018)",
-      derivation = "drug_exposure within 365 days before index (outpatient) AND condition_occurrence on or before the index date"
+      definition = "Outpatient antihypertensive prescription in the year up to and including the index date (thiazide or thiazide-like diuretic, dihydropyridine calcium channel blocker, beta blocker, ACE inhibitor or angiotensin receptor blocker), in a patient with a hypertensive disorder diagnosis at any time before the index date (hypertension requiring medication, Subramaniam 2018)",
+      derivation = "drug_exposure within 365 days up to and including the index date (outpatient) AND condition_occurrence on or before the index date"
     )
   )
 
@@ -841,32 +841,32 @@
     "Hypertension" = list(
       points = "+1",
       definition = "Hypertensive disorder",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      derivation = "condition_occurrence within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Congestive heart failure" = list(
       points = "+1",
       definition = "Congestive heart failure",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      derivation = "condition_occurrence within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Coronary artery disease" = list(
       points = "+1",
       definition = "Coronary artery disease",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      derivation = "condition_occurrence within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Peripheral vascular disease" = list(
       points = "+1",
       definition = "Lower-extremity peripheral artery disease, from diagnosis codes, as for cohort entry (Kraiss 2022 uses an ankle-brachial index < 0.7 or prior arterial intervention or amputation)",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      derivation = "condition_occurrence within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Diabetes mellitus (any type)" = list(
       points = "+1",
       definition = "Any type of diabetes mellitus",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      derivation = "condition_occurrence within 365 days up to and including the index date (day −365 to 0)"
     ),
     "Chronic obstructive pulmonary disease" = list(
       points = "+1",
       definition = "Chronic obstructive pulmonary disease",
-      derivation = "condition_occurrence within 365 days before index (day −365 to −1)"
+      derivation = "condition_occurrence within 365 days up to and including the index date (day −365 to 0)"
     ),
     # RENAL IMPAIRMENT — key updated 2026-07-26 to match the covariate_name in
     # covariates_vqifs.csv after the definition itself changed. The dict key
@@ -878,18 +878,18 @@
     "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(
       points = "+1",
       definition = "Creatinine > 1.8 mg/dL or dialysis, as defined by Kraiss 2022",
-      derivation = "query_renal_impairment_covariate_counts() in R/risk_score_pipeline.R: measurement value threshold OR procedure/condition dialysis presence, within 365 days before index"
+      derivation = "query_renal_impairment_covariate_counts() in R/risk_score_pipeline.R: measurement value threshold OR procedure/condition dialysis presence, within 365 days up to and including the index date"
     ),
     # ANEMIA — key updated 2026-07-26, same reason as renal impairment above.
     "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(
       points = "+1",
       definition = "Hemoglobin < 13 g/dL (male) or < 12 g/dL (female), as defined by Kraiss 2022",
-      derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 365 days before index; an absent measurement is null-imputed (scored as not anaemic)"
+      derivation = "query_anemia_covariate_counts(sex_specific = TRUE) in R/risk_score_pipeline.R: measurement value threshold, sex resolved from person.gender_concept_id, within 365 days up to and including the index date; an absent measurement is null-imputed (scored as not anaemic)"
     ),
     "Underweight (BMI < 18.5)" = list(
       points = "+1",
       definition = "Body mass index < 18.5, as defined by Kraiss 2022",
-      derivation = "measurement within 365 days before index; an absent measurement is null-imputed (scored as not underweight)"
+      derivation = "measurement within 365 days up to and including the index date; an absent measurement is null-imputed (scored as not underweight)"
     ),
     "Non-ambulatory / impaired ambulation status" = list(
       points = "+1",
@@ -897,7 +897,7 @@
       derivation = paste0(
         "observation_occurrence, condition_occurrence and device_exposure records of impaired-ambulation ",
         "concepts (the Iannuzzi aid-use set plus status and gait findings), within 365 days before ",
-        "index (day −365 to −1)"
+        "index (day −365 to 0)"
       )
     )
   )
@@ -1372,7 +1372,7 @@
       points = "+2",
       definition = "Non-prophylactic antibiotic exposure >2 days",
       omop_concept = "Concept 21603553 (systemic antibiotic) + descendants",
-      derivation = "drug_exposure duration > 2 days within 90 days before index date"
+      derivation = "drug_exposure duration > 2 days within 90 days up to and including the index date"
     ),
     "Operative time ≥4 hours" = list(
       points = "+1",
@@ -3898,11 +3898,11 @@
       "and the equally weighted form is evaluated rather than the authors' differentially weighted ",
       "variant — both addressed in the Limitations)"
     ) else "",
-    ". Components were ascertained from clinical documentation before the index date (the index ",
-    "date itself is included for chronic-condition diagnoses and tissue loss). Lookback windows reflect how stable each condition is: ",
+    ". Components were ascertained from clinical documentation up to and including the index date (the index ",
+    "date itself is included in every window). Lookback windows reflect how stable each condition is: ",
     "chronic conditions (diabetes, hypertension, COPD, coronary artery disease and peripheral artery ",
     "disease) were sought at any time up to and including the index date; insulin-dependent diabetes required an outpatient ",
-    "insulin exposure (not during an inpatient stay) in the prior 365 days in a patient with a diabetes diagnosis at ",
+    "insulin exposure (not during an inpatient stay) in the 365 days up to and including the index date in a patient with a diabetes diagnosis at ",
     "any time up to and including the index date; hemoglobin and body mass index within 90 ",
     "days, so that they describe the patient at the time of surgery; heart failure and current pneumonia ",
     "in the mFI-5 within 30 days, as published; and the remaining components (functional status, ",
@@ -5070,8 +5070,8 @@
             "Observation: 4012645, 4044714, 4022073 + 5 others; Device: 4240470, 37165652, 4141765, 4251933 + 88 HCPCS codes",
             "Aid-use set + Observation: 4306934, 36714126, 437643, 439405, 4086548 + 5 others; Condition: 4306934, 36714126, 437643",
             "255848 (excluding 4273378, 1340380)",
-            "21600713 (outside inpatient stays); requires 201820 or 442793 at any time before index",
-            "26 drug concepts (22 ingredients from OHDSI PL 1046, 1047, 1049; ATC 21601783, 21601801, 21601822, 21601832), outside inpatient stays; requires 316866 at any time before index",
+            "21600713 (outside inpatient stays); requires 201820 or 442793 on or before the index date",
+            "26 drug concepts (22 ingredients from OHDSI PL 1046, 1047, 1049; ATC 21601783, 21601801, 21601822, 21601832), outside inpatient stays; requires 316866 on or before the index date",
             "3000963",
             "3000963",
             "3016723, 4146536, 4032243",
@@ -5132,7 +5132,7 @@
             "Outcome (non-home discharge; all three score models).",
             "Covariate: sVQI-FS (coronary artery disease, 365 d).",
             "Covariate: mFI-5 (congestive heart failure, 30 d); sVQI-FS (congestive heart failure, 365 d).",
-            "Covariate: sVQI-FS (hypertension, any time before index); mFI-5 (the diagnosis half of hypertension requiring medication, any time before index).",
+            "Covariate: sVQI-FS (hypertension, on or before the index date); mFI-5 (the diagnosis half of hypertension requiring medication, on or before the index date).",
             "Covariate: mFI-5 (diabetes mellitus, 365 d); sVQI-FS (diabetes mellitus, 365 d).",
             "Covariate: mFI-5 (COPD arm of the COPD-or-pneumonia item, 365 d); sVQI-FS (COPD, 365 d).",
             "Covariate: sVQI-FS (peripheral vascular disease, 365 d).",
@@ -5187,8 +5187,8 @@
                    "bisoprolol* (1338005), carvedilol* (1346823), labetalol* (1386957), metoprolol* (1307046), nadolol* (1313200), ",
                    "nebivolol* (1314577), penbutolol* (1327978), pindolol* (1345858), propranolol* (1353766); ACE inhibitors, plain* ",
                    "(21601783) and combinations* (21601801), and angiotensin II receptor blockers, plain* (21601822) and combinations* ",
-                   "(21601832) (ATC third level; not in the library). Outside inpatient stays, within 365 days before index; the ",
-                   "mFI-5 item also requires Hypertensive disorder* (316866) at any time before index (hypertension row above)."),
+                   "(21601832) (ATC third level; not in the library). Outside inpatient stays, within 365 days up to and including the index date; the ",
+                   "mFI-5 item also requires Hypertensive disorder* (316866) on or before the index date (hypertension row above)."),
             ip("iannuzzi", "Anemia (Hgb less than 10 g/dL)"),
             ip("vqifs",    "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)"),
             ip("vqifs",    "Renal impairment (creatinine > 1.8 mg/dL or dialysis)"),
@@ -5659,7 +5659,7 @@
           paste0("Source codes whose OMOP \"Maps to\" relationship reaches each component's concepts, descendants included. ",
                  "Lists of more than 12 codes are shown by 3-character category; the full list is in ", basename(full_csv), ". ",
                  "ATC codes are the classification codes of the antihypertensive medication groups (the hypertension item requires an ",
-                 "outpatient exposure in the prior 365 days and a hypertension diagnosis at any time before index); the ATC code of each ",
+                 "outpatient exposure in the 365 days up to and including the index date and a hypertension diagnosis on or before the index date); the ATC code of each ",
                  "ingredient is its plain 4th-level class, and all descendant drug products and combinations are counted. ",
                  "OMOP concept ids are in Supplemental Table S2.")
         )
