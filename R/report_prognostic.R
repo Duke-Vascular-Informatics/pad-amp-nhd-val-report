@@ -4144,13 +4144,11 @@
   doc <- add_doc_caption(doc,
     "Table 1. Demographics and clinical characteristics of the study cohort.",
     paste0(
-      "Values are n (%) unless stated; age is median (IQR). Race categories are mutually exclusive; the ",
-      "Iannuzzi Non-White component (Table 3b) is the Black row plus the Asian, American Indian or Alaska Native, or ",
-      "other row (patients with no recorded race are not counted as Non-White). Indications are not mutually exclusive and ",
-      "count diagnoses recorded on or before the index date, the same window and cohort definitions as the ",
-      "corresponding Table 3 components for PAD and diabetes. The wound row is the broad lower-extremity wound ",
-      "definition of the cohort entry criterion (ulcer, open wound, any gangrene, cellulitis, osteomyelitis, diabetic ",
-      "foot) and is not the Iannuzzi tissue-loss component (Table 3b), which counts only ischemic ulcer or ischemic gangrene. ",
+      "Values are n (%) unless stated; age is median (IQR). Race categories are mutually exclusive; patients with ",
+      "no recorded race are shown separately. Indications are not mutually exclusive: PAD and diabetes count diagnoses ",
+      "recorded on or before the index date, and the lower-extremity wound row (the broad cohort-entry definition: ulcer, ",
+      "open wound, any gangrene, cellulitis, osteomyelitis, diabetic foot) counts those recorded in the 365 days up to and ",
+      "including the index date. ",
       "Amputation level is hierarchical (above-knee, then below-knee, then other). Definitions are in ",
       supp_table("concept_set_inventory"), "."
     )
