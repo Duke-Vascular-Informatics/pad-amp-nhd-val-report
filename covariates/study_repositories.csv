@@ -1,6 +1,6 @@
 role,repository,version,doi,license,note
-Analysis code (this study),github.com/Duke-Vascular-Informatics/pad-amp-nhd-val,v1.0.0,10.5281/zenodo.24013403,GPL-2.0-only,Strategus study package and custom scoring step
-Manuscript report code,github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report,v1.0.0,10.5281/zenodo.24013550,GPL-2.0-only,Renders this report from aggregate result files only
+Analysis code (this study),github.com/Duke-Vascular-Informatics/pad-amp-nhd-val,v1.0.1,10.5281/zenodo.24095663,GPL-2.0-only,Strategus study package and custom scoring step
+Manuscript report code,github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report,v1.0.1,,GPL-2.0-only,Renders this report from aggregate result files only
 Synthetic data generator,github.com/Duke-Vascular-Informatics/pad-amp-synth,release synth-data-pad_amp-v3,10.5281/zenodo.23955868,GPL-2.0-only,Synthea module and ETL that produced the synthetic development data
 Synthetic development data,GitHub release synth-data-pad_amp-v3 of pad-amp-synth (pad_amp_clinical_tables.zip),v3,archived with the generator release,CC BY 4.0,Used to develop and test the code; no result comes from it
 Development container,github.com/Duke-Vascular-Informatics/charon,v1.2.1,10.5281/zenodo.23874907,GPL-2.0-only,Institution-specific configuration used for development
