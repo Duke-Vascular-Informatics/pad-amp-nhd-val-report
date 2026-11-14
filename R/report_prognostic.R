@@ -284,34 +284,34 @@
   "Age 80 or more years at index" = list(lookback = "At index", parents = "None (derived from year of birth)"),
   "Female sex"                  = list(lookback = "Not applicable", parents = "Gender: Female"),
   "Non-White race"              = list(lookback = "Not applicable", parents = "Race: any recorded race other than White"),
-  "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days, through index date", parents = .AID_PARENTS),
-  "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days, through index date", parents = "Ischemic ulcer*; Ischemic gangrene*"),
-  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "90 days, through index date", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
-  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days, through index date", parents = "Insulins and analogues* (ATC), outside inpatient stays; requires Diabetes mellitus* or Complication due to diabetes mellitus* on or before the index date"),
+  "Ambulatory deficit (ambulatory aid use)" = list(lookback = "365 days", parents = .AID_PARENTS),
+  "Tissue loss (CLI indication — wound ulcer or gangrene)" = list(lookback = "365 days", parents = "Ischemic ulcer*; Ischemic gangrene*"),
+  "Anemia (Hgb less than 10 g/dL)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 10 g/dL)"),
+  "Insulin-dependent diabetes mellitus" = list(lookback = "365 days", parents = "Insulins and analogues* (ATC), outside inpatient stays; requires Diabetes mellitus* or Complication due to diabetes mellitus* on or before the index date"),
   # ---- Subramaniam 2018 mFI-5 ----
-  "Dependent functional status (ADL dependence)" = list(lookback = "365 days, through index date", parents = paste0(
+  "Dependent functional status (ADL dependence)" = list(lookback = "365 days", parents = paste0(
     "Dependent for bathing, dressing, feeding, drinking, personal grooming, personal hygiene, ",
     "rising to feet, sitting, sitting down, standing, walking; Needs help with dressing, feeding, ",
     "personal grooming, walking, washing self, mouthcare; Needs assistance with shaving; ",
     "Requires assistance with all daily activities, with personal care; Requires continuous ",
     "supervision for ADLs; Bed-ridden; Confined to chair; Dependence on wheelchair; ",
     "Self-care functional-limitation codes (HCPCS PT reporting, deprecated); Severe frailty")),
-  "Diabetes mellitus (any type)" = list(lookback = "Any time, through index date", parents = "Diabetes mellitus*"),
-  "COPD or current pneumonia"   = list(lookback = "COPD any time, through index date; pneumonia 30 days, through index date", parents = paste0(
+  "Diabetes mellitus (any type)" = list(lookback = "Any time", parents = "Diabetes mellitus*"),
+  "COPD or current pneumonia"   = list(lookback = "COPD any time; pneumonia 30 days", parents = paste0(
     "Chronic obstructive pulmonary disease*; Pneumonia* (excluding Interstitial pneumonia and ",
     "Exacerbation of interstitial pneumonia)")),
-  "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days, through index date", parents = "Heart failure*"),
-  "Hypertension"                = list(lookback = "Any time, through index date", parents = "Hypertensive disorder*"),
+  "Congestive heart failure (within 30 days prior)" = list(lookback = "30 days", parents = "Heart failure*"),
+  "Hypertension"                = list(lookback = "Any time", parents = "Hypertensive disorder*"),
   # ---- Kraiss 2022 sVQI-FS (Hypertension shares the mFI-5 name above) ----
-  "Congestive heart failure"    = list(lookback = "365 days, through index date", parents = "Heart failure*"),
-  "Coronary artery disease"     = list(lookback = "Any time, through index date", parents = "Ischemic heart disease*"),
-  "Peripheral vascular disease" = list(lookback = "Any time, through index date", parents = "Lower-extremity peripheral artery disease*"),
-  "Chronic obstructive pulmonary disease" = list(lookback = "Any time, through index date", parents = "Chronic obstructive pulmonary disease*"),
-  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days, through index date", parents = paste0(
+  "Congestive heart failure"    = list(lookback = "365 days", parents = "Heart failure*"),
+  "Coronary artery disease"     = list(lookback = "Any time", parents = "Ischemic heart disease*"),
+  "Peripheral vascular disease" = list(lookback = "Any time", parents = "Lower-extremity peripheral artery disease*"),
+  "Chronic obstructive pulmonary disease" = list(lookback = "Any time", parents = "Chronic obstructive pulmonary disease*"),
+  "Renal impairment (creatinine > 1.8 mg/dL or dialysis)" = list(lookback = "365 days", parents = paste0(
     "Creatinine [Mass/volume] in Serum or Plasma (> 1.8 mg/dL); Renal dialysis*; Dialysis procedure*")),
-  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "90 days, through index date", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
-  "Underweight (BMI < 18.5)"    = list(lookback = "90 days, through index date", parents = "Body mass index (direct); else body weight and body height (computed)"),
-  "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days, through index date", parents = .AMBULATION_BROAD_PARENTS)
+  "Anemia (sex-specific Hgb threshold: <13 g/dL M / <12 g/dL F)" = list(lookback = "90 days", parents = "Hemoglobin [Mass/volume] in Blood (< 13 g/dL M, < 12 g/dL F)"),
+  "Underweight (BMI < 18.5)"    = list(lookback = "90 days", parents = "Body mass index (direct); else body weight and body height (computed)"),
+  "Non-ambulatory / impaired ambulation status" = list(lookback = "365 days", parents = .AMBULATION_BROAD_PARENTS)
 )
 
 # Cohort behind each Table 3 component, shown in the "Cohort" column so the table says explicitly
@@ -422,14 +422,24 @@
 .DCA_FIG_W <- 6.5
 .DCA_FIG_H <- 7.8
 
+# TRUE when every lookback window in the export ends on day 0, i.e. on and including the index date. Read from the
+# same score_component_definitions rows the Lookback column is built from. With no definitions file the column uses
+# the static text above, which is written to the same rule, so the statement holds.
+.windows_include_index <- function(score_defs = NULL) {
+  if (is.null(score_defs) || nrow(score_defs) == 0L) return(TRUE)
+  ends <- c(score_defs$covariate_lookback_end_day, score_defs$concept_lookback_end_day)
+  all(ends[!is.na(ends)] == 0L)
+}
+
 # Footnote shared by Tables 3a-c.
-.tbl3_note <- function(n_total = NULL, measurement_components = NULL) {
+.tbl3_note <- function(n_total = NULL, measurement_components = NULL, score_defs = NULL) {
   paste0(
     "n (%) is the number meeting the component out of the full cohort",
     if (!is.null(n_total) && is.finite(n_total)) paste0(" (N = ", format(n_total, big.mark = ","), ")") else "",
     "; no recorded evidence counts as not meeting it",
     if (!is.null(measurement_components)) paste0(" (including no ", measurement_components, " measurement)") else "",
-    ". Cohort ID is the ATLAS cohort each component is read from."
+    ". Cohort ID is the ATLAS cohort each component is read from.",
+    if (.windows_include_index(score_defs)) " Every lookback window runs up to and including the index date." else ""
   )
 }
 
@@ -473,10 +483,14 @@
 }
 
 .window_label <- function(s, e) {
+  # Every window is read up to and including the index date (end day 0); Table 3's caption says so once
+  # (.tbl3_note), so the cell shows only how far back the window reaches. A window that does NOT end on
+  # day 0 names its end day here, so the caption's statement can never hide an exception.
   # -36500 days (100 years) is the analysis code's value for "any time before the index date".
-  if (s <= -36500L) return(if (e == 0L) "Any time, through index date" else "Any time before index")
+  end_txt <- if (e == 0L) "" else paste0(", ending day ", e)
+  if (s <= -36500L) return(paste0("Any time", end_txt))
   if (s == 0L && e == 0L) "At index"
-  else paste0(abs(s), " days", if (e == 0L) ", through index date" else "")
+  else paste0(abs(s), " days", end_txt)
 }
 
 # Effective window per concept row (its own override, else the component's) and a
@@ -4295,7 +4309,7 @@
     doc <- add_doc_caption(doc,
       "Table 3a. Subramaniam 2018 mFI-5: components and activation.",
       paste0(
-        .tbl3_note(covariate_summary_mfi5$n_total[1]), " Definitions are in ",
+        .tbl3_note(covariate_summary_mfi5$n_total[1], score_defs = defs_for("mfi5")), " Definitions are in ",
         supp_table("concept_set_inventory"), "."
       )
     )
@@ -4313,7 +4327,7 @@
   doc <- add_doc_caption(doc,
     "Table 3b. Iannuzzi 2020 NHD score: components and activation.",
     paste0(
-      .tbl3_note(covariate_summary$n_total[1], "anemia"), " Definitions are in ",
+      .tbl3_note(covariate_summary$n_total[1], "anemia", score_defs = defs_for("iannuzzi")), " Definitions are in ",
       supp_table("concept_set_inventory"), "."
     )
   )
@@ -4326,7 +4340,7 @@
     doc <- add_doc_caption(doc,
       "Table 3c. Kraiss 2022 sVQI-FS: components and activation.",
       paste0(
-        .tbl3_note(covariate_summary_vqifs$n_total[1], "anemia or body mass index"), " Definitions are in ",
+        .tbl3_note(covariate_summary_vqifs$n_total[1], "anemia or body mass index", score_defs = defs_for("vqifs")), " Definitions are in ",
         supp_table("concept_set_inventory"), "."
       )
     )
