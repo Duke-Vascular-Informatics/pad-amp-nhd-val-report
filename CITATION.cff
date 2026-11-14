@@ -27,8 +27,8 @@ authors:
     family-names: "Moya-Mendez"
     affiliation: "Duke University School of Medicine"
 
-version: "1.0.1"
-date-released: "2026-11-09"
+version: "1.0.2"
+date-released: "2026-11-14"
 
 repository-code: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report"
 url: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val-report"
@@ -64,9 +64,9 @@ references:
     authors:
       - family-names: "Johnson"
         given-names: "Adam P."
-    doi: "10.5281/zenodo.24095663"
+    doi: "10.5281/zenodo.24219686"
     repository-code: "https://github.com/Duke-Vascular-Informatics/pad-amp-nhd-val"
-    version: "v1.0.1"
+    version: "v1.0.2"
     year: 2026
   - type: software
     title: "Charon: Containerized HADES Analytics for Research in OHDSI Networks (the development container this repo was built in, institution-specific configuration; v1.2.1)"
